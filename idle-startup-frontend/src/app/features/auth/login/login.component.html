@@ -1,0 +1,74 @@
+<div class="auth-page">
+  <aside class="auth-aside" aria-hidden="true">
+    <div class="auth-logo auth-logo--light">
+      <span class="auth-logo__mark"><app-icon name="trend" /></span>
+      Rich Life
+    </div>
+    <div>
+      <h2 class="auth-aside__title">Your empire kept earning while you were away.</h2>
+      <p class="auth-aside__lead">Sign in to collect offline income and keep climbing the ranks.</p>
+    </div>
+    <ul class="auth-aside__points">
+      <li><span>🏪</span> Open businesses across 7 sectors</li>
+      <li><span>⚡</span> Automate them and earn offline</li>
+      <li><span>🏆</span> Prestige up and top the leaderboard</li>
+    </ul>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card animate-fade-in-up">
+      <div class="auth-card__header">
+        <div class="auth-logo">
+          <span class="auth-logo__mark"><app-icon name="trend" /></span>
+          Rich Life
+        </div>
+        <h1 class="auth-card__title">Welcome back</h1>
+        <p class="auth-card__sub">Sign in to your empire.</p>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert--error" role="alert">{{ error() }}</div>
+      }
+
+      <form class="auth-form" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            class="form-input"
+            type="email"
+            placeholder="you@example.com"
+            [(ngModel)]="email"
+            name="email"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            id="password"
+            class="form-input"
+            type="password"
+            placeholder="••••••••"
+            [(ngModel)]="password"
+            name="password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn--primary btn--full btn--lg"
+          [disabled]="loading()">
+          @if (loading()) { Signing in… } @else { Sign in }
+        </button>
+      </form>
+
+      <p class="auth-card__footer">
+        No account?
+        <a routerLink="/register" class="auth-link">Create one</a>
+      </p>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,53 @@
+<div class="toolbar">
+  <input class="form-input" type="search" placeholder="Search name or id…" aria-label="Search the catalogue"
+         [ngModel]="search()" (ngModelChange)="search.set($event)" />
+  <select class="form-input form-select" aria-label="Prestige level" [ngModel]="level()" (ngModelChange)="level.set($event)">
+    <option [value]="all">All levels</option>
+    @for (l of levels; track l) { <option [value]="l">{{ prestigeLabel(l) }}</option> }
+  </select>
+  <label class="check">
+    <input type="checkbox" [ngModel]="showRetired()" (ngModelChange)="showRetired.set($event)" /> Show retired
+  </label>
+  <button type="button" class="btn btn--primary" (click)="editing.set(null)">+ New business</button>
+</div>
+
+<p class="muted num">{{ activeCount() }} active of {{ entries().length }} businesses. Edits apply to businesses opened after them.</p>
+
+@if (error()) {
+  <div class="alert alert--error" role="alert">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>Loading catalogue…</p></div>
+} @else {
+  @for (group of groups(); track group.level) {
+    <section class="group">
+      <h2 [style.color]="prestigeColor(group.level)">{{ prestigeLabel(group.level) }}</h2>
+      <ul class="list">
+        @for (e of group.items; track e.id) {
+          <li class="card item" [class.item--retired]="!e.isActive">
+            <span class="item__icon" aria-hidden="true">{{ sectorIcon(e.sector) }}</span>
+            <div class="item__main">
+              <span class="item__name">
+                {{ e.name }}
+                @if (!e.isActive) { <span class="badge badge--neutral">Retired</span> }
+              </span>
+              <span class="item__meta num">
+                {{ e.id }} · {{ e.openingCost | money }} · {{ e.baseIncomePerSecond | rate }}/s
+                · {{ e.availableAssets.length }} assets
+                @if (payback(e); as m) { · pays back in {{ m }} min }
+              </span>
+            </div>
+            <button type="button" class="btn btn--outline btn--sm" (click)="editing.set(e)">Edit</button>
+          </li>
+        }
+      </ul>
+    </section>
+  } @empty {
+    <div class="empty-state"><div class="empty-state__icon" aria-hidden="true">🔍</div><p class="empty-state__text">Nothing matches</p></div>
+  }
+}
+
+@if (editing() !== undefined) {
+  <app-catalogue-editor [entry]="editing() ?? null" (saved)="onSaved($event)" (closed)="editing.set(undefined)" />
+}

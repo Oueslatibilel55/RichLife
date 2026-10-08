@@ -1,0 +1,135 @@
+<div class="toolbar">
+  <input
+    class="form-input search"
+    type="search"
+    placeholder="Search username or email…"
+    aria-label="Search players"
+    [ngModel]="search()"
+    (ngModelChange)="onSearch($event)"
+  />
+  <span class="muted num">{{ players().length }} shown</span>
+</div>
+
+@if (error()) {
+  <div class="alert alert--error" role="alert">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="alert alert--success" role="status">{{ notice() }}</div>
+}
+
+@if (loading() && players().length === 0) {
+  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>Loading players…</p></div>
+} @else {
+  <ul class="list">
+    @for (p of players(); track p.id) {
+      <li class="card row" [class.row--busy]="busyId() === p.id">
+        <div class="row__who">
+          <span class="row__avatar" aria-hidden="true">{{ p.username.charAt(0).toUpperCase() }}</span>
+          <div class="row__names">
+            <span class="row__user">
+              {{ p.username }}
+              @if (p.isAdmin) { <span class="badge badge--violet">🛡 Admin</span> }
+              @if (p.id === myId()) { <span class="badge badge--primary">You</span> }
+            </span>
+            <span class="row__email">{{ p.email }} · {{ p.country }} · joined {{ p.createdAt | date: 'dd MMM yyyy' }}</span>
+          </div>
+        </div>
+
+        @if (p.isAdmin) {
+          <p class="muted">Staff account — not a player (no company, not on the leaderboard).</p>
+        } @else if (p.companyName) {
+          <div class="row__stats">
+            <div class="stat"><span class="stat__label">Company</span><span class="stat__value">{{ p.companyName }}</span></div>
+            <div class="stat">
+              <span class="stat__label">Prestige</span>
+              <span class="stat__value" [style.color]="prestigeColor(p.prestigeLevel ?? 'TheHustle')">{{ prestigeShort(p.prestigeLevel ?? 'TheHustle') }}</span>
+            </div>
+            <div class="stat"><span class="stat__label">Cash</span><span class="stat__value stat__value--money">{{ p.cash ?? 0 | money }}</span></div>
+            <div class="stat"><span class="stat__label">All-time</span><span class="stat__value">{{ p.allTimeEarnings ?? 0 | money }}</span></div>
+            <div class="stat"><span class="stat__label">Businesses</span><span class="stat__value num">{{ p.businesses }}</span></div>
+            <div class="stat"><span class="stat__label">Last seen</span><span class="stat__value">{{ p.lastSeenAt | date: 'dd MMM, HH:mm' }}</span></div>
+          </div>
+        } @else {
+          <p class="muted">No company yet.</p>
+        }
+
+        <div class="row__actions">
+          @if (p.companyName && !p.isAdmin) {
+            <button type="button" class="btn btn--soft btn--sm" [disabled]="busyId() === p.id" (click)="ask('cash', p)">💵 Set cash</button>
+            <button type="button" class="btn btn--outline btn--sm" [disabled]="busyId() === p.id" (click)="ask('reset', p)">↺ Reset</button>
+          }
+          <button
+            type="button"
+            class="btn btn--outline btn--sm"
+            [disabled]="busyId() === p.id || (p.isAdmin && p.id === myId())"
+            (click)="toggleAdmin(p)"
+          >
+            {{ p.isAdmin ? 'Remove admin' : 'Make admin' }}
+          </button>
+          <button
+            type="button"
+            class="btn btn--danger btn--sm"
+            [disabled]="busyId() === p.id || p.id === myId()"
+            (click)="ask('delete', p)"
+          >
+            Delete
+          </button>
+        </div>
+      </li>
+    } @empty {
+      <li class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">🔍</div>
+        <p class="empty-state__text">No players found</p>
+      </li>
+    }
+  </ul>
+}
+
+@if (pending(); as action) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title" (click)="pending.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      @switch (action.kind) {
+        @case ('cash') {
+          <div class="modal__icon" aria-hidden="true">💵</div>
+          <h2 class="modal__title" id="confirm-title">Set {{ action.player.username }}'s cash</h2>
+          <p class="modal__sub">Replaces their current {{ action.player.cash ?? 0 | money }}. Does not count as earnings.</p>
+          <input
+            class="form-input modal__input num"
+            type="number"
+            min="0"
+            step="1"
+            aria-label="New cash"
+            [ngModel]="cashInput()"
+            (ngModelChange)="cashInput.set($event)"
+            (keyup.enter)="confirm()"
+          />
+        }
+        @case ('reset') {
+          <div class="modal__icon" aria-hidden="true">↺</div>
+          <h2 class="modal__title" id="confirm-title">Reset {{ action.player.username }}?</h2>
+          <p class="modal__sub">
+            Cash 0, every business removed, back to P1, all-time earnings 0 (leaderboard).
+            The account and company name are kept. This cannot be undone.
+          </p>
+        }
+        @case ('delete') {
+          <div class="modal__icon" aria-hidden="true">🗑️</div>
+          <h2 class="modal__title" id="confirm-title">Delete {{ action.player.username }}?</h2>
+          <p class="modal__sub">The account, company, businesses and assets are deleted for good.</p>
+        }
+      }
+      <div class="confirm-actions">
+        <button type="button" class="btn btn--outline btn--lg" (click)="pending.set(null)">Cancel</button>
+        <button
+          type="button"
+          class="btn btn--lg"
+          [class.btn--primary]="action.kind === 'cash'"
+          [class.btn--danger]="action.kind !== 'cash'"
+          (click)="confirm()"
+        >
+          {{ action.kind === 'cash' ? 'Save' : action.kind === 'reset' ? 'Reset' : 'Delete' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

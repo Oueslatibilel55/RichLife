@@ -1,0 +1,263 @@
+<!-- Create company -->
+@if (needsCompany()) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-title">
+    <div class="modal">
+      <div class="modal__icon" aria-hidden="true">🚀</div>
+      <h2 class="modal__title" id="create-title">Name your company</h2>
+      <p class="modal__sub">Build your empire one business at a time.</p>
+
+      @if (createError()) {
+        <div class="alert alert--error">{{ createError() }}</div>
+      }
+
+      <input
+        class="form-input modal__input"
+        type="text"
+        placeholder="e.g. Bilel Corp"
+        aria-label="Company name"
+        [ngModel]="companyName()"
+        (ngModelChange)="companyName.set($event)"
+        (keyup.enter)="createCompany()"
+        maxlength="50"
+      />
+      <button
+        type="button"
+        class="btn btn--primary btn--full btn--lg"
+        [disabled]="!companyName().trim() || creating()"
+        (click)="createCompany()"
+      >
+        {{ creating() ? 'Creating…' : 'Start empire' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (game.company(); as company) {
+  <div class="page">
+    <!-- Overview -->
+    <section class="card overview animate-fade-in-up">
+      <div class="overview__head">
+        <div class="overview__title">
+          <p class="overview__eyebrow">Your company</p>
+          <h1>{{ company.name }}</h1>
+        </div>
+        <span
+          class="badge"
+          [style.background]="prestigeColor(company.prestigeLevel) + '18'"
+          [style.color]="prestigeColor(company.prestigeLevel)"
+        >
+          {{ prestigeLabel(company.prestigeLevel) }}
+        </span>
+      </div>
+
+      <div class="overview__stats">
+        <div class="stat">
+          <span class="stat__label">Net worth</span>
+          <span class="stat__value">{{ game.netWorth() | money }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Income</span>
+          <span class="stat__value stat__value--success">{{ game.cashRate() | rate }}/s</span>
+        </div>
+        <!-- Ranks the leaderboard. Hidden until the backend maps it — feature 001. -->
+        @if (company.allTimeEarnings !== undefined) {
+          <div class="stat">
+            <span class="stat__label">All-time earned</span>
+            <span class="stat__value stat__value--money">{{ company.allTimeEarnings | money }}</span>
+          </div>
+        }
+        <div class="stat">
+          <span class="stat__label">Offline rate</span>
+          <span class="stat__value">{{ game.offlineRate() | rate }}/s</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Multiplier</span>
+          <span class="stat__value stat__value--primary">×{{ company.prestigeMultiplier.toFixed(2) }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Businesses</span>
+          <span class="stat__value">{{ company.businesses.length }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Prestige — gated on net worth, threshold comes from the server -->
+    @if (!game.isMaxPrestige()) {
+      <section class="card prestige" [class.prestige--ready]="game.canPrestige()">
+        <div class="prestige__info">
+          <div class="prestige__head">
+            <span class="prestige__icon" aria-hidden="true">🏆</span>
+            <div>
+              <h2 class="prestige__title">Next: {{ nextPrestigeName() }}</h2>
+              <p class="prestige__sub">
+                Costs {{ game.prestigeThreshold() | money }} in cash · keep your businesses ·
+                permanent ×{{ nextMultiplier().toFixed(2) }} multiplier
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="progress"
+            role="progressbar"
+            [attr.aria-valuenow]="game.prestigeProgress().toFixed(0)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div class="progress__fill" [style.width.%]="game.prestigeProgress()"></div>
+          </div>
+          <div class="progress__labels num">
+            <span>{{ game.cash() | money }} cash</span>
+            <span>{{ game.prestigeProgress().toFixed(0) }}% of {{ game.prestigeThreshold() | money }}</span>
+          </div>
+        </div>
+
+        @if (prestigeSuccess()) {
+          <div class="prestige__done">🎉 Prestige unlocked!</div>
+        } @else {
+          <button
+            type="button"
+            class="btn btn--lg prestige__btn"
+            [class.btn--primary]="game.canPrestige()"
+            [class.btn--outline]="!game.canPrestige()"
+            [disabled]="!game.canPrestige() || prestigeLoading()"
+            (click)="confirmingPrestige.set(true)"
+          >
+            @if (prestigeLoading()) {
+              Processing…
+            } @else if (game.canPrestige()) {
+              🚀 Prestige for {{ game.prestigeThreshold() | money }}
+            } @else {
+              🔒 {{ game.neededForPrestige() | money }} to go
+            }
+          </button>
+        }
+      </section>
+
+      @if (prestigeError()) {
+        <div class="alert alert--error" role="alert">{{ prestigeError() }}</div>
+      }
+    } @else {
+      <section class="card prestige-max">
+        👑 <strong>Global Empire</strong> — maximum prestige reached
+      </section>
+    }
+
+    <!-- Owned businesses -->
+    <section class="section">
+      <div class="section__header">
+        <h2>My businesses</h2>
+        <a routerLink="/businesses" class="btn btn--soft btn--sm">+ Open business</a>
+      </div>
+
+      @if (company.businesses.length === 0) {
+        <div class="empty-state">
+          <div class="empty-state__icon" aria-hidden="true">🏪</div>
+          <p class="empty-state__text">No businesses yet</p>
+          <p class="empty-state__sub">Save some cash and open your first one.</p>
+        </div>
+      } @else {
+        @for (group of businessesByPrestige(); track group.level) {
+          <div class="group">
+            <span class="group__label" [style.color]="group.color">{{ group.label }}</span>
+            <div class="biz-grid">
+              @for (biz of group.items; track biz.id) {
+                <article class="card biz">
+                  <div class="biz__head">
+                    <span class="biz__icon" aria-hidden="true">{{ sectorIcon(biz.sector) }}</span>
+                    <div class="biz__title">
+                      <h3>{{ biz.name }}</h3>
+                      <span class="biz__sector">
+                        <span class="biz__level num">Lv {{ biz.level }}</span> {{ biz.sector }}
+                      </span>
+                    </div>
+                    @if (shiftMsLeft(biz, game.now()) > 0) {
+                      <span class="badge badge--success num" title="Manager on shift — earns while you're away">
+                        {{ managerAvatar(biz.managerName) }} {{ biz.managerName ?? 'Manager' }} ·
+                        {{ formatShiftLeft(shiftMsLeft(biz, game.now())) }}
+                      </span>
+                    }
+                  </div>
+                  <div class="biz__stats">
+                    <div class="stat">
+                      <span class="stat__label">Income</span>
+                      <span class="stat__value stat__value--success">{{ biz.netIncomePerSecond | rate }}/s</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat__label">Assets</span>
+                      <span class="stat__value">{{ biz.assetCount }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat__label">Value</span>
+                      <span class="stat__value">{{ biz.totalValue | money }}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--sm btn--full"
+                    (click)="managedBusinessId.set(biz.id)"
+                  >
+                    {{ shiftMsLeft(biz, game.now()) > 0 ? 'Manage' : biz.managerName ? 'Manage · rehire manager' : 'Manage · hire a manager' }}
+                  </button>
+                </article>
+              }
+            </div>
+          </div>
+        }
+      }
+    </section>
+  </div>
+} @else if (!game.loaded()) {
+  <div class="loading-screen">
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Loading your empire…</p>
+  </div>
+}
+
+<!-- Prestige confirmation — it spends real cash -->
+@if (confirmingPrestige() && game.company(); as company) {
+  <div
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="prestige-confirm-title"
+    (click)="confirmingPrestige.set(false)"
+  >
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__icon" aria-hidden="true">🏆</div>
+      <h2 class="modal__title" id="prestige-confirm-title">Prestige to {{ nextPrestigeName() }}?</h2>
+      <p class="modal__sub">
+        <strong>{{ game.prestigeThreshold() | money }}</strong> will be deducted from your cash.
+        You keep all your businesses.
+      </p>
+
+      <dl class="confirm-sheet num">
+        <div><dt>Cash now</dt><dd>{{ game.cash() | money }}</dd></div>
+        <div><dt>Prestige price</dt><dd class="confirm-sheet__minus">−{{ game.prestigeThreshold() | money }}</dd></div>
+        <div class="confirm-sheet__total"><dt>Cash after</dt><dd>{{ game.cash() - game.prestigeThreshold() | money }}</dd></div>
+        <div>
+          <dt>Multiplier</dt>
+          <dd>×{{ company.prestigeMultiplier.toFixed(2) }} → <strong>×{{ nextMultiplier().toFixed(2) }}</strong></dd>
+        </div>
+        <div><dt>Businesses</dt><dd>{{ company.businesses.length }} kept</dd></div>
+      </dl>
+
+      <div class="confirm-actions">
+        <button type="button" class="btn btn--outline btn--lg" (click)="confirmingPrestige.set(false)">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn--primary btn--lg"
+          [disabled]="!game.canPrestige()"
+          (click)="triggerPrestige()"
+        >
+          Confirm prestige
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (managedBusinessId(); as id) {
+  <app-manage-business [businessId]="id" (closed)="managedBusinessId.set(null)" />
+}

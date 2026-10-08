@@ -1,0 +1,96 @@
+@if (error()) {
+  <div class="alert alert--error" role="alert">{{ error() }}</div>
+}
+
+@if (stats(); as s) {
+  <div class="toolbar">
+    <span class="muted">Updated {{ s.generatedAt | date: 'HH:mm:ss' }}</span>
+    <button type="button" class="btn btn--outline btn--sm" [disabled]="loading()" (click)="load()">
+      <app-icon name="refresh" [size]="16" /> Refresh
+    </button>
+  </div>
+
+  <section class="tiles">
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">👥</span>
+      <span class="stat__label">Players</span>
+      <span class="tile__value num">{{ s.players }}</span>
+      <span class="tile__sub num">+{{ s.newPlayers24h }} today · +{{ s.newPlayers7d }} this week</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🟢</span>
+      <span class="stat__label">Active (24 h)</span>
+      <span class="tile__value num">{{ s.activePlayers24h }}</span>
+      <span class="tile__sub num">of {{ s.companies }} companies</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">💵</span>
+      <span class="stat__label">Cash in the game</span>
+      <span class="tile__value tile__value--money num">{{ s.totalCash | money }}</span>
+      <span class="tile__sub num">{{ s.totalAllTimeEarnings | money }} earned all-time</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🏪</span>
+      <span class="stat__label">Businesses owned</span>
+      <span class="tile__value num">{{ s.businessesOwned }}</span>
+      <span class="tile__sub num">avg level {{ s.averageBusinessLevel }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🧑‍💼</span>
+      <span class="stat__label">Managers on shift</span>
+      <span class="tile__value num">{{ s.managersOnShift }}</span>
+      <span class="tile__sub num">{{ s.managerNames }} names in the pool</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🛡️</span>
+      <span class="stat__label">Admins</span>
+      <span class="tile__value num">{{ s.admins }}</span>
+      <span class="tile__sub num">{{ s.catalogueActive }}/{{ s.catalogueBusinesses }} businesses · {{ s.catalogueAssets }} assets</span>
+    </div>
+  </section>
+
+  <div class="panels">
+    <section class="card panel">
+      <h2>Companies by prestige</h2>
+      <ul class="bars">
+        @for (row of s.prestigeDistribution; track row.level) {
+          <li class="bars__row">
+            <span class="bars__label">{{ prestigeLabel(row.level) }}</span>
+            <span class="bars__track">
+              <span
+                class="bars__fill"
+                [style.width.%]="(row.companies / maxPerLevel()) * 100"
+                [style.background]="prestigeColor(row.level)"
+              ></span>
+            </span>
+            <span class="bars__value num">{{ row.companies }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="card panel">
+      <h2>Most owned businesses</h2>
+      @if (s.topBusinesses.length === 0) {
+        <p class="muted">Nobody owns a business yet.</p>
+      } @else {
+        <ul class="bars">
+          @for (b of s.topBusinesses; track b.catalogueId) {
+            <li class="bars__row">
+              <span class="bars__label">{{ b.name }}</span>
+              <span class="bars__track">
+                <span class="bars__fill" [style.width.%]="(b.owners / maxOwners()) * 100"></span>
+              </span>
+              <span class="bars__value num">{{ b.owners }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+} @else if (loading()) {
+  <div class="loading-screen">
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Loading stats…</p>
+  </div>
+}

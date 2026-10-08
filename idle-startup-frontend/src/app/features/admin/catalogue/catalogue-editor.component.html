@@ -1,0 +1,114 @@
+<div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editor-title" (click)="closed.emit()">
+  <div class="modal modal--panel editor" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h2 id="editor-title">{{ isNew ? 'New business' : form.name }}</h2>
+      <button type="button" class="icon-btn" aria-label="Close" (click)="closed.emit()">
+        <app-icon name="close" />
+      </button>
+    </div>
+
+    <div class="modal__body">
+      @if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
+      @if (notice()) { <div class="alert alert--success" role="status">{{ notice() }}</div> }
+
+      <form class="grid" (ngSubmit)="saveEntry()">
+        <div class="form-group">
+          <label for="e-id">Id (slug)</label>
+          <input id="e-id" class="form-input" name="id" [(ngModel)]="form.id" [readonly]="!isNew"
+                 placeholder="lemonade-stand" maxlength="60" />
+        </div>
+        <div class="form-group">
+          <label for="e-name">Name</label>
+          <input id="e-name" class="form-input" name="name" [(ngModel)]="form.name" maxlength="80" />
+        </div>
+        <div class="form-group">
+          <label for="e-sector">Sector</label>
+          <select id="e-sector" class="form-input form-select" name="sector" [(ngModel)]="form.sector">
+            @for (s of sectors; track s) { <option [value]="s">{{ sectorIcons[s] }} {{ s }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="e-level">Required prestige</label>
+          <select id="e-level" class="form-input form-select" name="level" [(ngModel)]="form.requiredPrestige">
+            @for (l of levels; track l) { <option [value]="l">{{ prestigeLabel(l) }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="e-cost">Opening cost ($)</label>
+          <input id="e-cost" class="form-input num" type="number" min="0" name="cost" [(ngModel)]="form.openingCost" />
+        </div>
+        <div class="form-group">
+          <label for="e-inc">Base income ($/s)</label>
+          <input id="e-inc" class="form-input num" type="number" min="0" step="0.01" name="inc" [(ngModel)]="form.baseIncomePerSecond" />
+        </div>
+        <div class="form-group">
+          <label for="e-sal">Salary ($/month)</label>
+          <input id="e-sal" class="form-input num" type="number" min="0" name="sal" [(ngModel)]="form.monthlySalaryCost" />
+        </div>
+        <div class="form-group">
+          <label for="e-emp">Employees</label>
+          <input id="e-emp" class="form-input num" type="number" min="0" name="emp" [(ngModel)]="form.baseEmployeeCount" />
+        </div>
+        <div class="form-group">
+          <label for="e-order">Display order</label>
+          <input id="e-order" class="form-input num" type="number" name="order" [(ngModel)]="form.displayOrder" />
+        </div>
+        @if (!isNew) {
+          <label class="check">
+            <input type="checkbox" name="active" [(ngModel)]="form.isActive" />
+            Active (uncheck to retire — owners keep it)
+          </label>
+        }
+        <div class="form-group grid__wide">
+          <label for="e-desc">Description</label>
+          <textarea id="e-desc" class="form-input" name="desc" rows="2" maxlength="500" [(ngModel)]="form.description"></textarea>
+        </div>
+        <button type="submit" class="btn btn--primary grid__wide" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : isNew ? 'Create business' : 'Save business' }}
+        </button>
+      </form>
+
+      <section class="assets">
+        <h3>Assets</h3>
+        @if (isNew) {
+          <p class="muted">Create the business first, then add its assets here.</p>
+        } @else {
+          <p class="muted">Leave “Fixed $/s” empty to derive income from the price. Removing takes an asset off sale; bought copies stay.</p>
+          <div class="asset asset--head" aria-hidden="true">
+            <span>Id</span><span>Name</span><span>Price $</span><span>Unlock at</span><span>Fixed $/s</span><span>Order</span><span>Income</span><span></span>
+          </div>
+          @for (a of assets(); track a.id) {
+            <div class="asset" [class.asset--busy]="busyAsset() === a.id">
+              <span class="asset__id">{{ a.id }}</span>
+              <input class="form-input" aria-label="Name" [(ngModel)]="a.name" [ngModelOptions]="{ standalone: true }" />
+              <label class="field"><span class="field__cap">Price $</span><input class="form-input num" type="number" aria-label="Price" [(ngModel)]="a.price" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">Unlock at</span><input class="form-input num" type="number" aria-label="Unlock at asset count" [(ngModel)]="a.unlockAtAssetCount" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">Fixed $/s</span><input class="form-input num" type="number" aria-label="Fixed income per second" placeholder="auto" [(ngModel)]="a.fixed" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">Order</span><input class="form-input num" type="number" aria-label="Display order" [(ngModel)]="a.displayOrder" [ngModelOptions]="{ standalone: true }" /></label>
+              <span class="asset__income num">{{ a.incomePerSecond ?? 0 | rate }}/s</span>
+              <div class="asset__actions">
+                <button type="button" class="btn btn--soft btn--sm" (click)="saveAsset(a)">Save</button>
+                <button type="button" class="btn btn--danger btn--sm" (click)="removeAsset(a)">Remove</button>
+              </div>
+            </div>
+          } @empty {
+            <p class="muted">No assets yet.</p>
+          }
+
+          <div class="asset asset--new" [class.asset--busy]="busyAsset() === '__new'">
+            <input class="form-input" aria-label="New asset id" placeholder="id-slug" [(ngModel)]="newAsset.id" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input" aria-label="New asset name" placeholder="Name" [(ngModel)]="newAsset.name" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" aria-label="New asset price" placeholder="Price" [(ngModel)]="newAsset.price" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" aria-label="New asset unlock count" placeholder="Unlock at" [(ngModel)]="newAsset.unlockAtAssetCount" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" aria-label="New asset fixed income" placeholder="auto" [(ngModel)]="newAsset.fixed" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" aria-label="New asset display order" [(ngModel)]="newAsset.displayOrder" [ngModelOptions]="{ standalone: true }" />
+            <span></span>
+            <div class="asset__actions">
+              <button type="button" class="btn btn--primary btn--sm" [disabled]="!newAsset.id.trim() || !newAsset.name.trim()" (click)="addAsset()">+ Add asset</button>
+            </div>
+          </div>
+        }
+      </section>
+    </div>
+  </div>
+</div>

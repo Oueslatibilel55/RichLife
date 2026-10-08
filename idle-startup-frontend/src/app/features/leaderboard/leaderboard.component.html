@@ -1,0 +1,55 @@
+<div class="page board-page">
+  <header class="board-head">
+    <div class="page-header">
+      <h1>Leaderboard</h1>
+      <p>Ranked by all-time earnings, not current net worth.</p>
+    </div>
+    @if (!loading()) {
+      <button type="button" class="btn btn--outline btn--sm" (click)="load()">
+        <app-icon name="refresh" [size]="16" />
+        Refresh
+      </button>
+    }
+  </header>
+
+  @if (error()) {
+    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading-screen">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Loading rankings…</p>
+    </div>
+  } @else if (entries().length === 0) {
+    <div class="empty-state">
+      <div class="empty-state__icon" aria-hidden="true">🏆</div>
+      <p class="empty-state__text">No one has ranked yet</p>
+      <p class="empty-state__sub">Create a company and start earning.</p>
+    </div>
+  } @else {
+    <ol class="card board">
+      @for (entry of entries(); track entry.username) {
+        <li class="row" [class.row--me]="isMe(entry.username)" [class.row--top]="entry.rank <= 3">
+          <span class="row__rank num">{{ medal(entry.rank) }}</span>
+
+          <span class="row__who">
+            <span class="row__user">
+              <span aria-hidden="true">{{ flagOf(entry.country) }}</span>
+              {{ entry.username }}
+              @if (isMe(entry.username)) { <span class="badge badge--primary">You</span> }
+            </span>
+            <span class="row__company">
+              {{ entry.companyName }}
+              <span class="row__tier" [style.color]="prestigeColor(entry.prestigeLevel)">
+                · {{ prestigeLabel(entry.prestigeLevel) }}
+              </span>
+            </span>
+          </span>
+
+          <span class="row__earnings num">{{ entry.allTimeEarnings | money }}</span>
+        </li>
+      }
+    </ol>
+  }
+</div>

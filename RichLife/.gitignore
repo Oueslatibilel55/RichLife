@@ -1,0 +1,8 @@
+﻿obj/
+bin/
+.vs/
+*.user
+.env
+*.pfx
+# EF Core migrations are source — they must be committed.
+TestResults/

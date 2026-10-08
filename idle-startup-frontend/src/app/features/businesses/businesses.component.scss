@@ -1,0 +1,121 @@
+// ── Sector filter — scrolls sideways on phones ────────────────────────────────
+.filters {
+  display: flex;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 2px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar { display: none; }
+
+  @media (min-width: 768px) { margin: 0; padding: 2px 0; flex-wrap: wrap; }
+}
+
+.chip {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover { color: var(--text); border-color: var(--text-3); }
+  &--active, &--active:hover { background: var(--text); border-color: var(--text); color: #fff; }
+}
+
+// ── Catalogue ─────────────────────────────────────────────────────────────────
+.catalogue {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  @media (min-width: 640px)  { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 1024px) { grid-template-columns: repeat(3, 1fr); }
+}
+
+.biz {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+
+  &:hover { border-color: var(--border-strong); box-shadow: var(--shadow); }
+  &--owned { border-color: #A7F3D0; }
+  &--locked .biz__icon { filter: grayscale(0.6); opacity: 0.8; }
+
+  &__head { display: flex; align-items: center; gap: 12px; }
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--surface-2);
+    font-size: 24px;
+  }
+
+  &__title { flex: 1; min-width: 0; h3 { font-size: 16px; } }
+  &__tier  { font-size: 12px; font-weight: 700; }
+  &__desc  { font-size: 14px; color: var(--text-2); }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border-radius: var(--radius);
+  }
+
+  &__footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__opened {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--success-soft);
+    color: var(--success);
+    font-weight: 700;
+    text-align: center;
+    animation: popIn 0.25s ease both;
+  }
+}
+
+// ── Assets preview ────────────────────────────────────────────────────────────
+.preview {
+  list-style: none;
+  gap: 8px;
+
+  &__item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    &--locked { background: var(--surface-2); opacity: 0.7; }
+  }
+
+  &__name   { grid-row: span 2; align-self: center; font-size: 14px; font-weight: 600; }
+  &__income { font-size: 13px; font-weight: 600; color: var(--success); text-align: right; }
+  &__price  { font-size: 13px; color: var(--money); font-weight: 600; text-align: right; }
+}
+
+.preview__unlock { display: block; font-size: 12px; font-weight: 500; color: var(--text-3); }

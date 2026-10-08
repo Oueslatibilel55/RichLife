@@ -1,0 +1,20 @@
+// On top of the shared shell styles (layout.component.scss): what makes it read as staff.
+
+.brand__mark { background: linear-gradient(135deg, #334155, #0F172A); box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25); }
+
+.staff-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+// No cash HUD here, so the user block takes the right edge itself.
+.staff-user { margin-left: auto; }
+
+.topnav__link.active { background: var(--text); color: #fff; }
+.tabbar__link.active { color: var(--text); }

@@ -1,0 +1,27 @@
+# Secrets — never commit
+Creds.txt
+.env
+*.env
+!.env.example
+appsettings.*.local.json
+*.pfx
+
+# Office lock files
+~$*
+
+# .NET build output
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+out-tsc/
+
+# OS
+.DS_Store
+Thumbs.db

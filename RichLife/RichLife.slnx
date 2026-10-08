@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RichLife.Api/RichLife.Api.csproj" />
+    <Project Path="src/RichLife.AppHost/RichLife.AppHost.csproj" />
+    <Project Path="src/RichLife.Application/RichLife.Application.csproj" />
+    <Project Path="src/RichLife.Domain/RichLife.Domain.csproj" />
+    <Project Path="src/RichLife.Infrastructure/RichLife.Infrastructure.csproj" />
+    <Project Path="src/RichLife.ServiceDefaults/RichLife.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RichLife.Tests/RichLife.Tests.csproj" />
+  </Folder>
+</Solution>

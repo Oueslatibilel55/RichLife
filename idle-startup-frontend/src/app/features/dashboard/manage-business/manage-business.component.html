@@ -1,0 +1,200 @@
+@if (business(); as biz) {
+  <div
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="manage-title"
+    (click)="closed.emit()"
+  >
+    <div class="modal modal--panel" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h2 id="manage-title">{{ biz.name }}</h2>
+        <button type="button" class="icon-btn" aria-label="Close" (click)="closed.emit()">
+          <app-icon name="close" />
+        </button>
+      </div>
+
+      <div class="summary">
+        <div class="stat">
+          <span class="stat__label">Current income</span>
+          <span class="stat__value stat__value--success">{{ biz.netIncomePerSecond | rate }}/s</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Your cash</span>
+          <span class="stat__value">{{ cash() | money }}</span>
+        </div>
+      </div>
+
+      <div class="modal__body">
+        @if (error()) {
+          <div class="alert alert--error" role="alert">{{ error() }}</div>
+        }
+
+        <!-- Level: pay to multiply this business's whole income -->
+        <div class="level">
+          <div class="level__badge num" [attr.aria-label]="'Level ' + biz.level">
+            <span>Lv</span>{{ biz.level }}
+          </div>
+          <div class="level__text">
+            <strong class="num">Income ×{{ biz.levelMultiplier.toFixed(2) }}</strong>
+            @if (biz.nextLevelCost === null) {
+              <span>Max level reached 🏆</span>
+            } @else if (nextMilestone() === biz.level + 1) {
+              <span class="num">Next level <b>doubles</b> income · +{{ levelGain() | rate }}/s</span>
+            } @else {
+              <span class="num">
+                Next level +{{ levelGain() | rate }}/s
+                @if (nextMilestone(); as m) { · Lv {{ m }} doubles it }
+              </span>
+            }
+          </div>
+          @if (biz.nextLevelCost !== null) {
+            @if (cash() < biz.nextLevelCost) {
+              <span class="asset__short num">Need {{ biz.nextLevelCost - cash() | money }}</span>
+            } @else {
+              <button
+                type="button"
+                class="btn btn--primary btn--sm"
+                [disabled]="levelling()"
+                (click)="levelUp()"
+              >
+                {{ levelling() ? 'Upgrading…' : 'Level up · ' + (biz.nextLevelCost | money) }}
+              </button>
+            }
+          }
+        </div>
+
+        <!-- Manager: a 4-hour shift from the hire; the business earns while the player is away -->
+        @if (onShift()) {
+          <div class="manager manager--hired">
+            <span class="manager__icon" aria-hidden="true">{{ managerAvatar(biz.managerName) }}</span>
+            <div class="manager__text">
+              <strong>{{ biz.managerName ?? 'Your manager' }} runs this business</strong>
+              <span class="num">Shift ends in <b>{{ shiftLeftLabel() }}</b> — earns while you're away until then.</span>
+            </div>
+            <span class="badge badge--success num">⏱ {{ shiftLeftLabel() }}</span>
+          </div>
+        } @else {
+          <div class="manager">
+            <span class="manager__icon" aria-hidden="true">{{ managerAvatar(biz.managerName) }}</span>
+            <div class="manager__text">
+              @if (biz.managerName) {
+                <strong>{{ biz.managerName }}'s shift has ended</strong>
+              } @else {
+                <strong>Hire a manager</strong>
+              }
+              <span class="num">
+                A 4-hour shift: earns <b>+{{ offlineGain() | rate }}/s</b> while you're away.
+              </span>
+            </div>
+            @if (cash() < biz.managerCost) {
+              <span class="asset__short num">Need {{ biz.managerCost - cash() | money }}</span>
+            } @else {
+              <button
+                type="button"
+                class="btn btn--primary btn--sm"
+                [disabled]="hiring()"
+                (click)="hireManager()"
+              >
+                {{ hiring() ? 'Hiring…' : (biz.managerName ? 'Rehire · ' : 'Hire · ') + (biz.managerCost | money) }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (entry(); as cat) {
+          @if (cat.availableAssets.length > 0) {
+            <div class="assets-head">
+              <h3 class="list-title">Assets</h3>
+              <span class="badge badge--primary num">You own {{ biz.assetCount }}</span>
+            </div>
+
+            @if (nextUnlock(); as next) {
+              <div class="unlock">
+                <div class="unlock__text num">
+                  🔓 <strong>{{ next.name }}</strong> unlocks at {{ next.unlockAtAssetCount }} assets —
+                  <b>{{ toGo(next.unlockAtAssetCount) }} to go</b>
+                </div>
+                <div class="unlock__bar" role="progressbar"
+                     [attr.aria-valuenow]="biz.assetCount" aria-valuemin="0" [attr.aria-valuemax]="next.unlockAtAssetCount">
+                  <span [style.width.%]="progressTo(next.unlockAtAssetCount)"></span>
+                </div>
+                <span class="unlock__count num">{{ biz.assetCount }} / {{ next.unlockAtAssetCount }}</span>
+              </div>
+            } @else if (cat.availableAssets.length > 1) {
+              <p class="all-unlocked">✨ Every asset is unlocked — buy any of them as often as you like.</p>
+            }
+
+            <ul class="assets">
+              @for (asset of cat.availableAssets; track asset.id) {
+                <li class="asset" [class.asset--locked]="!asset.isUnlocked">
+                  <div class="asset__info">
+                    <span class="asset__name">{{ asset.name }}</span>
+                    <span class="asset__meta num">
+                      <span class="asset__income">+{{ asset.incomePerSecond | rate }}/s</span>
+                      · {{ asset.price | money }}
+                    </span>
+                  </div>
+
+                  @if (!asset.isUnlocked) {
+                    <span class="locked num" [title]="'Unlocks when this business owns ' + asset.unlockAtAssetCount + ' assets'">
+                      🔒 {{ toGo(asset.unlockAtAssetCount) }} more
+                      <small>{{ biz.assetCount }}/{{ asset.unlockAtAssetCount }}</small>
+                    </span>
+                  } @else if (cash() < asset.price) {
+                    <span class="asset__short num">Need {{ asset.price - cash() | money }}</span>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn btn--primary btn--sm"
+                      [disabled]="busyAssetId() === asset.id"
+                      (click)="buyAsset(asset.id, asset.price)"
+                    >
+                      {{ busyAssetId() === asset.id ? 'Buying…' : 'Buy' }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="muted">No assets available for this business.</p>
+          }
+        } @else {
+          <p class="muted">Loading assets…</p>
+        }
+
+        <!-- Closing refunds totalValue minus a fee: 10% normally, 25% in an emergency -->
+        <div class="danger-zone">
+          @if (!confirmingClose()) {
+            <button type="button" class="danger-zone__trigger" (click)="confirmingClose.set(true)">
+              Close this business
+            </button>
+          } @else {
+            <p class="danger-zone__warn">
+              Sell <strong>{{ biz.name }}</strong> for {{ normalRefund() | money }}? This cannot be
+              undone.
+            </p>
+            <div class="danger-zone__actions">
+              <button
+                type="button"
+                class="btn btn--outline btn--sm"
+                [disabled]="closing()"
+                (click)="confirmingClose.set(false)"
+              >
+                Keep it
+              </button>
+              <button
+                type="button"
+                class="btn btn--danger btn--sm"
+                [disabled]="closing()"
+                (click)="closeBusiness(false)"
+              >
+                {{ closing() ? 'Closing…' : 'Sell — 10% fee' }}
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

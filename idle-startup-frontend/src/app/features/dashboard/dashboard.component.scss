@@ -1,0 +1,208 @@
+// ── Overview ──────────────────────────────────────────────────────────────────
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  @media (min-width: 768px) { padding: 28px; }
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__title { min-width: 0; h1 { font-size: 24px; overflow-wrap: anywhere; } }
+  &__eyebrow { font-size: 13px; font-weight: 600; color: var(--text-3); }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    @media (min-width: 640px)  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (min-width: 1024px) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+    .stat {
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border-radius: var(--radius);
+    }
+    .stat__value { font-size: 17px; }
+  }
+}
+
+// ── Prestige ──────────────────────────────────────────────────────────────────
+.prestige {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+    padding: 24px 28px;
+  }
+
+  &--ready { border-color: #C7D2FE; background: linear-gradient(135deg, #fff, var(--primary-soft)); }
+
+  &__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  &__head { display: flex; align-items: center; gap: 12px; }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--money-soft);
+    font-size: 22px;
+  }
+
+  &__title { font-size: 16px; }
+  &__sub   { font-size: 13px; color: var(--text-2); }
+
+  &__btn { @media (min-width: 768px) { min-width: 220px; } }
+
+  &__done {
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    background: var(--success-soft);
+    color: var(--success);
+    font-weight: 700;
+    text-align: center;
+    animation: popIn 0.25s ease both;
+  }
+}
+
+.progress {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+
+  &__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #6366F1, #7C3AED);
+    transition: width 0.5s ease;
+  }
+
+  &__labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+}
+
+.prestige-max {
+  text-align: center;
+  background: var(--money-soft);
+  border-color: #FDE68A;
+  color: var(--money);
+}
+
+// ── Businesses ────────────────────────────────────────────────────────────────
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    h2 { font-size: 20px; }
+  }
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__label { font-size: 13px; font-weight: 700; }
+}
+
+.biz-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  @media (min-width: 640px)  { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 1024px) { grid-template-columns: repeat(3, 1fr); }
+}
+
+.biz {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+
+  &:hover { border-color: var(--border-strong); box-shadow: var(--shadow); }
+
+  &__head { display: flex; align-items: center; gap: 12px; }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-size: 22px;
+  }
+
+  &__title { flex: 1; min-width: 0; h3 { font-size: 15px; } }
+  &__sector { font-size: 12px; color: var(--text-3); }
+
+  &__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+}
+
+// ── Prestige confirmation ─────────────────────────────────────────────────────
+.confirm-sheet {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  text-align: left;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    font-size: 14px;
+    & + div { border-top: 1px solid var(--border); }
+  }
+
+  dt { color: var(--text-2); }
+  dd { font-weight: 600; }
+  &__minus { color: var(--danger); }
+  &__total dd { font-weight: 800; }
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.biz__level {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--money-soft);
+  color: var(--money);
+  font-size: 11px;
+  font-weight: 800;
+}
