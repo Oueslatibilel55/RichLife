@@ -259,6 +259,12 @@ previously printed "Database updated." after a failed migration.
 
 **No secrets in `appsettings.json`.** It holds only `Jwt:Issuer`, `Jwt:Audience`, logging levels.
 
+**Deployed on Render** (root `CLAUDE.md` → *Deployed*). Two `Program.cs` switches exist for it:
+`Database:MigrateOnStartup` (env `Database__MigrateOnStartup=true` there; off locally, where
+migrations stay an explicit `dotnet ef database update`), and `UseForwardedHeaders` with
+`ForwardLimit = 2` so the rate limiter partitions on the real client IP behind Netlify and
+Render rather than on the proxy's.
+
 - **Dev** — user secrets on `RichLife.Api` (`UserSecretsId` is set in the csproj):
   ```bash
   dotnet user-secrets set "Jwt:Secret" "<value>" --project src/RichLife.Api

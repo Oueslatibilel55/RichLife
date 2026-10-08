@@ -75,6 +75,24 @@ that, Aspire hands the API a fresh random port on every run while only its proxy
 not tolerate a moving port.** If the frontend starts reporting "Cannot reach the server",
 check that the API is actually up before assuming the port drifted.
 
+### Deployed (free tier) — since 2026-10-08
+
+Code: `https://github.com/Oueslatibilel55/RichLife` (public — never commit secrets;
+`Creds.txt` and `.env` are git-ignored). Each push to `main` redeploys both halves.
+
+| Part | Host | Notes |
+|---|---|---|
+| Frontend | **Netlify** — `netlify.toml` at the repo root | Builds `idle-startup-frontend`, publishes `dist/idle-startup-frontend/browser`, **proxies `/api/*` to Render** (so same-origin, no CORS) and falls back to `index.html` for SPA routes. |
+| API | **Render** web service `https://richlife.onrender.com` | Docker: root dir `RichLife`, Dockerfile `src/RichLife.Api/Dockerfile`, region Frankfurt. Free tier **sleeps after ~15 min idle**; the first request then takes 30–60 s (Netlify's proxy may time out once — retry). |
+| Database | **Neon** Postgres 17, `eu-central-1` | Seeded 2026-10-08 with a `pg_dump` of the local Aspire database (catalogue edits made through the admin API are data, not migrations, so a fresh database would lack them). |
+
+Render environment variables (values live only in Render): `ASPNETCORE_ENVIRONMENT=Production`,
+`PORT=8080`, `Jwt__Secret`, `ConnectionStrings__DefaultConnection` (Npgsql key=value form,
+Neon's **direct** host — not `-pooler` — with `SSL Mode=Require`), and
+`Database__MigrateOnStartup=true` (applies pending EF migrations on boot; off locally).
+Behind Netlify + Render the API reads the client IP from `X-Forwarded-For`
+(`ForwardLimit = 2`) so rate limits stay per visitor.
+
 ### Sharing the dev app (phone, colleague)
 
 Because the browser only ever talks to port 4200, forwarding **that one port** is enough —

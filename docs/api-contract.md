@@ -5,6 +5,9 @@
 backend, then the frontend.
 
 - Base URL (dev): `http://localhost:5187` — **fixed**, under Aspire and standalone alike. Pinned in `RichLife/src/RichLife.AppHost/Program.cs` (`IsProxied = false`); see `RichLife/CLAUDE.md` → *Aspire dev environment*.
+- Deployed: the API is `https://richlife.onrender.com`, but clients reach it **same-origin
+  through the Netlify site's `/api/*` proxy** (`netlify.toml`), so the frontend still calls
+  `/api`.
 - Every route below is already prefixed with `/api`. The Angular `environment.apiUrl` is
   `/api` (same-origin; in dev `ng serve` proxies it to `http://localhost:5187`), so frontend
   calls drop the `/api` segment.

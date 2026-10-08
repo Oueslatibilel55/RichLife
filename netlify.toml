@@ -1,0 +1,25 @@
+# Netlify — the Angular frontend. The API runs on Render (https://richlife.onrender.com)
+# and is reached through the /api proxy below, so the browser stays same-origin:
+# environment.ts keeps apiUrl '/api' and the API needs no CORS entry.
+
+[build]
+  base    = "idle-startup-frontend"
+  command = "npm ci && npx ng build"
+  publish = "dist/idle-startup-frontend/browser"
+
+[build.environment]
+  # The Angular 19 CLI needs Node >= 18.19.
+  NODE_VERSION = "20"
+
+# Proxy, not redirect (status 200): the browser never sees the Render URL.
+[[redirects]]
+  from   = "/api/*"
+  to     = "https://richlife.onrender.com/api/:splat"
+  status = 200
+  force  = true
+
+# SPA fallback: a refresh on /luxury or /admin/players must serve index.html, not 404.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

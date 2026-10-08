@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RichLife.Api.Endpoints;
 using RichLife.Application.Extensions;
 using RichLife.Application.Services;
 using RichLife.Infrastructure.Extensions;
+using RichLife.Infrastructure.Persistence;
 using RichLife.ServiceDefaults;
 using Scalar.AspNetCore;
 using System.Text;
@@ -100,6 +103,21 @@ static string PartitionKey(HttpContext context, string prefix)
         ? $"{prefix}:player:{playerId}"
         : $"{prefix}:ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
 
+// -- Forwarded headers -----------------------------------------------------------
+// Deployed, a request reaches the API through two proxies: Netlify (which proxies
+// /api/*) and Render's load balancer. Without this every caller shares the proxy's IP,
+// so the whole player base would share one auth rate-limit budget. Each proxy appends
+// to X-Forwarded-For; reading only the last two entries takes the address Netlify saw
+// and ignores anything a client wrote into the header itself. The proxies' addresses
+// are not fixed, hence no KnownProxies.
+builder.Services.Configure<ForwardedHeadersOptions>(opt =>
+{
+    opt.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    opt.ForwardLimit = 2;
+    opt.KnownIPNetworks.Clear();
+    opt.KnownProxies.Clear();
+});
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -107,7 +125,17 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
+// -- Database migrations ---------------------------------------------------------
+// Opt-in (Database__MigrateOnStartup=true on the deployed service): locally migrations
+// stay an explicit `dotnet ef database update`, as documented in CLAUDE.md.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<GameDbContext>().Database.MigrateAsync();
+}
+
 // -- Middleware ----------------------------------------------------------------
+app.UseForwardedHeaders();
 // Order matters. Rate limiting sits between authentication and authorization: after
 // UseAuthentication so HttpContext.User is populated and the per-player partition key
 // resolves, and before UseAuthorization so a caller rejected by a policy still counts
