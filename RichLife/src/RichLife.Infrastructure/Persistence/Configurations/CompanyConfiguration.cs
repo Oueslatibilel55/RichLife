@@ -22,6 +22,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.Ignore(x => x.NetWorth);
         b.Ignore(x => x.IncomePerSecond);
         b.Ignore(x => x.DomainEvents);
+        b.Ignore(x => x.ActiveLoan);
 
         b.HasMany(x => x.Businesses)
          .WithOne()
@@ -36,6 +37,11 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.HasMany(x => x.LuxuryAssets)
          .WithOne()
          .HasForeignKey(a => a.CompanyId)
+         .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasMany(x => x.Loans)
+         .WithOne()
+         .HasForeignKey(l => l.CompanyId)
          .OnDelete(DeleteBehavior.Cascade);
 
         // Unlocked achievements: owned by the company, keyed (CompanyId, Code). Owned

@@ -33,7 +33,8 @@ src/
   RichLife.Domain/          # No project references. No EF, no ASP.NET, no DI.
     Common/                 #   AggregateRoot, BaseEntity, IDomainEvent, Result
     Entities/               #   Company (aggregate root), Business, Asset, BusinessAsset,
-                            #   LuxuryAsset, Player
+                            #   LuxuryAsset, Loan, Player
+    Banking/                #   BankCatalog (20 banks), LoanOffers (offer generator) — rules, in code
     Catalogue/              #   BusinessCatalogueEntry (aggregate) + AssetCatalogueEntry —
                             #   game content, stored in the database, edited by admins
     Enums/                  #   PrestigeLevel (1-7), BusinessSector
@@ -42,7 +43,8 @@ src/
 
   RichLife.Application/     # -> Domain
     Services/               #   AuthService, CompanyService, BusinessService,
-                            #   LeaderboardService, CatalogueAdminService, AdminService
+                            #   LeaderboardService, CatalogueAdminService, AdminService,
+                            #   ProfileService, LuxuryService, BankService
     Interfaces/             #   ICompanyRepository, IPlayerRepository, ILeaderboardRepository,
                             #   ICatalogueRepository, IManagerNameRepository,
                             #   IAdminReadRepository, IUnitOfWork, IDomainEventDispatcher,
@@ -63,7 +65,8 @@ src/
 
   RichLife.Api/             # -> Application, Infrastructure, ServiceDefaults
     Endpoints/              #   AuthEndpoints, GameEndpoints, BusinessEndpoints,
-                            #   LeaderboardEndpoints, AdminCatalogueEndpoints, AdminEndpoints,
+                            #   LeaderboardEndpoints, ProfileEndpoints, LuxuryEndpoints,
+                            #   BankEndpoints, AdminCatalogueEndpoints, AdminEndpoints,
                             #   RateLimitPolicies, AuthPolicies, ClaimsPrincipalExtensions
     Program.cs
 
@@ -189,6 +192,18 @@ runtime failure that no domain test can catch.
   (76 items in 16 categories, seeded by migrations `LuxuryCollection` + `MoreLuxury`).
   `LuxuryCategory` is stored as an int — append only, never renumber. Each item has an `ImageCredit` that **must stay with the photo** (Wikimedia
   Commons, CC BY / CC BY-SA). Photos live in the frontend at `public/luxury/`.
+- **Bank loans** (2026-10-09, `features/009-bank-loans.md`): 20 banks and the offer generator
+  live in `Domain/Banking` — rules in code; **bank ids are persisted, never rename or reuse
+  one**. 5 offers per prestige level, regenerated every 6 h (UTC-aligned windows, seeded
+  SplitMix64 — never `System.Random`, whose sequence is not stable across .NET versions), so
+  offers are never stored and an old offer id simply fails `LoanOffers.Find`. One loan at a
+  time (`Company.TakeLoan`; filtered unique index `IX_loans_CompanyId_active`). A loan adds
+  cash but not `AllTimeEarnings`; `NetWorth` subtracts `ActiveLoan.Outstanding`.
+  `Company.CollectLoanPayments(now)` takes every installment due (one per 6 h from the
+  loan) — called by `/sync` after the clamp and by `/state` after offline earnings, so
+  there is no background job. **Cash never goes negative**: a shortfall stays owed plus a
+  10 % penalty (`GameConstants.LoanPenaltyRate`). `Loan` mutators are internal — only the
+  aggregate changes a loan. `AdminReset` deletes loans.
 - **Achievements** (2026-10-08, `features/007-player-profile.md`): defined in code in
   `Domain/Achievements/Achievements.cs` — **codes are persisted, never rename or reuse one**.
   `Company.UnlockAchievements(now)` records newly met ones (owned `company_achievements`,
@@ -499,6 +514,9 @@ before it can be built.
 Last checked 2026-10-02, against the Aspire dev database.
 
 **Green.** `dotnet build RichLife.slnx` (0 warnings) and the 72 domain unit tests.
+2026-10-09: **133** tests green after the bank (`BankTests`, 22 cases); migration
+`BankLoans` applied to the Aspire database and the bank checked over HTTP (see
+`docs/features/009-bank-loans.md`).
 2026-10-08: **73** domain tests green after the prestige-as-purchase change (run with the
 API up, so via `--project tests/…` — a full solution build is blocked by the DLL lock).
 

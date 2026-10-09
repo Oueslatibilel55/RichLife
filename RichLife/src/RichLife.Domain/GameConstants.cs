@@ -63,6 +63,31 @@ public static class GameConstants
     public static readonly TimeSpan AdBoostDuration = TimeSpan.FromMinutes(30);
     public const int MaxAdBoostsPerDay = 10;
 
+    // Bank loans (features/009-bank-loans.md)
+
+    /// <summary>The bank collects one installment this often, counted from when the loan was taken.</summary>
+    public static readonly TimeSpan LoanPaymentInterval = TimeSpan.FromHours(6);
+
+    /// <summary>Offers are regenerated this often, on windows aligned to midnight UTC.</summary>
+    public static readonly TimeSpan LoanOfferRotation = TimeSpan.FromHours(6);
+
+    public const int LoanOffersPerLevel = 5;
+
+    /// <summary>Added to the debt when an installment cannot be paid in full, as a share of the unpaid part.</summary>
+    public const decimal LoanPenaltyRate = 0.10m;
+
+    /// <summary>What a bank lends at each prestige level — like businesses, bigger loans unlock with prestige.</summary>
+    public static (decimal Min, decimal Max) LoanAmountRange(Enums.PrestigeLevel level) => level switch
+    {
+        Enums.PrestigeLevel.TheHustle     => (5_000m, 40_000m),
+        Enums.PrestigeLevel.SmallBusiness => (30_000m, 250_000m),
+        Enums.PrestigeLevel.Entrepreneur  => (200_000m, 2_000_000m),
+        Enums.PrestigeLevel.BusinessMogul => (2_000_000m, 20_000_000m),
+        Enums.PrestigeLevel.Tycoon        => (20_000_000m, 200_000_000m),
+        Enums.PrestigeLevel.Billionaire   => (200_000_000m, 2_500_000_000m),
+        _                                 => (2_000_000_000m, 25_000_000_000m),
+    };
+
     // Marketplace closing fees
     public const decimal GracefulCloseFeeRate  = 0.10m;
     public const decimal EmergencyCloseFeeRate = 0.25m;

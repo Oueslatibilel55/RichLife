@@ -104,7 +104,7 @@ Sliding window, applied per server (not per user).
 |---|---|
 | `incomePerSecond` | **Online** rate: `(passiveIncomePerSecond + Σ business.netIncomePerSecond) × prestigeMultiplier`. This is the number the client ticker must simulate — the multiplier is **already applied**. |
 | `offlineIncomePerSecond` | Same formula, but counting only businesses whose manager shift is running at response time (`isAutomated: true`). The rate actually paid while away also depends on when each shift ends — see `GET /api/game/state`. |
-| `netWorth` | `cash` + company assets + Σ `business.totalValue` + Σ luxury items bought (at their price, §6c). |
+| `netWorth` | `cash` + company assets + Σ `business.totalValue` + Σ luxury items bought (at their price, §6c) **−** what is still owed on an active bank loan (`outstanding`, §6d). |
 | `allTimeEarnings` | Every dollar income has ever produced, cumulative. Never decreases; **survives prestige**; refunds from closing a business do not count. This is what ranks `/api/leaderboard`. ⏳ *Backend shipped 2026-10-01; frontend tile still feature-gated — see `features/001-all-time-earnings-on-company.md`.* |
 | `prestigeMultiplier` | `1 + 0.18 × prestigeCount`. |
 | `nextPrestigeThreshold` | **Cash price** of the **next** prestige (see §4 `/prestige`). Compare against `cash`, not `netWorth` — business value cannot pay for it. |
@@ -272,6 +272,7 @@ Read-only snapshot. **Does not accrue offline income and does not move `lastSync
   "cashBefore": 18420.5,
   "cashAfter": 78929.3,
   "capped": true,
+  "loanPayment": null,
   "company": { "id": "6f1f4b4e-...", "cash": 78929.3, "businesses": [] }
 }
 ```
@@ -283,6 +284,8 @@ of the window its manager's shift covers (`lastSyncAt` → `min(window end, mana
 all × `prestigeMultiplier`. Example: hire at 11:00 (shift until 15:00), leave at 12:00, back
 at 18:00 → window 12:00–16:00: base 4 h, that business 3 h.
 It advances `lastSyncAt` to now, so it cannot double-credit with `/sync`.
+After crediting, it collects every **bank installment** that fell due while away (§6d);
+`loanPayment` sums them (`null` when none was due) and `cashAfter` is net of them.
 **This is the correct bootstrap call on app start**, not `GET /api/game/company` — and on
 **every return to a visible tab**: the client stops its `/sync` loop while hidden (a
 background sync would move `lastSyncAt` and erase this window) and calls `/state` when it
@@ -300,7 +303,8 @@ comes back. `elapsed` is a .NET `TimeSpan`: past 24 hours it gains a day prefix 
 ```json
 {
   "acceptedCash": 18420, "adjusted": false,
-  "newAchievements": [ { "code": "first-business", "title": "Open for business", "icon": "🏪" } ]
+  "newAchievements": [ { "code": "first-business", "title": "Open for business", "icon": "🏪" } ],
+  "loanPayment": null
 }
 ```
 
@@ -308,6 +312,11 @@ The client simulates cash locally and reports it. The server clamps it to
 `lastRecordedCash + incomePerSecond × elapsedSeconds × 1.05`. `adjusted: true` means the
 figure was clamped — the client **must** adopt `acceptedCash` as its new truth.
 `lastSyncAt` moves to now on every call.
+
+After clamping, every sync collects the **bank installments** now due (§6d). When one is
+collected, `loanPayment` describes it and `acceptedCash` is net of it — so `adjusted` is
+`true` and the client adopts the figure as usual (it should announce the payment rather
+than a generic "balance corrected").
 
 Every sync also checks achievements (§6b): `newAchievements` lists the ones unlocked by this
 call — usually `[]` — so the client can announce them. Each is reported exactly once.
@@ -564,6 +573,106 @@ No body → `200` `OwnedLuxuryDto` · `401` · `403` · `400` with one of: `"Com
 
 `GET /api/profile` (§6b) lists the same objects under `luxury` (newest first).
 
+## 6d. Bank — `/api/game/bank`
+
+Added 2026-10-09 — see `features/009-bank-loans.md`. **Bearer required, from a player**
+(admin → `403`). Rate limit `game-actions`.
+
+A player borrows from one of **20 banks** (fixed list, defined in code). Each prestige level
+sees **5 offers**, the same for every player at that level; they are **regenerated every
+6 hours** (at 00:00, 06:00, 12:00 and 18:00 UTC) — `offersRefreshAt` says when. Amounts
+scale with prestige, like businesses:
+
+| Prestige | Loan amounts |
+|---|---|
+| `TheHustle` | 5,000 – 40,000 |
+| `SmallBusiness` | 30,000 – 250,000 |
+| `Entrepreneur` | 200,000 – 2,000,000 |
+| `BusinessMogul` | 2,000,000 – 20,000,000 |
+| `Tycoon` | 20,000,000 – 200,000,000 |
+| `Billionaire` | 200,000,000 – 2,500,000,000 |
+| `GlobalEmpire` | 2,000,000,000 – 25,000,000,000 |
+
+Rules:
+
+- **One loan at a time.** A new one can be taken once the current one is fully repaid.
+- Taking a loan adds `amount` to cash. It is borrowed, not earned: `allTimeEarnings` is
+  untouched, and `netWorth` subtracts what is still owed.
+- The loan costs `totalRepay = amount × (1 + interestRate)`, paid in `installments` equal
+  payments of `installmentAmount`, **one every 6 hours** from the moment it is taken. The
+  bank collects them itself, on the next `/sync` or `/state` after each falls due
+  (several at once after time away).
+- **Cash never goes negative.** If cash cannot cover an installment, the bank takes what is
+  there (cash → 0), the unpaid part stays owed, and a **penalty of 10 %** of that unpaid part
+  is added to the debt (`missedPayments` + 1). Installments then continue every 6 hours
+  until `outstanding` reaches 0.
+- **Repay all** pays `outstanding` at once from cash (no early-repayment discount).
+- The loan survives prestige; an admin reset deletes the company's loans.
+- Like every spend, the client syncs first. The take and repay responses carry the
+  server's `cash`, which the client adopts. The `cash` in `GET /api/game/bank` is the last
+  recorded figure (stale against the client ticker, like `GET /api/game/company`) — display
+  only, never adopted.
+
+### `GET /api/game/bank` → `200` `BankDto` · `400` `"Company not found."` · `401` · `403`
+
+```json
+{
+  "cash": 18420.5,
+  "offersRefreshAt": "2026-10-09T12:00:00Z",
+  "paymentIntervalHours": 6,
+  "penaltyRate": 0.10,
+  "offers": [
+    {
+      "id": "81974-1-0", "bankId": "carthage-credit", "bankName": "Carthage Credit", "bankIcon": "🏺",
+      "amount": 100000, "interestRate": 0.05, "totalRepay": 105000,
+      "installments": 8, "installmentAmount": 13125
+    }
+  ],
+  "activeLoan": null,
+  "history": []
+}
+```
+
+`offers` always has 5 entries, for the caller's **current** prestige level. An offer `id` is
+only valid until `offersRefreshAt`.
+
+`LoanDto` (`activeLoan`, and each `history` entry — the last 10 repaid loans, newest first):
+
+```json
+{
+  "id": "5b2e…", "bankId": "carthage-credit", "bankName": "Carthage Credit", "bankIcon": "🏺",
+  "principal": 100000, "interestRate": 0.05, "totalRepay": 105000,
+  "installments": 8, "installmentAmount": 13125,
+  "paid": 26250, "penalties": 0, "outstanding": 78750, "missedPayments": 0,
+  "takenAt": "2026-10-09T08:00:00Z", "nextPaymentAt": "2026-10-09T20:00:00Z",
+  "repaidAt": null
+}
+```
+
+`outstanding = totalRepay + penalties − paid`. `nextPaymentAt` is `null` and `repaidAt` set
+once repaid.
+
+### `POST /api/game/bank/loans/{offerId}` — take a loan
+
+No body → `200` `BankDto` (with `activeLoan` set and `cash` including the amount) · `401` ·
+`403` · `400` with one of: `"Company not found."`, `"You already have a loan. Repay it first."`,
+`"This offer has expired."` (unknown id, or the offers rotated — reload them).
+
+### `POST /api/game/bank/repay` — repay everything
+
+No body → `200` `BankDto` (`activeLoan: null`, the loan now first in `history`) · `401` ·
+`403` · `400` with one of: `"Company not found."`, `"You have no loan to repay."`,
+`"Insufficient funds."`.
+
+### `LoanPaymentDto` — on `/sync` and `/state`
+
+```json
+{ "bankName": "Carthage Credit", "paid": 13125, "penalty": 0, "outstanding": 65625, "repaid": false }
+```
+
+The total collected by that call (it may cover several installments), the penalty added for
+any shortfall, what is still owed afterwards, and whether the loan is now fully repaid.
+
 ---
 
 ## 7. Admin — catalogue editor — `/api/admin/catalogue`
@@ -736,7 +845,7 @@ touch `allTimeEarnings`.
 
 No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has no company."`.
 Fresh start: cash 0, every business removed, `TheHustle`, multiplier ×1, base income 3/s,
-`allTimeEarnings` 0, achievements cleared. Account and company name are kept.
+`allTimeEarnings` 0, achievements cleared, bank loans deleted. Account and company name are kept.
 
 **Online players:** a cash change or reset marks the company *overridden*; the player's
 next `POST /api/game/sync` ignores the client figure, answers `adjusted: true` with the
@@ -803,6 +912,8 @@ None.
   interval. The client enables the button when *either* the server flag or the simulated
   purse says it is affordable; the server remains the authority and still answers
   `"Insufficient funds."`. `isOwned` and `isUnlocked` are used verbatim.
+- **Bank (§6d).** Take and repay sync first and adopt the response `cash`; a `/sync` carrying
+  `loanPayment` adopts `acceptedCash` and shows a bank toast instead of "balance corrected".
 - **`GET /api/game/company` is never used to overwrite cash** — it does not accrue, so
   its cash figure is stale by design. It refreshes the structural parts only
   (businesses, net worth, rates).

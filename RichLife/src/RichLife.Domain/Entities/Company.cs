@@ -1,5 +1,6 @@
 using System.Globalization;
 using RichLife.Domain.Achievements;
+using RichLife.Domain.Banking;
 using RichLife.Domain.Catalogue;
 using RichLife.Domain.Common;
 using RichLife.Domain.Enums;
@@ -24,12 +25,13 @@ public class Company : AggregateRoot
     public decimal PassiveIncomePerSecond { get; private set; } = GameConstants.BasePassiveIncomePerSecond;
     public decimal AllTimeEarnings { get; private set; }
 
-    /// <summary>Cash plus the liquidation value of everything owned.</summary>
+    /// <summary>Cash plus the liquidation value of everything owned, minus what is still owed to a bank.</summary>
     public decimal NetWorth =>
         Cash
         + _assets.Sum(a => a.CurrentValue)
         + _businesses.Sum(b => b.TotalValue)
-        + _luxuryAssets.Sum(l => l.Cost);
+        + _luxuryAssets.Sum(l => l.Cost)
+        - (ActiveLoan?.Outstanding ?? 0m);
 
     // Prestige
     public PrestigeLevel PrestigeLevel { get; private set; } = PrestigeLevel.TheHustle;
@@ -57,11 +59,16 @@ public class Company : AggregateRoot
     private readonly List<Asset> _assets = [];
     private readonly List<LuxuryAsset> _luxuryAssets = [];
     private readonly List<CompanyAchievement> _achievements = [];
+    private readonly List<Loan> _loans = [];
 
     public IReadOnlyList<Business> Businesses => _businesses.AsReadOnly();
     public IReadOnlyList<Asset> Assets => _assets.AsReadOnly();
     public IReadOnlyList<LuxuryAsset> LuxuryAssets => _luxuryAssets.AsReadOnly();
     public IReadOnlyList<CompanyAchievement> Achievements => _achievements.AsReadOnly();
+    public IReadOnlyList<Loan> Loans => _loans.AsReadOnly();
+
+    /// <summary>The loan being repaid, if any — there is never more than one.</summary>
+    public Loan? ActiveLoan => _loans.FirstOrDefault(l => l.IsActive);
 
     private Company() { }
 
@@ -282,6 +289,69 @@ public class Company : AggregateRoot
         return Result.Ok(owned);
     }
 
+    // -- Bank ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Borrows <paramref name="offer"/>'s amount. One loan at a time. The money is borrowed,
+    /// not earned, so <see cref="AllTimeEarnings"/> is untouched. The caller finds the offer
+    /// in the current window (<see cref="LoanOffers.Find"/>); an expired id never gets here.
+    /// </summary>
+    public Result<Loan> TakeLoan(LoanOffer offer, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(offer);
+        if (ActiveLoan is not null) return Result.Fail<Loan>("You already have a loan. Repay it first.");
+        if (offer.PrestigeLevel != PrestigeLevel || nowUtc >= offer.ValidUntil)
+            return Result.Fail<Loan>("This offer has expired.");
+
+        var loan = Loan.Create(Id, offer, nowUtc);
+        _loans.Add(loan);
+        Cash += offer.Amount;
+        MarkUpdated();
+        return Result.Ok(loan);
+    }
+
+    /// <summary>
+    /// Collects every installment that has fallen due by <paramref name="nowUtc"/> — several
+    /// after time away. Cash never goes negative: a shortfall is taken as far as cash allows,
+    /// stays owed, and adds a <see cref="GameConstants.LoanPenaltyRate"/> penalty. Returns
+    /// what happened, or null when nothing was due.
+    /// </summary>
+    public LoanCollection? CollectLoanPayments(DateTime nowUtc)
+    {
+        var loan = ActiveLoan;
+        if (loan is null) return null;
+
+        decimal paid = 0m, penalty = 0m;
+        var collected = false;
+        while (loan.IsActive && loan.NextPaymentAt is { } dueAt && dueAt <= nowUtc)
+        {
+            var due = loan.DueAmount;
+            var pay = Math.Min(due, Cash);
+            Cash -= pay;
+            paid += pay;
+            penalty += loan.Collect(due, pay, dueAt);
+            collected = true;
+        }
+
+        if (!collected) return null;
+        MarkUpdated();
+        return new LoanCollection(loan, paid, penalty);
+    }
+
+    /// <summary>Pays off everything still owed, from cash.</summary>
+    public Result<Loan> RepayLoan(DateTime nowUtc)
+    {
+        var loan = ActiveLoan;
+        if (loan is null) return Result.Fail<Loan>("You have no loan to repay.");
+
+        var deduct = DeductCash(loan.Outstanding);
+        if (!deduct.IsSuccess) return Result.Fail<Loan>(deduct.Error!);
+
+        loan.RepayAll(nowUtc);
+        MarkUpdated();
+        return Result.Ok(loan);
+    }
+
     // -- Achievements -----------------------------------------------------------
 
     /// <summary>The company's current value for an achievement metric.</summary>
@@ -335,6 +405,7 @@ public class Company : AggregateRoot
         _businesses.Clear();
         _achievements.Clear();
         _luxuryAssets.Clear();
+        _loans.Clear();
         Cash = 0m;
         AllTimeEarnings = 0m;
         PrestigeLevel = PrestigeLevel.TheHustle;

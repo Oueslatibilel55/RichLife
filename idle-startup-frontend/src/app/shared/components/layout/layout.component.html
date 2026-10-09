@@ -84,6 +84,19 @@
         </p>
       }
 
+      <!-- Bank installments collected while away (cashAfter is net of them) -->
+      @if (offline.loanPayment; as loan) {
+        <p class="offline-loan" [class.offline-loan--warn]="loan.penalty > 0">
+          🏦 {{ 'bank.away.collected' | t: { bank: loan.bankName, paid: (loan.paid | money) } }}
+          @if (loan.penalty > 0) {
+            <br />{{ 'bank.away.penalty' | t: { penalty: (loan.penalty | money) } }}
+          }
+          @if (loan.repaid) {
+            <br />{{ 'bank.toast.repaid' | t: { bank: loan.bankName } }}
+          }
+        </p>
+      }
+
       <button
         type="button"
         class="btn btn--primary btn--full btn--lg"
@@ -100,6 +113,25 @@
   <div class="toast" role="status">
     <span>{{ 'layout.balanceCorrected' | t }}</span>
     <button type="button" class="icon-btn toast__close" [attr.aria-label]="'layout.dismiss' | t" (click)="game.dismissSyncWarning()">
+      <app-icon name="close" [size]="16" />
+    </button>
+  </div>
+}
+
+<!-- The bank collected an installment (on /sync, or /state without the welcome-back dialog) -->
+@if (game.bankToast(); as loan) {
+  <div class="bank-toast" [class.bank-toast--warn]="loan.penalty > 0" role="status">
+    <a routerLink="/bank" class="bank-toast__text" (click)="game.dismissBankToast()">
+      <span aria-hidden="true">{{ loan.repaid ? '🎉' : loan.penalty > 0 ? '⚠️' : '🏦' }}</span>
+      @if (loan.repaid) {
+        {{ 'bank.toast.repaid' | t: { bank: loan.bankName } }}
+      } @else if (loan.penalty > 0) {
+        {{ 'bank.toast.penalty' | t: { bank: loan.bankName, paid: (loan.paid | money), penalty: (loan.penalty | money) } }}
+      } @else {
+        {{ 'bank.toast.paid' | t: { bank: loan.bankName, paid: (loan.paid | money), outstanding: (loan.outstanding | money) } }}
+      }
+    </a>
+    <button type="button" class="icon-btn bank-toast__close" [attr.aria-label]="'layout.dismiss' | t" (click)="game.dismissBankToast()">
       <app-icon name="close" [size]="16" />
     </button>
   </div>

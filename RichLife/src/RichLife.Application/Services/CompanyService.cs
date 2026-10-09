@@ -45,7 +45,9 @@ public class CompanyService(
         var cashBefore = company.Cash;
 
         var earned = company.AccrueOffline(now);
-        if (earned > 0m)
+        // Installments that fell due while away are collected after the earnings are in.
+        var loanPayment = company.CollectLoanPayments(now);
+        if (earned > 0m || loanPayment is not null)
         {
             companyRepo.Update(company);
             await uow.CommitAsync(ct);
@@ -57,6 +59,7 @@ public class CompanyService(
             CashBefore: cashBefore,
             CashAfter: company.Cash,
             Capped: elapsed > GameConstants.OfflineCap,
+            LoanPayment: BankMapper.ToDto(loanPayment),
             Company: CompanyMapper.ToDto(company, now)));
     }
 
@@ -101,12 +104,17 @@ public class CompanyService(
         // seconds of whatever earned it — a purchase, a level, the earnings ticking past a goal.
         var fresh = company.UnlockAchievements(now);
 
+        // The bank collects on the server's clock; the client learns of it through
+        // acceptedCash (so `adjusted` is true) and loanPayment.
+        var loanPayment = company.CollectLoanPayments(now);
+
         companyRepo.Update(company);
         await uow.CommitAsync(ct);
 
         return Result.Ok(new SyncResultDto(
             company.Cash,
             Adjusted: company.Cash != clientCash,
-            NewAchievements: fresh.Select(a => new AchievementUnlockedDto(a.Code, a.Title, a.Icon)).ToList()));
+            NewAchievements: fresh.Select(a => new AchievementUnlockedDto(a.Code, a.Title, a.Icon)).ToList(),
+            LoanPayment: BankMapper.ToDto(loanPayment)));
     }
 }

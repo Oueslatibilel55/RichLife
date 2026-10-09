@@ -18,10 +18,12 @@ import { AuthService } from './auth.service';
 import { timeSpanSeconds } from '../game/format';
 import {
   AchievementUnlocked,
+  BankDto,
   BusinessCatalogueDto,
   BusinessDto,
   CompanyDto,
   LeaderboardEntryDto,
+  LoanPaymentDto,
   OfflineEarningsDto,
   SyncResultDto,
 } from '../models/game.models';
@@ -79,6 +81,11 @@ export class GameService {
   private readonly _now = signal(Date.now());
   /** Achievements announced by /sync, shown as toasts until dismissed or timed out. */
   private readonly _achievementToasts = signal<AchievementUnlocked[]>([]);
+  /** The bank page's data (§6d) — null until `loadBank()`; refreshed when an installment is collected. */
+  private readonly _bank = signal<BankDto | null>(null);
+  /** Installment collected by /sync (or /state without the welcome-back dialog) — a 6 s toast. */
+  private readonly _bankToast = signal<LoanPaymentDto | null>(null);
+  private bankToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly company = this._company.asReadonly();
   readonly cash = this._cash.asReadonly();
@@ -90,6 +97,8 @@ export class GameService {
   readonly syncAdjusted = this._syncAdjusted.asReadonly();
   readonly now = this._now.asReadonly();
   readonly achievementToasts = this._achievementToasts.asReadonly();
+  readonly bank = this._bank.asReadonly();
+  readonly bankToast = this._bankToast.asReadonly();
 
   // -- Derived --------------------------------------------------------------
 
@@ -162,8 +171,12 @@ export class GameService {
       tap((res) => {
         this.applyCompany(res.company);
         this._loaded.set(true);
-        if (res.earned > 0 && timeSpanSeconds(res.elapsed) >= MIN_AWAY_SECONDS) {
-          this._offlineEarnings.set(res);
+        const dialog = res.earned > 0 && timeSpanSeconds(res.elapsed) >= MIN_AWAY_SECONDS;
+        if (dialog) this._offlineEarnings.set(res);
+        // Installments collected while away: a line in the welcome-back dialog, else a toast.
+        if (res.loanPayment) {
+          if (!dialog) this.flashBankToast(res.loanPayment);
+          this.reloadBankIfLoaded();
         }
       }),
       catchError((err: unknown) => {
@@ -202,6 +215,20 @@ export class GameService {
     if (this.syncWarningTimer) clearTimeout(this.syncWarningTimer);
     this._syncAdjusted.set(true);
     this.syncWarningTimer = setTimeout(() => this.dismissSyncWarning(), 4000);
+  }
+
+  dismissBankToast(): void {
+    if (this.bankToastTimer) clearTimeout(this.bankToastTimer);
+    this.bankToastTimer = null;
+    this._bankToast.set(null);
+  }
+
+  /** Announces a collected installment for 6 s — replaces the generic "balance corrected" toast. */
+  private flashBankToast(payment: LoanPaymentDto): void {
+    if (this.bankToastTimer) clearTimeout(this.bankToastTimer);
+    this.dismissSyncWarning();
+    this._bankToast.set(payment);
+    this.bankToastTimer = setTimeout(() => this.dismissBankToast(), 6000);
   }
 
   dismissAchievement(code: string): void {
@@ -245,7 +272,14 @@ export class GameService {
       .post<SyncResultDto>(`${this.api}/game/sync`, { cash: Math.floor(this._cash()) })
       .pipe(
         tap((res) => {
-          if (res.adjusted) {
+          if (res.loanPayment) {
+            // The bank collected an installment: `acceptedCash` is net of it (so `adjusted`
+            // is true) — announce the payment, not a generic correction.
+            this._cash.set(res.acceptedCash);
+            this.flashBankToast(res.loanPayment);
+            this.refreshCompany().subscribe({ error: () => void 0 });
+            this.reloadBankIfLoaded();
+          } else if (res.adjusted) {
             this._cash.set(res.acceptedCash);
             this.flashSyncWarning();
             // An admin may have changed or reset the company — refresh its structure too.
@@ -355,6 +389,47 @@ export class GameService {
     );
   }
 
+  // -- Bank (contract §6d) --------------------------------------------------
+
+  /**
+   * Offers, the active loan and history. The `cash` it carries is the server's last
+   * recorded figure — stale against the ticker, like GET /game/company — so it is NOT
+   * adopted here; only take/repay (which sync first) adopt it.
+   */
+  loadBank(): Observable<BankDto> {
+    return this.http.get<BankDto>(`${this.api}/game/bank`).pipe(tap((b) => this._bank.set(b)));
+  }
+
+  /** Borrows: cash rises by the amount. Syncs first, then adopts the server's cash. */
+  takeLoan(offerId: string): Observable<BankDto> {
+    return this.afterSync(() =>
+      this.http
+        .post<BankDto>(`${this.api}/game/bank/loans/${encodeURIComponent(offerId)}`, null)
+        .pipe(tap((b) => this.adoptBank(b))),
+    );
+  }
+
+  /** Pays `outstanding` at once from cash. Syncs first, then adopts the server's cash. */
+  repayLoan(): Observable<BankDto> {
+    return this.afterSync(() =>
+      this.http
+        .post<BankDto>(`${this.api}/game/bank/repay`, null)
+        .pipe(tap((b) => this.adoptBank(b))),
+    );
+  }
+
+  /** A take/repay answer is fresh (we synced just before): its cash is the truth, net worth moved. */
+  private adoptBank(b: BankDto): void {
+    this._bank.set(b);
+    this._cash.set(b.cash);
+    this.refreshCompany().subscribe({ error: () => void 0 });
+  }
+
+  /** After an installment, keep the bank page (if it was ever opened) in step. */
+  private reloadBankIfLoaded(): void {
+    if (this._bank()) this.loadBank().subscribe({ error: () => void 0 });
+  }
+
   // -- Leaderboard ----------------------------------------------------------
 
   /** Note the trailing slash — the route is registered as `/api/leaderboard/`. */
@@ -440,6 +515,8 @@ export class GameService {
     this._catalogue.set([]);
     this._offlineEarnings.set(null);
     this._achievementToasts.set([]);
+    this._bank.set(null);
+    this.dismissBankToast();
     this.dismissSyncWarning();
     this._loaded.set(false);
   }

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-export type IconName = 'dashboard' | 'briefcase' | 'trophy' | 'logout' | 'close' | 'trend' | 'refresh' | 'shield' | 'users' | 'contact' | 'gem';
+export type IconName = 'dashboard' | 'briefcase' | 'trophy' | 'logout' | 'close' | 'trend' | 'refresh' | 'shield' | 'users' | 'contact' | 'gem' | 'bank';
 
 /** Inline stroke icons (Lucide paths) — no icon font, no extra request. */
 @Component({
@@ -73,6 +73,14 @@ export type IconName = 'dashboard' | 'briefcase' | 'trophy' | 'logout' | 'close'
           <path d="M6 3h12l4 6-10 13L2 9Z" />
           <path d="M11 3 8 9l4 13 4-13-3-6" />
           <path d="M2 9h20" />
+        }
+        @case ('bank') {
+          <path d="M3 22h18" />
+          <path d="M6 18v-7" />
+          <path d="M10 18v-7" />
+          <path d="M14 18v-7" />
+          <path d="M18 18v-7" />
+          <path d="M12 2 20 7H4z" />
         }
         @case ('refresh') {
           <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />

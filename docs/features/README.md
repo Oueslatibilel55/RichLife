@@ -45,3 +45,4 @@ still in the contract, the next person cannot tell what is real.
 | 006 | [Admin panel and dashboard](006-admin-panel.md) | Done |
 | 007 | [Player profile and achievements](007-player-profile.md) | Done |
 | 008 | [Luxury collection](008-luxury-collection.md) | Done |
+| 009 | [Bank and loans](009-bank-loans.md) | Done |

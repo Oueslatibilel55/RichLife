@@ -38,6 +38,7 @@ export class LayoutComponent implements OnInit {
     { path: '/dashboard', label: 'nav.dashboard', icon: 'dashboard' },
     { path: '/businesses', label: 'nav.businesses', icon: 'briefcase' },
     { path: '/luxury', label: 'nav.luxury', icon: 'gem' },
+    { path: '/bank', label: 'nav.bank', icon: 'bank' },
     { path: '/leaderboard', label: 'nav.leaderboard', icon: 'trophy' },
     { path: '/profile', label: 'nav.profile', icon: 'contact' },
   ];

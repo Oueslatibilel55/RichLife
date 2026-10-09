@@ -12,6 +12,7 @@ public class CompanyRepository(GameDbContext db) : ICompanyRepository
              .Include(c => c.Businesses).ThenInclude(b => b.Assets)
              .Include(c => c.Assets)
              .Include(c => c.LuxuryAssets)
+             .Include(c => c.Loans)
              .AsSplitQuery()
              .FirstOrDefaultAsync(c => c.PlayerId == playerId, ct);
 
@@ -20,6 +21,7 @@ public class CompanyRepository(GameDbContext db) : ICompanyRepository
              .Include(c => c.Businesses).ThenInclude(b => b.Assets)
              .Include(c => c.Assets)
              .Include(c => c.LuxuryAssets)
+             .Include(c => c.Loans)
              .AsSplitQuery()
              .FirstOrDefaultAsync(c => c.Id == id, ct);
 

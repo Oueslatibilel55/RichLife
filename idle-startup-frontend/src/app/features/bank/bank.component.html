@@ -1,0 +1,153 @@
+<div class="page">
+  <header class="page-header">
+    <h1>{{ 'bank.title' | t }}</h1>
+    <p>{{ 'bank.intro' | t }}</p>
+  </header>
+
+  @if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
+  @if (notice()) { <div class="alert alert--success" role="status">{{ notice() }}</div> }
+
+  @if (loading() && !bank()) {
+    <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'bank.loading' | t }}</p></div>
+  } @else {
+  @if (bank(); as b) {
+
+    <!-- Active loan -->
+    @if (loan(); as l) {
+      <section class="card loan" [class.loan--late]="l.missedPayments > 0">
+        <div class="head">
+          <span class="logo" aria-hidden="true">{{ l.bankIcon }}</span>
+          <div class="head__text">
+            <small>{{ 'bank.active.title' | t }}</small>
+            <h2>{{ l.bankName }}</h2>
+            <small>{{ 'bank.active.since' | t: { date: date(l.takenAt) } }}</small>
+          </div>
+          <span class="badge badge--money num">{{ l.principal | money }}</span>
+        </div>
+
+        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="progress()">
+          <span [style.width.%]="progress()"></span>
+        </div>
+        <p class="muted num">{{ 'bank.active.progress' | t: { paid: (l.paid | money), total: (l.totalRepay + l.penalties | money) } }}</p>
+
+        <dl class="facts">
+          <div><dt>{{ 'bank.active.outstanding' | t }}</dt><dd class="num strong">{{ l.outstanding | money }}</dd></div>
+          <div><dt>{{ 'bank.active.installment' | t }}</dt><dd class="num">{{ l.installmentAmount | money }}</dd></div>
+          <div><dt>{{ 'bank.active.next' | t }}</dt><dd class="num">{{ nextPaymentIn() }}</dd></div>
+          <div><dt>{{ 'bank.interest' | t }}</dt><dd class="num">{{ percent(l.interestRate) }}%</dd></div>
+          @if (l.missedPayments > 0 || l.penalties > 0) {
+            <div class="danger"><dt>{{ 'bank.active.missed' | t }}</dt><dd class="num">{{ l.missedPayments }}</dd></div>
+            <div class="danger"><dt>{{ 'bank.active.penalties' | t }}</dt><dd class="num">+{{ l.penalties | money }}</dd></div>
+          }
+        </dl>
+
+        <button type="button" class="btn btn--primary btn--full" [disabled]="busy()" (click)="confirmingRepay.set(true)">
+          {{ 'bank.active.repayAll' | t: { amount: (l.outstanding | money) } }}
+        </button>
+        @if (!canRepay()) {
+          <p class="muted center num">{{ 'bank.active.short' | t: { amount: (l.outstanding - game.cash() | money) } }}</p>
+        }
+      </section>
+    }
+
+    <!-- Offers -->
+    <section class="section">
+      <div class="section__head">
+        <h2>{{ 'bank.offers.title' | t }}</h2>
+        <span class="badge badge--violet num">⏱ {{ offersRefreshIn() }}</span>
+      </div>
+      @if (loan()) { <p class="blocked">🔒 {{ 'bank.offers.blocked' | t }}</p> }
+
+      <ul class="grid">
+        @for (o of b.offers; track o.id) {
+          <li class="card offer" [class.offer--off]="!!loan()">
+            <div class="head">
+              <span class="logo" aria-hidden="true">{{ o.bankIcon }}</span>
+              <h3 class="head__text">{{ o.bankName }}</h3>
+              <span class="badge badge--violet num">{{ percent(o.interestRate) }}%</span>
+            </div>
+            <div class="offer__amount num">{{ o.amount | money }}</div>
+            <dl class="facts">
+              <div><dt>{{ 'bank.totalRepay' | t }}</dt><dd class="num strong">{{ o.totalRepay | money }}</dd></div>
+              <div><dt>{{ 'bank.interest' | t }}</dt><dd class="num">+{{ o.totalRepay - o.amount | money }}</dd></div>
+            </dl>
+            <p class="muted num">{{ 'bank.schedule' | t: { n: o.installments, amount: (o.installmentAmount | money), h: b.paymentIntervalHours } }}</p>
+            <button type="button" class="btn btn--primary btn--full" [disabled]="!!loan() || busy()" (click)="confirmingOffer.set(o)">
+              {{ 'bank.offers.take' | t }}
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <!-- History -->
+    @if (b.history.length) {
+      <section class="section">
+        <h2>{{ 'bank.history.title' | t }}</h2>
+        <ul class="card history">
+          @for (h of b.history; track h.id) {
+            <li>
+              <span class="logo logo--sm" aria-hidden="true">{{ h.bankIcon }}</span>
+              <div class="history__main">
+                <strong>{{ h.bankName }}</strong>
+                <small>{{ 'bank.history.repaidOn' | t: { date: date(h.repaidAt) } }}</small>
+              </div>
+              <div class="history__nums num">
+                <span>{{ 'bank.history.borrowed' | t }} {{ h.principal | money }}</span>
+                <span>{{ 'bank.history.paid' | t }} {{ h.paid | money }}</span>
+                @if (h.penalties > 0) {
+                  <span class="danger">{{ 'bank.history.penalties' | t }} +{{ h.penalties | money }}</span>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+  }
+</div>
+
+<!-- Take a loan -->
+@if (confirmingOffer(); as o) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bank-take" (click)="confirmingOffer.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__icon" aria-hidden="true">{{ o.bankIcon }}</div>
+      <h2 class="modal__title" id="bank-take">{{ 'bank.take.title' | t: { amount: (o.amount | money), bank: o.bankName } }}</h2>
+      <dl class="facts facts--modal">
+        <div><dt>{{ 'bank.interest' | t }}</dt><dd class="num">{{ percent(o.interestRate) }}% · +{{ o.totalRepay - o.amount | money }}</dd></div>
+        <div><dt>{{ 'bank.totalRepay' | t }}</dt><dd class="num strong">{{ o.totalRepay | money }}</dd></div>
+        <div><dt>{{ 'bank.take.cashAfter' | t }}</dt><dd class="num">{{ game.cash() + o.amount | money }}</dd></div>
+      </dl>
+      <p class="modal__sub num">
+        {{ 'bank.schedule' | t: { n: o.installments, amount: (o.installmentAmount | money), h: bank()?.paymentIntervalHours ?? 6 } }}.
+        {{ 'bank.take.firstPayment' | t: { h: bank()?.paymentIntervalHours ?? 6 } }}
+      </p>
+      <p class="rule">⚠️ {{ 'bank.take.penaltyRule' | t: { rate: percent(bank()?.penaltyRate ?? 0.1) } }}</p>
+      <div class="actions">
+        <button type="button" class="btn btn--outline btn--lg" (click)="confirmingOffer.set(null)">{{ 'bank.cancel' | t }}</button>
+        <button type="button" class="btn btn--primary btn--lg" [disabled]="busy()" (click)="take()">
+          {{ (busy() ? 'bank.take.busy' : 'bank.take.confirm') | t }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Repay everything -->
+@if (confirmingRepay() && loan(); as l) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bank-repay" (click)="confirmingRepay.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__icon" aria-hidden="true">{{ l.bankIcon }}</div>
+      <h2 class="modal__title" id="bank-repay">{{ 'bank.repay.title' | t: { bank: l.bankName } }}</h2>
+      <p class="modal__sub">{{ 'bank.repay.sub' | t: { amount: (l.outstanding | money) } }}</p>
+      <p class="modal__sub num">{{ 'bank.take.cashAfter' | t }} <strong>{{ game.cash() - l.outstanding | money }}</strong></p>
+      <div class="actions">
+        <button type="button" class="btn btn--outline btn--lg" (click)="confirmingRepay.set(false)">{{ 'bank.cancel' | t }}</button>
+        <button type="button" class="btn btn--primary btn--lg" [disabled]="busy()" (click)="repay()">
+          {{ (busy() ? 'bank.repay.busy' : 'bank.repay.confirm') | t: { amount: (l.outstanding | money) } }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

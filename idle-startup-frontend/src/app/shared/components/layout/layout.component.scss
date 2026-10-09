@@ -190,10 +190,15 @@
     align-items: center;
     justify-content: center;
     gap: 3px;
-    font-size: 11px;
+    min-width: 0;
+    padding: 0 2px;
+    // Six tabs on a 360 px phone: 60 px each — "Leaderboard" must not overflow.
+    font-size: 10px;
     font-weight: 600;
     color: var(--text-3);
     text-decoration: none;
+    span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    @media (min-width: 420px) { font-size: 11px; }
 
     &.active { color: var(--primary); }
   }

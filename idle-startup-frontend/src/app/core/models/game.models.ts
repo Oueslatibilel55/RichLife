@@ -117,6 +117,8 @@ export interface OfflineEarningsDto {
   cashAfter: number;
   /** true when `elapsed` exceeded the 4-hour accrual cap. */
   capped: boolean;
+  /** Bank installments collected while away (§6d); `cashAfter` is net of them. null when none fell due. */
+  loanPayment: LoanPaymentDto | null;
   company: CompanyDto;
 }
 
@@ -126,6 +128,69 @@ export interface SyncResultDto {
   adjusted: boolean;
   /** Achievements unlocked by this sync — each reported exactly once (contract §4 /sync). */
   newAchievements: AchievementUnlocked[];
+  /** Installment collected by this sync (§6d); `acceptedCash` is net of it and `adjusted` is true. */
+  loanPayment: LoanPaymentDto | null;
+}
+
+// -- Bank (contract §6d) ------------------------------------------------------
+
+/** GET /api/game/bank, and the answer to take / repay. */
+export interface BankDto {
+  /** Server cash after the operation — the client adopts it. */
+  cash: number;
+  /** UTC ISO. Offer ids are only valid until then. */
+  offersRefreshAt: string;
+  paymentIntervalHours: number;
+  /** 0.10 — penalty on any unpaid part of an installment. */
+  penaltyRate: number;
+  /** Always 5, for the caller's current prestige level. */
+  offers: LoanOfferDto[];
+  activeLoan: LoanDto | null;
+  /** Last 10 repaid loans, newest first. */
+  history: LoanDto[];
+}
+
+export interface LoanOfferDto {
+  id: string;
+  bankId: string;
+  /** Proper noun — not translated. */
+  bankName: string;
+  bankIcon: string;
+  amount: number;
+  interestRate: number;
+  totalRepay: number;
+  installments: number;
+  installmentAmount: number;
+}
+
+export interface LoanDto {
+  id: string;
+  bankId: string;
+  bankName: string;
+  bankIcon: string;
+  principal: number;
+  interestRate: number;
+  totalRepay: number;
+  installments: number;
+  installmentAmount: number;
+  paid: number;
+  penalties: number;
+  /** totalRepay + penalties − paid. */
+  outstanding: number;
+  missedPayments: number;
+  takenAt: string;
+  /** null once repaid. */
+  nextPaymentAt: string | null;
+  repaidAt: string | null;
+}
+
+/** What one /sync or /state collected (possibly several installments). */
+export interface LoanPaymentDto {
+  bankName: string;
+  paid: number;
+  penalty: number;
+  outstanding: number;
+  repaid: boolean;
 }
 
 export interface AchievementUnlocked {

@@ -63,7 +63,7 @@ core/
   guards/      authGuard, guestGuard, admin.guard (adminMatchGuard, adminChildGuard, playerGuard)
   interceptors/auth.interceptor.ts
   services/    auth.service.ts, game.service.ts
-features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury, leaderboard, profile,
+features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury, bank, leaderboard, profile,
                admin/ (admin-layout, overview, players, catalogue (+ editor), managers; admin.service, admin.models)
 shared/
   components/layout  — persistent HUD/nav shell (top bar + mobile tab bar)
@@ -146,6 +146,15 @@ the service's methods.
   `LayoutComponent` renders them — toast styles live in `styles.scss` to keep the layout under its 4 kB style
   budget. `/profile` (`features/profile/`) reads `GET /api/profile` through `ProfileService`; progress
   formatting follows each achievement's `unit` (`money` | `count`), never the code name.
+- **Bank** (contract §6d, `features/bank/`): `loadBank()`, `takeLoan(offerId)`, `repayLoan()`; state in the
+  `bank` signal. Take/repay go through `afterSync(...)` like every spend, then **adopt the server's `cash`**
+  from the `BankDto` and `refreshCompany()` (net worth subtracts the debt). `loadBank()` does *not* adopt
+  cash — a plain GET's cash is stale, like `GET /game/company`. Installments are collected by the server on
+  `/sync` and `/state`: a `/sync` with `loanPayment` adopts `acceptedCash` and raises `bankToast` (6 s;
+  paid / penalty / repaid variants) **instead of** the generic "balance corrected" toast; on `/state` it is
+  a line in the welcome-back dialog, or the same toast when the dialog does not show. Either way the bank
+  data is reloaded if the page was opened. Bank names/icons are server content (not translated); toast
+  styles (`.bank-toast`, `.offline-loan`) live in `styles.scss` for the layout's budget.
 
 Because the service survives navigation, components **must not blindly re-bootstrap it**: call
 `ensureLoaded()`, which reuses live state and only fetches when there is none.

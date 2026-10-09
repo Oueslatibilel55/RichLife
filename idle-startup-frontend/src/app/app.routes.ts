@@ -93,6 +93,12 @@ export const routes: Routes = [
           import('./features/luxury/luxury.component').then((m) => m.LuxuryComponent),
       },
       {
+        path: 'bank',
+        title: 'title.bank',
+        loadComponent: () =>
+          import('./features/bank/bank.component').then((m) => m.BankComponent),
+      },
+      {
         path: 'profile',
         title: 'title.profile',
         loadComponent: () =>

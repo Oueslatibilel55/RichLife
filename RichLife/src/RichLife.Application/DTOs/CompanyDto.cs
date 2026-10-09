@@ -47,11 +47,13 @@ public record OfflineEarningsDto(
     decimal CashBefore,
     decimal CashAfter,
     bool Capped,
+    LoanPaymentDto? LoanPayment,
     CompanyDto Company
 );
 
 public record SyncResultDto(
     decimal AcceptedCash,
     bool Adjusted,
-    IReadOnlyList<AchievementUnlockedDto> NewAchievements
+    IReadOnlyList<AchievementUnlockedDto> NewAchievements,
+    LoanPaymentDto? LoanPayment
 );
