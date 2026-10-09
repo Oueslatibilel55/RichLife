@@ -79,6 +79,27 @@
       </div>
     </section>
 
+    <!-- Taxes (§5): billed every 24 h, paid by hand; prestige waits until they are paid -->
+    @if (game.taxesDue() > 0) {
+      <section class="card tax-banner" role="status">
+        <span class="tax-banner__icon" aria-hidden="true">🧾</span>
+        <div class="tax-banner__text">
+          <strong class="num">{{ 'tax.banner.title' | t: { amount: (game.taxesDue() | money) } }}</strong>
+          <span>{{ 'tax.banner.sub' | t: { rate: taxPercent() } }}</span>
+        </div>
+        @if (game.cash() < game.taxesDue()) {
+          <span class="tax-banner__short num">{{ 'manage.need' | t: { amount: (game.taxesDue() - game.cash() | money) } }}</span>
+        } @else {
+          <button type="button" class="btn btn--danger btn--sm" [disabled]="payingAll()" (click)="payAllTaxes()">
+            {{ payingAll() ? ('tax.paying' | t) : ('tax.payAll' | t: { amount: (game.taxesDue() | money) }) }}
+          </button>
+        }
+      </section>
+    }
+    @if (taxError()) {
+      <div class="alert alert--error" role="alert">{{ taxError() }}</div>
+    }
+
     <!-- Prestige — gated on net worth, threshold comes from the server -->
     @if (!game.isMaxPrestige()) {
       <section class="card prestige" [class.prestige--ready]="game.canPrestige()">
@@ -121,6 +142,8 @@
           >
             @if (prestigeLoading()) {
               {{ 'dashboard.prestige.processing' | t }}
+            } @else if (game.taxesDue() > 0) {
+              🧾 {{ 'tax.prestigeBlocked' | t }}
             } @else if (game.canPrestige()) {
               🚀 {{ 'dashboard.prestige.buy' | t: { price: (game.prestigeThreshold() | money) } }}
             } @else {
@@ -187,6 +210,21 @@
                       <span class="stat__label">{{ 'dashboard.biz.value' | t }}</span>
                       <span class="stat__value">{{ biz.totalValue | money }}</span>
                     </div>
+                  </div>
+                  <div class="tax-line" [class.tax-line--due]="biz.taxDue > 0">
+                    @if (biz.taxDue > 0) {
+                      <span class="num">🧾 {{ 'tax.due' | t: { amount: (biz.taxDue | money) } }}</span>
+                      <button
+                        type="button"
+                        class="btn btn--danger btn--sm"
+                        [disabled]="payingTaxId() === biz.id || game.cash() < biz.taxDue"
+                        (click)="payTaxes(biz.id)"
+                      >
+                        {{ payingTaxId() === biz.id ? ('tax.paying' | t) : ('tax.pay' | t) }}
+                      </button>
+                    } @else {
+                      <span class="num">🧾 {{ 'tax.accruing' | t: { amount: (biz.taxAccruing | money), time: formatShiftLeft(taxMsLeft(biz, game.now())) } }}</span>
+                    }
                   </div>
                   <button
                     type="button"

@@ -26,6 +26,7 @@ import {
   LoanPaymentDto,
   OfflineEarningsDto,
   StoreDto,
+  TaxPaymentDto,
   SyncResultDto,
 } from '../models/game.models';
 
@@ -93,6 +94,9 @@ export class GameService {
   private readonly _boostUntil = signal(0);
   /** The store page's data — null until `loadStore()`. */
   private readonly _store = signal<StoreDto | null>(null);
+  /** A tax bill just landed (§5 Taxes) — the amount, shown as a 6 s toast. */
+  private readonly _taxToast = signal<number | null>(null);
+  private taxToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly company = this._company.asReadonly();
   readonly cash = this._cash.asReadonly();
@@ -108,6 +112,7 @@ export class GameService {
   readonly bankToast = this._bankToast.asReadonly();
   readonly diamonds = this._diamonds.asReadonly();
   readonly store = this._store.asReadonly();
+  readonly taxToast = this._taxToast.asReadonly();
 
   // -- Derived --------------------------------------------------------------
 
@@ -138,12 +143,15 @@ export class GameService {
 
   readonly isMaxPrestige = computed(() => this._company()?.prestigeLevel === 'GlobalEmpire');
 
+  /** Unpaid taxes (§5). While above 0 the server refuses prestige. */
+  readonly taxesDue = computed(() => this._company()?.taxesDue ?? 0);
+
   /** Cash price of the next prestige — straight from the server, never hardcoded. */
   readonly prestigeThreshold = computed(() => this._company()?.nextPrestigeThreshold ?? 0);
 
-  /** Prestige is a CASH purchase (contract section 4) — business value cannot pay for it. */
+  /** Prestige is a CASH purchase (contract section 4) — business value cannot pay for it — and every tax must be paid. */
   readonly canPrestige = computed(
-    () => !this.isMaxPrestige() && this._cash() >= this.prestigeThreshold(),
+    () => !this.isMaxPrestige() && this.taxesDue() <= 0 && this._cash() >= this.prestigeThreshold(),
   );
 
   readonly neededForPrestige = computed(() =>
@@ -201,6 +209,7 @@ export class GameService {
           if (!dialog) this.flashBankToast(res.loanPayment);
           this.reloadBankIfLoaded();
         }
+        if (res.taxBilled > 0) this.flashTaxToast(res.taxBilled);
       }),
       catchError((err: unknown) => {
         if (err instanceof HttpErrorResponse && err.status === 404) {
@@ -252,6 +261,18 @@ export class GameService {
     this.dismissSyncWarning();
     this._bankToast.set(payment);
     this.bankToastTimer = setTimeout(() => this.dismissBankToast(), 6000);
+  }
+
+  dismissTaxToast(): void {
+    if (this.taxToastTimer) clearTimeout(this.taxToastTimer);
+    this.taxToastTimer = null;
+    this._taxToast.set(null);
+  }
+
+  private flashTaxToast(amount: number): void {
+    if (this.taxToastTimer) clearTimeout(this.taxToastTimer);
+    this._taxToast.set(amount);
+    this.taxToastTimer = setTimeout(() => this.dismissTaxToast(), 6000);
   }
 
   dismissAchievement(code: string): void {
@@ -313,6 +334,13 @@ export class GameService {
           }
           if (res.newAchievements?.length) this.announce(res.newAchievements);
           if (typeof res.diamonds === 'number') this._diamonds.set(res.diamonds);
+          if (res.taxBilled > 0) {
+            // A tax period ended: announce it and refresh the per-business bills.
+            this.flashTaxToast(res.taxBilled);
+            this.refreshCompany().subscribe({ error: () => void 0 });
+          } else if (typeof res.taxesDue === 'number' && res.taxesDue !== this._company()?.taxesDue) {
+            this._company.update((c) => (c ? { ...c, taxesDue: res.taxesDue } : c));
+          }
         }),
       );
   }
@@ -400,6 +428,33 @@ export class GameService {
     return this.afterSync(() =>
       this.http.delete<void>(`${this.api}/game/businesses/${businessId}?emergency=${emergency}`),
     );
+  }
+
+  // -- Taxes (contract §5) --------------------------------------------------
+
+  /** Pays one business's whole bill. Syncs first, then adopts the server's cash and company. */
+  payTaxes(businessId: string): Observable<TaxPaymentDto> {
+    return this.afterSync(() =>
+      this.http
+        .post<TaxPaymentDto>(`${this.api}/game/businesses/${businessId}/pay-taxes`, null)
+        .pipe(tap((p) => this.adoptTaxPayment(p))),
+    );
+  }
+
+  /** Pays every bill at once — all or nothing. */
+  payAllTaxes(): Observable<TaxPaymentDto> {
+    return this.afterSync(() =>
+      this.http
+        .post<TaxPaymentDto>(`${this.api}/game/businesses/taxes/pay`, null)
+        .pipe(tap((p) => this.adoptTaxPayment(p))),
+    );
+  }
+
+  /** The answer follows a sync, so its cash is fresh: adopt it with the company. */
+  private adoptTaxPayment(p: TaxPaymentDto): void {
+    this._company.set(p.company);
+    this._cash.set(p.cash);
+    this.adoptDiamonds(p.company.diamonds, p.company.boostUntil);
   }
 
   // -- Prestige -------------------------------------------------------------

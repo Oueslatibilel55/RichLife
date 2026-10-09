@@ -111,6 +111,10 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
                 badgeOwners.FirstOrDefault(o => o.Id == b.Id)?.Count ?? 0))
             .ToList();
 
+        var taxesDue = await businessesQ.SumAsync(b => (decimal?)b.TaxDue, ct) ?? 0m;
+        var taxesPaid = await companiesQ.SumAsync(c => (decimal?)c.TaxesPaid, ct) ?? 0m;
+        var owing = await companiesQ.CountAsync(c => c.Businesses.Any(b => b.TaxDue > 0m), ct);
+
         return new AdminStatsDto(
             nowUtc, players, admins, new24h, new7d, active24h,
             companies, totalCash, totalEarnings,
@@ -122,7 +126,8 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             unlocks.Sum(u => u.Count), achievementDistribution,
             loansTaken, activeLoans, outstanding, missed,
             diamonds, earned, spent, badgeOwners.Sum(o => o.Count), boosts, badgeDistribution,
-            avatarOwners.Sum(o => o.Count), avatarDistribution);
+            avatarOwners.Sum(o => o.Count), avatarDistribution,
+            taxesDue, taxesPaid, owing);
     }
 
     public async Task<IReadOnlyList<AdminPlayerDto>> GetPlayersAsync(
@@ -190,7 +195,7 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
         string? CompanyName, decimal? Cash, PrestigeLevel? PrestigeLevel, int? PrestigeCount,
         decimal? AllTimeEarnings, int? Businesses, DateTime? LastSeenAt,
         int? HighestBusinessLevel, int? LuxuryOwned, int? AchievementsUnlocked, decimal? LoanOutstanding,
-        int? Diamonds, int? Badges);
+        int? Diamonds, int? Badges, decimal? TaxesDue);
 
     private static IQueryable<PlayerRow> Project(IQueryable<Domain.Entities.Player> players) =>
         players.Select(p => new PlayerRow(
@@ -210,12 +215,13 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
                 .Select(l => (decimal?)(l.TotalRepay + l.Penalties - l.Paid - l.ForgivenAmount))
                 .FirstOrDefault(),
             p.Company == null ? null : p.Company.Diamonds,
-            p.Company == null ? null : p.Company.Badges.Count));
+            p.Company == null ? null : p.Company.Badges.Count,
+            p.Company == null ? null : p.Company.Businesses.Sum(b => (decimal?)b.TaxDue) ?? 0m));
 
     private static AdminPlayerDto ToDto(PlayerRow r) => new(
         r.Id, r.Username, r.Email, r.Country, r.IsAdmin, r.CreatedAt,
         r.CompanyName, r.Cash, r.PrestigeLevel?.ToString(), r.PrestigeCount,
         r.AllTimeEarnings, r.Businesses, r.LastSeenAt,
         r.HighestBusinessLevel, r.LuxuryOwned, r.AchievementsUnlocked, r.LoanOutstanding,
-        r.Diamonds, r.Badges);
+        r.Diamonds, r.Badges, r.TaxesDue);
 }

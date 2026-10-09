@@ -15,6 +15,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.Property(x => x.PassiveIncomePerSecond).HasPrecision(20, 6);
         b.Property(x => x.AllTimeEarnings).HasPrecision(20, 4);
         b.Property(x => x.OfflineBonusAmount).HasPrecision(20, 4);
+        b.Property(x => x.TaxesPaid).HasPrecision(20, 4);
         b.Property(x => x.FeaturedBadgeId).HasMaxLength(60);
         b.Property(x => x.AvatarId).HasMaxLength(60);
 
@@ -26,6 +27,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.Ignore(x => x.IncomePerSecond);
         b.Ignore(x => x.DomainEvents);
         b.Ignore(x => x.ActiveLoan);
+        b.Ignore(x => x.TaxesDue);
 
         b.HasMany(x => x.Businesses)
          .WithOne()

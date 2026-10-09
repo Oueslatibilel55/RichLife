@@ -33,7 +33,9 @@ public record ProfileCompanyDto(
     int ManagersOnShift,
     int ManagersHired,
     int HighestBusinessLevel,
-    int Diamonds);
+    int Diamonds,
+    decimal TaxesDue,
+    decimal TaxesPaid);
 
 public record AchievementDto(
     string Code,

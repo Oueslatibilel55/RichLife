@@ -47,6 +47,10 @@ export interface AdminStats {
   avatarsOwned: number;
   /** Every avatar: `owners` bought it, `inUse` show it now. */
   avatarDistribution: { id: string; icon: string; name: string; price: number; owners: number; inUse: number }[];
+  /** Taxes (§5): unpaid bills, every tax ever paid, companies with an unpaid bill. */
+  taxesDue: number;
+  taxesPaid: number;
+  companiesOwingTaxes: number;
 }
 
 export interface AdminPlayer {
@@ -71,6 +75,8 @@ export interface AdminPlayer {
   loanOutstanding: number | null;
   diamonds: number | null;
   badges: number | null;
+  /** Unpaid taxes; null without a company. */
+  taxesDue: number | null;
 }
 
 export interface ManagerNameRow {

@@ -86,6 +86,34 @@ public static class BusinessEndpoints
         .WithName("LevelUpBusiness")
         .WithSummary("Pay to raise a business one level and boost its income");
 
+        // POST /api/game/businesses/{businessId}/pay-taxes
+        group.MapPost("/{businessId:guid}/pay-taxes", async Task<Results<Ok<TaxPaymentDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            Guid businessId, ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+
+            var result = await svc.PayTaxesAsync(playerId, businessId, ct);
+            return result.IsSuccess
+                ? TypedResults.Ok(result.Value)
+                : TypedResults.BadRequest(result.Error!);
+        })
+        .WithName("PayBusinessTaxes")
+        .WithSummary("Pay the tax a business owes");
+
+        // POST /api/game/businesses/taxes/pay — two segments, so it never shadows a catalogue id
+        group.MapPost("/taxes/pay", async Task<Results<Ok<TaxPaymentDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+
+            var result = await svc.PayAllTaxesAsync(playerId, ct);
+            return result.IsSuccess
+                ? TypedResults.Ok(result.Value)
+                : TypedResults.BadRequest(result.Error!);
+        })
+        .WithName("PayAllTaxes")
+        .WithSummary("Pay every business's taxes at once");
+
         // DELETE /api/game/businesses/{businessId}?emergency=false
         group.MapDelete("/{businessId:guid}", async Task<Results<Ok, BadRequest<string>, UnauthorizedHttpResult>> (
             Guid businessId, bool emergency,

@@ -37,7 +37,10 @@ public record AdminStatsDto(
     int BoostsActive,
     IReadOnlyList<BadgeCountDto> BadgeDistribution,
     int AvatarsOwned,
-    IReadOnlyList<AvatarCountDto> AvatarDistribution);
+    IReadOnlyList<AvatarCountDto> AvatarDistribution,
+    decimal TaxesDue,
+    decimal TaxesPaid,
+    int CompaniesOwingTaxes);
 
 public record AvatarCountDto(string Id, string Icon, string Name, int Price, int Owners, int InUse);
 
@@ -68,7 +71,8 @@ public record AdminPlayerDto(
     int? AchievementsUnlocked,
     decimal? LoanOutstanding,
     int? Diamonds,
-    int? Badges);
+    int? Badges,
+    decimal? TaxesDue);
 
 public record SetAdminRoleRequest(bool IsAdmin);
 

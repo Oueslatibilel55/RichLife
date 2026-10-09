@@ -116,6 +116,32 @@ public class BusinessService(
         return Result.Ok(CompanyMapper.ToDto(result.Value, UtcNow));
     }
 
+    // -- Taxes (features/013-business-taxes.md) ----------------------------
+
+    public Task<Result<TaxPaymentDto>> PayTaxesAsync(Guid playerId, Guid businessId, CancellationToken ct = default) =>
+        PayAsync(playerId, c => c.PayBusinessTaxes(businessId), ct);
+
+    public Task<Result<TaxPaymentDto>> PayAllTaxesAsync(Guid playerId, CancellationToken ct = default) =>
+        PayAsync(playerId, c => c.PayAllTaxes(), ct);
+
+    private async Task<Result<TaxPaymentDto>> PayAsync(
+        Guid playerId, Func<Company, Result<decimal>> pay, CancellationToken ct)
+    {
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<TaxPaymentDto>("Company not found.");
+
+        // A period that ended since the last sync is billed first, so the payment covers it.
+        var now = UtcNow;
+        company.AssessTaxes(now);
+        var result = pay(company);
+        if (!result.IsSuccess) return Result.Fail<TaxPaymentDto>(result.Error!);
+
+        companyRepo.Update(company);
+        await uow.CommitAsync(ct);
+
+        return Result.Ok(new TaxPaymentDto(result.Value, company.Cash, CompanyMapper.ToDto(company, now)));
+    }
+
     // -- Buy asset ----------------------------------------------------------
 
     public async Task<Result<BusinessDto>> BuyAssetAsync(

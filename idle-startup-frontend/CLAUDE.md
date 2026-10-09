@@ -58,7 +58,7 @@ RxJS appears only as `HttpClient` observables.
 ```
 core/
   models/      game.models.ts, auth.models.ts  — wire contracts, mirror api-contract.md §2
-  game/        prestige.ts, sectors.ts, format.ts, managers.ts, countries.ts (all 249 ISO 3166-1 codes) — shared constants and pure formatters
+  game/        prestige.ts, sectors.ts, format.ts, managers.ts, taxes.ts, countries.ts (all 249 ISO 3166-1 codes) — shared constants and pure formatters
   http/        api-error.ts — maps a failure to a displayable message; jwt.ts — reads token claims (UI only)
   guards/      authGuard, guestGuard, admin.guard (adminMatchGuard, adminChildGuard, playerGuard)
   interceptors/auth.interceptor.ts
@@ -111,7 +111,8 @@ returns a `UrlTree` carrying a `returnUrl`, which `LoginComponent` honours.
   bank history (`LoanDto.forgiven`). Diamonds (§7b): Players shows each balance and badge count and a
   💎 action (give/take with a note, `POST /admin/players/{id}/diamonds`); Overview shows diamonds
   held / earned / spent, badges owned, boosts running, badges bought per badge, avatars bought and
-  avatars in use / bought per avatar.
+  avatars in use / bought per avatar. Taxes (§5): Overview has an unpaid-taxes tile (total paid,
+  companies owing); Players shows a player's unpaid taxes when there are any.
 
 ### GameService — the idle-game loop
 
@@ -188,6 +189,15 @@ the service's methods.
   render with `<app-avatar>` (it falls back to the initial). `buyAvatar` goes through `storeAction`;
   `selectAvatar` does not sync and patches the company's `avatar` locally. The store opens a tab from
   `?tab=` (the profile picture links to `/store?tab=avatars`). Names are `avatar.<id>` keys.
+- **Business taxes** (contract §5 *Taxes*, `features/013-business-taxes.md`): the server bills each
+  business 7 % of its earnings every 24 h and **never takes it** — the player pays. `game.taxesDue()`
+  (from `CompanyDto.taxesDue`, patched by every `/sync`) drives the dashboard banner (**Pay all**), the
+  red 🧾 top-bar chip and `canPrestige` (false while > 0; the button then reads "Pay your taxes
+  first"). Each business card and the manage dialog show `taxDue` (Pay) or `taxAccruing` + the time to
+  `taxPeriodEndsAt` (`taxMsLeft` in `core/game/taxes.ts`); the dialog hides "Close" while tax is due.
+  `payTaxes(id)` / `payAllTaxes()` go through `afterSync` and adopt `cash` **and** `company` from
+  `TaxPaymentDto`. A `/sync` or `/state` with `taxBilled > 0` raises `taxToast` (6 s) and refreshes the
+  company. Keys in `dict/taxes.ts`; styles are global (`.tax-*` in `styles.scss`).
 
 Because the service survives navigation, components **must not blindly re-bootstrap it**: call
 `ensureLoaded()`, which reuses live state and only fetches when there is none.

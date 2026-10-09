@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { GameService } from '../../../core/services/game.service';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { formatShiftLeft, managerAvatar, shiftMsLeft } from '../../../core/game/managers';
+import { taxMsLeft } from '../../../core/game/taxes';
 import { MoneyPipe, RatePipe } from '../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -34,6 +35,27 @@ export class ManageBusinessComponent {
   readonly confirmingClose = signal(false);
   readonly hiring = signal(false);
   readonly levelling = signal(false);
+  readonly payingTax = signal(false);
+
+  readonly taxMsLeft = taxMsLeft;
+  readonly formatShiftLeft = formatShiftLeft;
+  readonly now = this.game.now;
+  readonly taxPercent = computed(() => Math.round((this.game.company()?.taxRate ?? 0) * 100));
+
+  /** Pays this business's whole bill; the answer carries the company, so nothing else to refresh. */
+  payTaxes(): void {
+    const biz = this.business();
+    if (!biz || this.payingTax()) return;
+    this.payingTax.set(true);
+    this.error.set('');
+    this.game.payTaxes(biz.id).subscribe({
+      next: () => this.payingTax.set(false),
+      error: (err: unknown) => {
+        this.error.set(toErrorMessage(err, 'tax.error'));
+        this.payingTax.set(false);
+      },
+    });
+  }
 
   /** Next level that doubles income (10, 25, 50), or null once all are reached. */
   readonly nextMilestone = computed(() => {

@@ -10,6 +10,7 @@ import { PROFILE } from './profile';
 import { ADMIN } from './admin';
 import { BANK } from './bank';
 import { STORE } from './store';
+import { TAXES } from './taxes';
 
 /** One file per feature, each holding the same keys in all three languages. */
 export type Dict = Readonly<Record<string, string>>;
@@ -19,7 +20,7 @@ export interface DictSet {
   ar: Dict;
 }
 
-const PARTS: readonly DictSet[] = [CORE, SERVER, LAYOUT, AUTH, DASHBOARD, BUSINESSES, LUXURY, BANK, STORE, LEADERBOARD, PROFILE, ADMIN];
+const PARTS: readonly DictSet[] = [CORE, SERVER, LAYOUT, AUTH, DASHBOARD, BUSINESSES, LUXURY, BANK, STORE, TAXES, LEADERBOARD, PROFILE, ADMIN];
 
 function merge(lang: keyof DictSet): Dict {
   return Object.assign({}, ...PARTS.map((p) => p[lang]));

@@ -86,6 +86,58 @@ public class Business : BaseEntity
     /// <summary>Price of hiring a manager, which automates the business.</summary>
     public decimal ManagerCost => OpeningCost * GameConstants.ManagerCostMultiplier;
 
+    // -- Taxes (features/013-business-taxes.md) -------------------------------------
+
+    /// <summary>Start of the current tax period; one bill per <see cref="GameConstants.TaxPeriod"/> from the opening.</summary>
+    public DateTime TaxPeriodStart { get; private set; } = DateTime.UtcNow;
+
+    /// <summary>What this business has earned (prestige and boost included) since <see cref="TaxPeriodStart"/>.</summary>
+    public decimal TaxableEarnings { get; private set; }
+
+    /// <summary>Billed and not yet paid. Bills add up until the player pays — never taken automatically.</summary>
+    public decimal TaxDue { get; private set; }
+
+    public DateTime TaxPeriodEndsAt => TaxPeriodStart + GameConstants.TaxPeriod;
+
+    /// <summary>The bill the current period would produce if it ended now.</summary>
+    public decimal TaxAccruing => RoundTax(TaxableEarnings * GameConstants.TaxRate);
+
+    internal void RecordEarnings(decimal amount)
+    {
+        if (amount <= 0m) return;
+        TaxableEarnings += amount;
+        MarkUpdated();
+    }
+
+    /// <summary>
+    /// Bills every period that has ended by <paramref name="nowUtc"/>. Several periods at once
+    /// (after time away) make one bill, since earnings are only recorded when credited.
+    /// Returns the amount billed.
+    /// </summary>
+    internal decimal AssessTaxes(DateTime nowUtc)
+    {
+        if (nowUtc < TaxPeriodEndsAt) return 0m;
+
+        var periods = (nowUtc - TaxPeriodStart).Ticks / GameConstants.TaxPeriod.Ticks;
+        var bill = TaxAccruing;
+        TaxDue += bill;
+        TaxableEarnings = 0m;
+        TaxPeriodStart += TimeSpan.FromTicks(GameConstants.TaxPeriod.Ticks * periods);
+        MarkUpdated();
+        return bill;
+    }
+
+    /// <summary>Clears the bill and returns what it was. Cash is checked and taken by the aggregate.</summary>
+    internal decimal PayTaxes()
+    {
+        var paid = TaxDue;
+        TaxDue = 0m;
+        MarkUpdated();
+        return paid;
+    }
+
+    private static decimal RoundTax(decimal amount) => Math.Round(amount, 2, MidpointRounding.AwayFromZero);
+
     private Business() { }
 
     public static Business Create(

@@ -56,6 +56,11 @@
           <div class="stat"><span class="stat__label">{{ 'profile.assets' | t }}</span><span class="stat__value num">{{ c.assets }}</span></div>
           <div class="stat"><span class="stat__label">{{ 'profile.managers' | t }}</span><span class="stat__value num">{{ 'profile.managersValue' | t: { onShift: c.managersOnShift, hired: c.managersHired } }}</span></div>
           <div class="stat"><span class="stat__label">{{ 'profile.diamonds' | t }}</span><span class="stat__value num">💎 {{ c.diamonds }}</span></div>
+          <div class="stat">
+            <span class="stat__label">{{ 'profile.taxesPaid' | t }}</span>
+            <span class="stat__value num">{{ c.taxesPaid | money }}</span>
+            @if (c.taxesDue > 0) { <small class="tax-chip num">🧾 {{ 'profile.taxesDue' | t: { amount: (c.taxesDue | money) } }}</small> }
+          </div>
           <div class="stat"><span class="stat__label">{{ 'profile.bestBusiness' | t }}</span><span class="stat__value num">{{ c.businesses ? ('profile.level' | t: { n: c.highestBusinessLevel }) : '—' }}</span></div>
         </div>
       </section>

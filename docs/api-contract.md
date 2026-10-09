@@ -100,6 +100,8 @@ Sliding window, applied per server (not per user).
   "boostUntil": null,
   "boostMultiplier": 2,
   "avatar": { "id": "fox", "icon": "🦊", "from": "#FED7AA", "to": "#EA580C" },
+  "taxesDue": 1240.5,
+  "taxRate": 0.07,
   "businesses": []
 }
 ```
@@ -107,11 +109,13 @@ Sliding window, applied per server (not per user).
 | Field | Meaning |
 |---|---|
 | `diamonds` | The premium currency balance (§6e). A whole number. |
+| `taxesDue` | Σ `business.taxDue` — tax billed and not yet paid (see *Taxes* in §5). **While it is above 0, prestige is refused.** |
+| `taxRate` | Share of each business's earnings billed as tax every 24 h — `0.07`. |
 | `avatar` | The player's chosen avatar (§6e) — an emoji on a gradient from `from` to `to` (CSS colours) — or `null` for none (clients show the username's initial). Same `AvatarDto` on the profile and the leaderboard. |
 | `boostUntil` | End of the running **income boost** (§6e), `null` if none was ever bought. While `now < boostUntil` every income — online and offline — is × `boostMultiplier`. **`incomePerSecond` and `offlineIncomePerSecond` never include the boost**: the client multiplies its ticker rate itself and drops back when `boostUntil` passes. |
 | `incomePerSecond` | **Online** rate: `(passiveIncomePerSecond + Σ business.netIncomePerSecond) × prestigeMultiplier`. This is the number the client ticker must simulate — the multiplier is **already applied**. |
 | `offlineIncomePerSecond` | Same formula, but counting only businesses whose manager shift is running at response time (`isAutomated: true`). The rate actually paid while away also depends on when each shift ends — see `GET /api/game/state`. |
-| `netWorth` | `cash` + company assets + Σ `business.totalValue` + Σ luxury items bought (at their price, §6c) **−** what is still owed on an active bank loan (`outstanding`, §6d). |
+| `netWorth` | `cash` + company assets + Σ `business.totalValue` + Σ luxury items bought (at their price, §6c) **−** what is still owed on an active bank loan (`outstanding`, §6d) **−** `taxesDue`. |
 | `allTimeEarnings` | Every dollar income has ever produced, cumulative. Never decreases; **survives prestige**; refunds from closing a business do not count. This is what ranks `/api/leaderboard`. Shown on the dashboard — see `features/001-all-time-earnings-on-company.md`. |
 | `prestigeMultiplier` | `1 + 0.18 × prestigeCount`. |
 | `nextPrestigeThreshold` | **Cash price** of the **next** prestige (see §4 `/prestige`). Compare against `cash`, not `netWorth` — business value cannot pay for it. |
@@ -139,7 +143,10 @@ Sliding window, applied per server (not per user).
   "level": 3,
   "levelMultiplier": 1.2,
   "nextLevelCost": 78125,
-  "nextLevelIncomePerSecond": 30.493981
+  "nextLevelIncomePerSecond": 30.493981,
+  "taxDue": 1240.5,
+  "taxAccruing": 312.75,
+  "taxPeriodEndsAt": "2026-10-10T08:00:00Z"
 }
 ```
 
@@ -160,6 +167,9 @@ its own clock. `managerCost` is the price of a shift — `2 × openingCost` — 
 every rehire. `managerName` is the current or last manager's first name (`"Lucy"`), `null`
 until the first hire — picked at random server-side from the `manager_names` table on every
 hire. A company's running shifts never share a name while unused names remain.
+`taxDue` is the tax billed to this business and not yet paid (bills add up); `taxAccruing` the
+bill the current 24-hour period would produce if it ended now; `taxPeriodEndsAt` when that period
+is billed. See *Taxes* in §5.
 
 ### `BusinessCatalogueDto`
 
@@ -281,6 +291,7 @@ Read-only snapshot. **Does not accrue offline income and does not move `lastSync
   "capped": true,
   "loanPayment": null,
   "doubleOffer": { "amount": 60508.8, "price": 15, "until": "2026-10-01T09:44:22Z" },
+  "taxBilled": 0,
   "company": { "id": "6f1f4b4e-...", "cash": 78929.3, "businesses": [] }
 }
 ```
@@ -297,6 +308,8 @@ After crediting, it collects every **bank installment** that fell due while away
 `doubleOffer` (`null` when nothing was earned) lets the player pay `price` diamonds to receive
 `amount` again, until `until` — see `POST /api/game/store/double-offline` (§6e). A later
 `/state` that earns something replaces the offer.
+`taxBilled` is the tax newly billed by this call for periods that ended while away (§5 *Taxes*) —
+billed, never taken from cash.
 **This is the correct bootstrap call on app start**, not `GET /api/game/company` — and on
 **every return to a visible tab**: the client stops its `/sync` loop while hidden (a
 background sync would move `lastSyncAt` and erase this window) and calls `/state` when it
@@ -316,7 +329,9 @@ comes back. `elapsed` is a .NET `TimeSpan`: past 24 hours it gains a day prefix 
   "acceptedCash": 18420, "adjusted": false,
   "newAchievements": [ { "code": "first-business", "title": "Open for business", "icon": "🏪", "diamonds": 10 } ],
   "loanPayment": null,
-  "diamonds": 95
+  "diamonds": 95,
+  "taxesDue": 1240.5,
+  "taxBilled": 0
 }
 ```
 
@@ -333,6 +348,10 @@ than a generic "balance corrected").
 Every sync also checks achievements (§6b): `newAchievements` lists the ones unlocked by this
 call — usually `[]` — so the client can announce them. Each is reported exactly once, with the
 diamonds it paid (§6e). `diamonds` is the balance after the call.
+
+Every sync also bills the **taxes** of any business whose 24-hour period has ended (§5 *Taxes*):
+`taxBilled` is what this call billed (usually 0), `taxesDue` the total now unpaid. Cash is never
+touched — the client announces a new bill and shows what is owed.
 
 The sync ceiling includes a running income boost (§6e): seconds of the window before
 `boostUntil` count `boostMultiplier` times.
@@ -354,7 +373,10 @@ No request body.
 
 → `200` `CompanyDto` (after the purchase) · `401` ·
 `400` `"Company not found."` | `"Already at maximum prestige."` |
-`"Prestige costs $200,000 in cash."`
+`"Pay your taxes before prestige."` | `"Prestige costs $200,000 in cash."`
+
+**Every tax must be paid first** (`taxesDue` = 0, §5 *Taxes*); a period that ends during the call is
+billed before the check.
 
 Prestige is a **purchase**, not a reset (changed 2026-10-08 — see
 `features/003-prestige-is-a-purchase.md`). Offline earnings are credited
@@ -455,12 +477,46 @@ close); prestige keeps the level.
 
 ### `DELETE /api/game/businesses/{businessId}?emergency={bool}`
 
-→ `200` *(empty body)* · `401` · `400` `"Company not found."` | `"Business not found."`.
+→ `200` *(empty body)* · `401` · `400` `"Company not found."` | `"Business not found."` |
+`"Pay this business's taxes before closing it."` (its `taxDue` is above 0).
 
 `emergency` is a **required** query parameter — omitting it is a framework `400` with an
 empty body. The refund is `totalValue × (1 − fee)`: fee is **10 %** when
 `emergency=false`, **25 %** when `emergency=true`. A refund returns capital, so it does
 **not** count toward `allTimeEarnings`.
+
+### Taxes
+
+Added 2026-10-09 — see `features/013-business-taxes.md`.
+
+- Each business is taxed **7 %** (`taxRate`) of what it **earned** during each **24-hour period**,
+  counted from when it was opened (businesses that existed before taxes start from 2026-10-09).
+  Earned = its share of online income (each `/sync` splits the credited total between base
+  income and the businesses by their `netIncomePerSecond`; the prestige multiplier and a boost
+  apply to all alike) plus what it earned offline during its manager's shift. A business losing
+  money earns nothing taxable. The double-offline bonus (§6e) is not taxed.
+- At the end of a period the bill is added to `taxDue` (by `/sync`, `/state`, `/prestige` and the
+  pay routes, whichever comes first; several periods missed make one bill).
+- **Nothing is ever taken automatically**, so cash never goes negative. Unpaid bills **add up**.
+- Unpaid taxes **block prestige** and closing that business, and count against `netWorth`.
+- Paying is a spend: the client syncs first, then adopts `cash` and `company` from the answer.
+
+### `POST /api/game/businesses/{businessId}/pay-taxes` — pay one business's taxes
+
+No body → `200` `TaxPaymentDto` · `401` · `400` `"Company not found."` | `"Business not found."` |
+`"No taxes due."` | `"Insufficient funds."` (the whole bill or nothing).
+
+### `POST /api/game/businesses/taxes/pay` — pay every business's taxes
+
+No body → `200` `TaxPaymentDto` · `401` · `400` `"Company not found."` | `"No taxes due."` |
+`"Insufficient funds."` (all or nothing).
+
+```json
+{ "paid": 1240.5, "cash": 81234.25, "company": { "taxesDue": 0, "businesses": [] } }
+```
+
+`paid` is what was paid (a period that ended since the last sync is billed first and included),
+`cash` the server's cash after it, `company` the full `CompanyDto`.
 
 ---
 
@@ -513,7 +569,7 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
     "prestigeLevel": "SmallBusiness", "prestigeCount": 1, "prestigeMultiplier": 1.18,
     "cash": 18420.5, "netWorth": 76420.5, "allTimeEarnings": 128430.75, "incomePerSecond": 37.42,
     "businesses": 4, "assets": 11, "managersOnShift": 2, "managersHired": 3,
-    "highestBusinessLevel": 7, "diamonds": 85
+    "highestBusinessLevel": 7, "diamonds": 85, "taxesDue": 1240.5, "taxesPaid": 5300
   },
   "badges": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "rarity": "epic", "purchasedAt": "…" } ],
   "featuredBadgeId": "unicorn",
@@ -537,6 +593,7 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
 - `avatar` is the avatar chosen in the store (§6e), `null` for none (show the initial).
 - `badges` are the badges bought in the store (§6e), newest first; `featuredBadgeId` the one shown
   next to the name (also on the leaderboard), `null` if none.
+- `taxesDue` / `taxesPaid`: unpaid taxes and every tax ever paid (§5 *Taxes*).
 - `managersHired` = businesses that have had a manager at least once; `managersOnShift` =
   shifts running now.
 - **Achievements** are defined in code (rules, like `GameConstants`), in display order.
@@ -946,7 +1003,8 @@ Added 2026-10-08 — see `features/006-admin-panel.md`. Same gate as §7: bearer
   "badgesOwned": 14, "boostsActive": 2,
   "badgeDistribution": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "price": 120, "owners": 3 } ],
   "avatarsOwned": 9,
-  "avatarDistribution": [ { "id": "fox", "icon": "🦊", "name": "Fox", "price": 30, "owners": 2, "inUse": 1 } ]
+  "avatarDistribution": [ { "id": "fox", "icon": "🦊", "name": "Fox", "price": 30, "owners": 2, "inUse": 1 } ],
+  "taxesDue": 18400.5, "taxesPaid": 96300, "companiesOwingTaxes": 4
 }
 ```
 
@@ -961,6 +1019,8 @@ ledger totals (admin grants and removals included); `boostsActive` = boosts runn
 `badgeDistribution` lists every badge in display order with its owners (zeros included).
 `avatarsOwned` counts bought avatars (free ones are not bought); `avatarDistribution` lists every
 avatar with `owners` (bought) and `inUse` (players showing it), zeros included.
+Taxes (§5, added 2026-10-09): `taxesDue` = unpaid bills, `taxesPaid` = every tax ever paid,
+`companiesOwingTaxes` = player companies with an unpaid bill.
 
 ### `GET /api/admin/players?search=` → `200` `AdminPlayerDto[]`
 
@@ -974,14 +1034,14 @@ avatar with `owners` (bought) and `inUse` (players showing it), zeros included.
   "prestigeCount": 0, "allTimeEarnings": 9000, "businesses": 2,
   "lastSeenAt": "2026-10-08T11:58:00Z",
   "highestBusinessLevel": 7, "luxuryOwned": 2, "achievementsUnlocked": 6,
-  "loanOutstanding": 17280, "diamonds": 85, "badges": 2
+  "loanOutstanding": 17280, "diamonds": 85, "badges": 2, "taxesDue": 1240.5
 }
 ```
 
 The company fields are `null` for a player who has not created a company yet.
 `loanOutstanding` is what the player still owes on an active loan, `null` without one.
 (`highestBusinessLevel`, `luxuryOwned`, `achievementsUnlocked`, `loanOutstanding`, `diamonds` and
-`badges` added 2026-10-09.)
+`badges` added 2026-10-09; `taxesDue` — unpaid taxes, 0 when none — added with taxes.)
 
 ### `PUT /api/admin/players/{id}/role`
 
@@ -1001,7 +1061,7 @@ touch `allTimeEarnings`.
 
 No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has no company."`.
 Fresh start: cash 0, every business removed, `TheHustle`, multiplier ×1, base income 3/s,
-`allTimeEarnings` 0, achievements cleared, bank loans deleted, a running boost and the double
+`allTimeEarnings` 0, achievements cleared, bank loans deleted, taxes gone with the businesses (`taxesPaid` 0), a running boost and the double
 offer cancelled. Account, company name, **diamonds and badges** are kept.
 
 **Online players:** a cash change or reset marks the company *overridden*; the player's
@@ -1175,6 +1235,9 @@ None.
   `"Insufficient funds."`. `isOwned` and `isUnlocked` are used verbatim.
 - **Bank (§6d).** Take and repay sync first and adopt the response `cash`; a `/sync` carrying
   `loanPayment` adopts `acceptedCash` and shows a bank toast instead of "balance corrected".
+- **Taxes (§5).** Paying syncs first and adopts `cash` and `company` from `TaxPaymentDto`; a `/sync`
+  with `taxBilled > 0` shows a "new tax bill" toast and updates `taxesDue`. Prestige stays disabled
+  while `taxesDue > 0`.
 - **Store (§6e).** Every store POST syncs first and adopts `cash`, `diamonds` and `boostUntil` from
   the `StoreDto`. The ticker rate is `incomePerSecond × boostMultiplier` while `now < boostUntil`.
 - **`GET /api/game/company` is never used to overwrite cash** — it does not accrue, so

@@ -66,7 +66,9 @@ public class ProfileService(
         c.Businesses.Count(b => b.HasManagerAt(now)),
         (int)c.AchievementMetricValue(AchievementMetric.ManagersHired),
         (int)c.AchievementMetricValue(AchievementMetric.HighestBusinessLevel),
-        c.Diamonds);
+        c.Diamonds,
+        c.TaxesDue,
+        c.TaxesPaid);
 
     private static AchievementDto ToDto(AchievementDefinition a, Company? c)
     {

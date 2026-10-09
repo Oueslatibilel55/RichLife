@@ -639,3 +639,61 @@ button.tabbar__link { border: 0; background: none; font-family: inherit; cursor:
   box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
   border: 3px solid var(--surface);
 }
+
+/* -- Business taxes (§5) — dashboard cards, manage dialog, top bar ----------------- */
+.tax-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tax-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+
+  &--due { background: var(--danger-soft); color: var(--danger); }
+}
+
+.tax-banner,
+.tax-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  &__icon { font-size: 26px; flex-shrink: 0; }
+  &__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--text-2); }
+  &__text strong { color: var(--text); font-size: 15px; }
+}
+.tax-banner {
+  padding: 14px 16px;
+  border-color: #FECACA;
+  background: var(--danger-soft);
+  flex-wrap: wrap;
+  &__text strong { color: var(--danger); }
+  &__short { font-size: 12px; font-weight: 700; color: var(--danger); }
+}
+.tax-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  &--due { border-color: #FECACA; background: var(--danger-soft); }
+  &--due .tax-card__text strong { color: var(--danger); }
+}
+.tax-close-hint { margin: 0; font-size: 13px; color: var(--text-2); }

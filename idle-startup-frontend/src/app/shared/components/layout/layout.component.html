@@ -29,6 +29,11 @@
             ×2 · {{ formatCountdown(game.boostMsLeft()) }}
           </a>
         }
+        @if (game.taxesDue() > 0) {
+          <a routerLink="/dashboard" class="tax-chip num" [title]="'tax.chip' | t">
+            <span aria-hidden="true">🧾</span>{{ game.taxesDue() | money }}
+          </a>
+        }
         <a routerLink="/store" class="gem-chip num" [title]="'layout.diamonds' | t" [attr.aria-label]="'layout.diamondsAria' | t: { n: game.diamonds() }">
           <span aria-hidden="true">💎</span>{{ game.diamonds() }}
         </a>
@@ -214,6 +219,18 @@
       }
     </a>
     <button type="button" class="icon-btn bank-toast__close" [attr.aria-label]="'layout.dismiss' | t" (click)="game.dismissBankToast()">
+      <app-icon name="close" [size]="16" />
+    </button>
+  </div>
+}
+
+<!-- A tax period ended (§5): billed, never taken — the player pays from the dashboard -->
+@if (game.taxToast(); as amount) {
+  <div class="bank-toast bank-toast--warn" role="status">
+    <a routerLink="/dashboard" class="bank-toast__text" (click)="game.dismissTaxToast()">
+      <span aria-hidden="true">🧾</span>{{ 'tax.toast' | t: { amount: (amount | money) } }}
+    </a>
+    <button type="button" class="icon-btn bank-toast__close" [attr.aria-label]="'layout.dismiss' | t" (click)="game.dismissTaxToast()">
       <app-icon name="close" [size]="16" />
     </button>
   </div>

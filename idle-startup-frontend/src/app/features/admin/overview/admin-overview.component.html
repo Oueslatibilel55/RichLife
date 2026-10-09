@@ -86,6 +86,14 @@
       <span class="tile__sub num">{{ 'admin.overview.avatarsCatalogue' | t: { n: s.avatarDistribution.length } }}</span>
     </div>
     <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🧾</span>
+      <span class="stat__label">{{ 'admin.overview.taxes' | t }}</span>
+      <span class="tile__value">{{ s.taxesDue | money }}</span>
+      <span class="tile__sub num" [class.tile__sub--danger]="s.companiesOwingTaxes > 0">
+        {{ 'admin.overview.taxesSub' | t: { paid: (s.taxesPaid | money), n: s.companiesOwingTaxes } }}
+      </span>
+    </div>
+    <div class="card tile">
       <span class="tile__icon" aria-hidden="true">⚡</span>
       <span class="stat__label">{{ 'admin.overview.boosts' | t }}</span>
       <span class="tile__value num">{{ s.boostsActive }}</span>

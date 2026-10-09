@@ -42,13 +42,20 @@ public class Company : AggregateRoot
     /// <summary>The profile avatar in use (a free or bought one); null shows the initial.</summary>
     public string? AvatarId { get; private set; }
 
-    /// <summary>Cash plus the liquidation value of everything owned, minus what is still owed to a bank.</summary>
+    /// <summary>Every tax ever paid (features/013-business-taxes.md).</summary>
+    public decimal TaxesPaid { get; private set; }
+
+    /// <summary>Tax billed to the businesses and not yet paid. Prestige waits until it is zero.</summary>
+    public decimal TaxesDue => _businesses.Sum(b => b.TaxDue);
+
+    /// <summary>Cash plus the liquidation value of everything owned, minus what is still owed to a bank and in taxes.</summary>
     public decimal NetWorth =>
         Cash
         + _assets.Sum(a => a.CurrentValue)
         + _businesses.Sum(b => b.TotalValue)
         + _luxuryAssets.Sum(l => l.Cost)
-        - (ActiveLoan?.Outstanding ?? 0m);
+        - (ActiveLoan?.Outstanding ?? 0m)
+        - TaxesDue;
 
     // Prestige
     public PrestigeLevel PrestigeLevel { get; private set; } = PrestigeLevel.TheHustle;
@@ -131,9 +138,15 @@ public class Company : AggregateRoot
 
         var baseEarned = PassiveIncomePerSecond
             * ((decimal)effective.TotalSeconds + extra * BoostedSecondsWithin(from, to));
-        var managed = _businesses.Sum(b => b.NetIncomePerSecond
-            * (b.ManagedSecondsWithin(from, to) + (boostEnd is { } end ? extra * b.ManagedSecondsWithin(from, end) : 0m)));
-        var earned = (baseEarned + managed) * PrestigeMultiplier;
+        var earned = baseEarned * PrestigeMultiplier;
+        foreach (var b in _businesses)
+        {
+            var seconds = b.ManagedSecondsWithin(from, to)
+                + (boostEnd is { } end ? extra * b.ManagedSecondsWithin(from, end) : 0m);
+            var businessEarned = b.NetIncomePerSecond * seconds * PrestigeMultiplier;
+            b.RecordEarnings(businessEarned);   // what each business made is what it is taxed on
+            earned += businessEarned;
+        }
 
         AddCash(earned);
         return earned;
@@ -187,12 +200,29 @@ public class Company : AggregateRoot
         var accepted = clientCash > ceiling ? ceiling : clientCash;
 
         var gained = accepted - Cash;
-        if (gained > 0m) AllTimeEarnings += gained;
+        if (gained > 0m)
+        {
+            AllTimeEarnings += gained;
+            RecordOnlineBusinessEarnings(gained);
+        }
 
         Cash = accepted;
         LastSyncAt = nowUtc;
         MarkUpdated();
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Online every business earns, and the client reports only the total: each business is
+    /// credited its share of it by income rate (the prestige and boost multipliers apply to
+    /// all alike). A business losing money (salary above income) earns nothing taxable.
+    /// </summary>
+    private void RecordOnlineBusinessEarnings(decimal gained)
+    {
+        var total = PassiveIncomePerSecond + _businesses.Sum(b => Math.Max(b.NetIncomePerSecond, 0m));
+        if (total <= 0m) return;
+        foreach (var b in _businesses)
+            if (b.NetIncomePerSecond > 0m) b.RecordEarnings(gained * b.NetIncomePerSecond / total);
     }
 
     public void AddCash(decimal amount)
@@ -302,6 +332,50 @@ public class Company : AggregateRoot
         business.LevelUp();
         MarkUpdated();
         return Result.Ok(business);
+    }
+
+    // -- Taxes (features/013-business-taxes.md) -------------------------------------
+
+    /// <summary>
+    /// Bills every business whose tax period has ended: <see cref="GameConstants.TaxRate"/> of what
+    /// it earned. Nothing is taken from cash — the player pays by hand, so cash never goes
+    /// negative. Called by <c>/sync</c> and <c>/state</c>. Returns the total newly billed.
+    /// </summary>
+    public decimal AssessTaxes(DateTime nowUtc)
+    {
+        var billed = _businesses.Sum(b => b.AssessTaxes(nowUtc));
+        if (billed > 0m) MarkUpdated();
+        return billed;
+    }
+
+    /// <summary>Pays one business's whole bill from cash. Paying is spending, not a loss of earnings.</summary>
+    public Result<decimal> PayBusinessTaxes(Guid businessId)
+    {
+        var business = _businesses.FirstOrDefault(b => b.Id == businessId);
+        if (business is null) return Result.Fail<decimal>("Business not found.");
+        if (business.TaxDue <= 0m) return Result.Fail<decimal>("No taxes due.");
+
+        var deduct = DeductCash(business.TaxDue);
+        if (!deduct.IsSuccess) return Result.Fail<decimal>(deduct.Error!);
+
+        var paid = business.PayTaxes();
+        TaxesPaid += paid;
+        MarkUpdated();
+        return Result.Ok(paid);
+    }
+
+    /// <summary>Pays every business's bill at once — all or nothing.</summary>
+    public Result<decimal> PayAllTaxes()
+    {
+        var due = TaxesDue;
+        if (due <= 0m) return Result.Fail<decimal>("No taxes due.");
+
+        var deduct = DeductCash(due);
+        if (!deduct.IsSuccess) return Result.Fail<decimal>(deduct.Error!);
+
+        foreach (var b in _businesses) TaxesPaid += b.PayTaxes();
+        MarkUpdated();
+        return Result.Ok(due);
     }
 
     // -- Luxury -----------------------------------------------------------------
@@ -615,6 +689,7 @@ public class Company : AggregateRoot
         _loans.Clear();
         Cash = 0m;
         AllTimeEarnings = 0m;
+        TaxesPaid = 0m;   // the businesses, and their bills, are gone too
         PrestigeLevel = PrestigeLevel.TheHustle;
         PrestigeCount = 0;
         PassiveIncomePerSecond = GameConstants.BasePassiveIncomePerSecond;
@@ -658,6 +733,8 @@ public class Company : AggregateRoot
     {
         var biz = _businesses.FirstOrDefault(b => b.Id == businessId);
         if (biz is null) return Result.Fail("Business not found.");
+        // Otherwise closing would be a way out of a tax bill.
+        if (biz.TaxDue > 0m) return Result.Fail("Pay this business's taxes before closing it.");
 
         var feeRate = emergency
             ? GameConstants.EmergencyCloseFeeRate
@@ -692,6 +769,8 @@ public class Company : AggregateRoot
     {
         if ((int)PrestigeLevel >= 7)
             return Result.Fail("Already at maximum prestige.");
+        if (TaxesDue > 0m)
+            return Result.Fail("Pay your taxes before prestige.");
         // Prestige is paid for, so only cash counts — business value cannot be spent.
         if (Cash < GetPrestigeThreshold())
             // Invariant culture: `:C0` printed "25 000 €" on a French-locale server.

@@ -47,9 +47,11 @@ public class CompanyService(
         var earned = company.AccrueOffline(now);
         // Installments that fell due while away are collected after the earnings are in.
         var loanPayment = company.CollectLoanPayments(now);
+        // Tax periods that ended while away are billed — never taken from cash (contract §5).
+        var taxBilled = company.AssessTaxes(now);
         // What was just earned can be paid again for diamonds (contract §6e).
         company.OfferOfflineDouble(earned, now);
-        if (earned > 0m || loanPayment is not null)
+        if (earned > 0m || loanPayment is not null || taxBilled > 0m)
         {
             companyRepo.Update(company);
             await uow.CommitAsync(ct);
@@ -63,6 +65,7 @@ public class CompanyService(
             Capped: elapsed > GameConstants.OfflineCap,
             LoanPayment: BankMapper.ToDto(loanPayment),
             DoubleOffer: StoreService.DoubleOffer(company, now),
+            TaxBilled: taxBilled,
             Company: CompanyMapper.ToDto(company, now)));
     }
 
@@ -71,8 +74,10 @@ public class CompanyService(
         var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
         if (company is null) return Result.Fail<CompanyDto>("Company not found.");
 
-        // Credit anything earned while away before measuring net worth against the threshold.
+        // Credit anything earned while away (and bill any tax period that ended) before
+        // checking the price and the taxes.
         company.AccrueOffline(UtcNow);
+        company.AssessTaxes(UtcNow);
 
         var result = company.Prestige(UtcNow);
         if (!result.IsSuccess) return Result.Fail<CompanyDto>(result.Error!);
@@ -110,6 +115,7 @@ public class CompanyService(
         // The bank collects on the server's clock; the client learns of it through
         // acceptedCash (so `adjusted` is true) and loanPayment.
         var loanPayment = company.CollectLoanPayments(now);
+        var taxBilled = company.AssessTaxes(now);
 
         companyRepo.Update(company);
         await uow.CommitAsync(ct);
@@ -121,6 +127,8 @@ public class CompanyService(
                 .Select(a => new AchievementUnlockedDto(a.Code, a.Title, a.Icon, GameConstants.AchievementDiamonds))
                 .ToList(),
             LoanPayment: BankMapper.ToDto(loanPayment),
-            Diamonds: company.Diamonds));
+            Diamonds: company.Diamonds,
+            TaxesDue: company.TaxesDue,
+            TaxBilled: taxBilled));
     }
 }

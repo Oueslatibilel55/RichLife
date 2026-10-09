@@ -17,6 +17,8 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         b.Property(x => x.GrossIncomePerSecond).HasPrecision(20, 6);
         b.Property(x => x.MonthlySalaryCost).HasPrecision(20, 4);
         b.Property(x => x.AskingPrice).HasPrecision(20, 4);
+        b.Property(x => x.TaxableEarnings).HasPrecision(24, 6);
+        b.Property(x => x.TaxDue).HasPrecision(20, 4);
 
         // A company owns at most one of each catalogue entry. The aggregate enforces
         // this; the index makes a concurrent double-open fail at the database too.
@@ -46,6 +48,8 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         b.Ignore(x => x.IsMaxLevel);
         b.Ignore(x => x.NextLevelCost);
         b.Ignore(x => x.NextLevelIncomePerSecond);
+        b.Ignore(x => x.TaxPeriodEndsAt);
+        b.Ignore(x => x.TaxAccruing);
         // Level: the AddBusinessLevels migration backfills existing rows with 1.
 
         b.HasMany(x => x.Assets)

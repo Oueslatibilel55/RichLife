@@ -55,6 +55,12 @@
               <span class="stat__label">{{ 'admin.players.diamonds' | t }}</span>
               <span class="stat__value num">{{ p.diamonds ?? 0 }} 💎 · {{ 'admin.players.badgeCount' | t: { n: p.badges ?? 0 } }}</span>
             </div>
+            @if (p.taxesDue) {
+              <div class="stat stat--loan">
+                <span class="stat__label">{{ 'admin.players.taxes' | t }}</span>
+                <span class="stat__value">{{ p.taxesDue | money }}</span>
+              </div>
+            }
             <div class="stat" [class.stat--loan]="p.loanOutstanding !== null">
               <span class="stat__label">{{ 'admin.players.loan' | t }}</span>
               @if (p.loanOutstanding !== null) {

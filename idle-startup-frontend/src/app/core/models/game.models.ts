@@ -50,6 +50,10 @@ export interface CompanyDto {
   boostMultiplier: number;
   /** The chosen avatar (§6e); null shows the initial. */
   avatar: AvatarDto | null;
+  /** Tax billed to the businesses and not paid yet (§5 Taxes). Prestige is refused while > 0. */
+  taxesDue: number;
+  /** Share of each business's earnings billed every 24 h (0.07). */
+  taxRate: number;
   businesses: BusinessDto[];
 }
 
@@ -84,6 +88,12 @@ export interface BusinessDto {
   isForSale: boolean;
   askingPrice: number | null;
   assetCount: number;
+  /** Billed and unpaid — bills add up; never taken automatically. Blocks closing this business. */
+  taxDue: number;
+  /** The bill the current 24-hour period would produce if it ended now. */
+  taxAccruing: number;
+  /** When the current period is billed (UTC ISO). */
+  taxPeriodEndsAt: string;
 }
 
 export interface AssetCatalogueDto {
@@ -127,6 +137,8 @@ export interface OfflineEarningsDto {
   loanPayment: LoanPaymentDto | null;
   /** Pay `price` diamonds to receive `amount` again (§6e); null when nothing was earned. */
   doubleOffer: OfflineDoubleOfferDto | null;
+  /** Tax newly billed for periods that ended while away (§5 Taxes). */
+  taxBilled: number;
   company: CompanyDto;
 }
 
@@ -140,6 +152,16 @@ export interface SyncResultDto {
   loanPayment: LoanPaymentDto | null;
   /** Diamond balance after the call (achievements pay diamonds). */
   diamonds: number;
+  /** Unpaid taxes after the call, and what this call billed (usually 0). Cash is never touched. */
+  taxesDue: number;
+  taxBilled: number;
+}
+
+/** Answer to paying taxes (§5): what was paid, the server's cash after it, the whole company. */
+export interface TaxPaymentDto {
+  paid: number;
+  cash: number;
+  company: CompanyDto;
 }
 
 // -- Bank (contract §6d) ------------------------------------------------------

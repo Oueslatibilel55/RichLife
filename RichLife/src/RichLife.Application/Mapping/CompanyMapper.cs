@@ -29,7 +29,10 @@ public static class CompanyMapper
         b.Level,
         b.LevelMultiplier,
         b.NextLevelCost,
-        b.NextLevelIncomePerSecond);
+        b.NextLevelIncomePerSecond,
+        b.TaxDue,
+        b.TaxAccruing,
+        b.TaxPeriodEndsAt);
 
     public static CompanyDto ToDto(Company c, DateTime nowUtc) => new(
         c.Id,
@@ -49,5 +52,7 @@ public static class CompanyMapper
         c.BoostUntil,
         Domain.GameConstants.BoostMultiplier,
         Services.StoreService.Avatar(c.AvatarId),
+        c.TaxesDue,
+        Domain.GameConstants.TaxRate,
         c.Businesses.Select(b => ToDto(b, nowUtc)).ToList());
 }

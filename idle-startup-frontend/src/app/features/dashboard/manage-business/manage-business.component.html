@@ -106,6 +106,26 @@
           </div>
         }
 
+        <!-- Taxes (§5): 7 % of what it earns, billed every 24 h, paid by hand -->
+        <div class="tax-card" [class.tax-card--due]="biz.taxDue > 0">
+          <span class="tax-card__icon" aria-hidden="true">🧾</span>
+          <div class="tax-card__text">
+            <strong class="num">
+              {{ biz.taxDue > 0 ? ('tax.due' | t: { amount: (biz.taxDue | money) }) : ('tax.none' | t) }}
+            </strong>
+            <span class="num">{{ 'tax.cardSub' | t: { rate: taxPercent(), time: formatShiftLeft(taxMsLeft(biz, now())), amount: (biz.taxAccruing | money) } }}</span>
+          </div>
+          @if (biz.taxDue > 0) {
+            @if (cash() < biz.taxDue) {
+              <span class="asset__short num">{{ 'manage.need' | t: { amount: (biz.taxDue - cash() | money) } }}</span>
+            } @else {
+              <button type="button" class="btn btn--danger btn--sm" [disabled]="payingTax()" (click)="payTaxes()">
+                {{ payingTax() ? ('tax.paying' | t) : ('tax.payAmount' | t: { amount: (biz.taxDue | money) }) }}
+              </button>
+            }
+          }
+        </div>
+
         @if (entry(); as cat) {
           @if (cat.availableAssets.length > 0) {
             <div class="assets-head">
@@ -170,7 +190,9 @@
 
         <!-- Closing refunds totalValue minus a fee: 10% normally, 25% in an emergency -->
         <div class="danger-zone">
-          @if (!confirmingClose()) {
+          @if (biz.taxDue > 0) {
+            <p class="tax-close-hint">🧾 {{ 'tax.closeBlocked' | t }}</p>
+          } @else if (!confirmingClose()) {
             <button type="button" class="danger-zone__trigger" (click)="confirmingClose.set(true)">
               {{ 'manage.close.trigger' | t }}
             </button>

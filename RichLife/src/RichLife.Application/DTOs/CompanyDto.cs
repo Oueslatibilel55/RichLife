@@ -20,6 +20,8 @@ public record CompanyDto(
     DateTime? BoostUntil,
     decimal BoostMultiplier,
     AvatarDto? Avatar,
+    decimal TaxesDue,
+    decimal TaxRate,
     IReadOnlyList<BusinessDto> Businesses
 );
 
@@ -42,7 +44,10 @@ public record BusinessDto(
     int Level,
     decimal LevelMultiplier,
     decimal? NextLevelCost,
-    decimal? NextLevelIncomePerSecond
+    decimal? NextLevelIncomePerSecond,
+    decimal TaxDue,
+    decimal TaxAccruing,
+    DateTime TaxPeriodEndsAt
 );
 
 public record OfflineEarningsDto(
@@ -53,6 +58,7 @@ public record OfflineEarningsDto(
     bool Capped,
     LoanPaymentDto? LoanPayment,
     OfflineDoubleOfferDto? DoubleOffer,
+    decimal TaxBilled,
     CompanyDto Company
 );
 
@@ -61,5 +67,10 @@ public record SyncResultDto(
     bool Adjusted,
     IReadOnlyList<AchievementUnlockedDto> NewAchievements,
     LoanPaymentDto? LoanPayment,
-    int Diamonds
+    int Diamonds,
+    decimal TaxesDue,
+    decimal TaxBilled
 );
+
+/// <summary>Answer to paying taxes (contract §5): what was paid, and the company after it.</summary>
+public record TaxPaymentDto(decimal Paid, decimal Cash, CompanyDto Company);

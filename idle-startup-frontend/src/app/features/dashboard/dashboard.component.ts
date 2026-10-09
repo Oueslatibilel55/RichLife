@@ -11,6 +11,7 @@ import {
 } from '../../core/game/prestige';
 import { sectorIcon } from '../../core/game/sectors';
 import { formatShiftLeft, managerAvatar, shiftMsLeft } from '../../core/game/managers';
+import { taxMsLeft } from '../../core/game/taxes';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../shared/pipes/money.pipe';
 import { ManageBusinessComponent } from './manage-business/manage-business.component';
@@ -52,6 +53,38 @@ export class DashboardComponent implements OnInit {
   readonly managerAvatar = managerAvatar;
   readonly shiftMsLeft = shiftMsLeft;
   readonly formatShiftLeft = formatShiftLeft;
+  readonly taxMsLeft = taxMsLeft;
+
+  readonly payingTaxId = signal<string | null>(null);
+  readonly payingAll = signal(false);
+  readonly taxError = signal('');
+  readonly taxPercent = computed(() => Math.round((this.game.company()?.taxRate ?? 0) * 100));
+
+  payTaxes(businessId: string): void {
+    if (this.payingTaxId()) return;
+    this.payingTaxId.set(businessId);
+    this.taxError.set('');
+    this.game.payTaxes(businessId).subscribe({
+      next: () => this.payingTaxId.set(null),
+      error: (err: unknown) => {
+        this.taxError.set(toErrorMessage(err, 'tax.error'));
+        this.payingTaxId.set(null);
+      },
+    });
+  }
+
+  payAllTaxes(): void {
+    if (this.payingAll()) return;
+    this.payingAll.set(true);
+    this.taxError.set('');
+    this.game.payAllTaxes().subscribe({
+      next: () => this.payingAll.set(false),
+      error: (err: unknown) => {
+        this.taxError.set(toErrorMessage(err, 'tax.error'));
+        this.payingAll.set(false);
+      },
+    });
+  }
 
   /**
    * Only prompt once we know there is no company — `loaded` separates "still

@@ -94,6 +94,14 @@ public static class GameConstants
         _                                 => 300_000_000m,
     };
 
+    // Business taxes (features/013-business-taxes.md)
+
+    /// <summary>Share of what a business earned during a tax period that it owes as tax.</summary>
+    public const decimal TaxRate = 0.07m;
+
+    /// <summary>A business is billed once per period, counted from when it was opened.</summary>
+    public static readonly TimeSpan TaxPeriod = TimeSpan.FromHours(24);
+
     // Bank loans (features/009-bank-loans.md)
 
     /// <summary>The bank collects one installment this often, counted from when the loan was taken.</summary>

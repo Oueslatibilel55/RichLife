@@ -49,6 +49,9 @@ export interface ProfileCompany {
   managersHired: number;
   highestBusinessLevel: number;
   diamonds: number;
+  /** Unpaid taxes and every tax ever paid (§5). */
+  taxesDue: number;
+  taxesPaid: number;
 }
 
 export interface Achievement {

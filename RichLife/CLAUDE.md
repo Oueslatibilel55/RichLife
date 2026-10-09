@@ -45,7 +45,7 @@ src/
                             #   the database, edited by admins
     Enums/                  #   PrestigeLevel (1-7), BusinessSector, LuxuryCategory
     Events/                 #   BusinessOpenedEvent, PrestigeTriggeredEvent
-    GameConstants.cs        #   Tuning values (income tiers, offline cap, fee rates)
+    GameConstants.cs        #   Tuning values (income tiers, offline cap, fee rates, tax rate)
 
   RichLife.Application/     # -> Domain
     Services/               #   AuthService, CompanyService, BusinessService,
@@ -178,7 +178,16 @@ runtime failure that no domain test can catch.
   touch `AllTimeEarnings`.
 - `NetWorth` is cash plus company assets plus each business's `TotalValue`
   (opening cost + its assets) plus luxury items at their price, **minus** what is still owed
-  on an active bank loan. Diamonds are not part of it.
+  on an active bank loan **and unpaid taxes**. Diamonds are not part of it.
+- **Business taxes** (2026-10-09, `features/013-business-taxes.md`): every 24 h from its opening
+  (`Business.TaxPeriodStart`), a business is billed `GameConstants.TaxRate` (7 %) of what it earned
+  in that period (`TaxableEarnings`, recorded by `Company.Sync` — the online total split by
+  `NetIncomePerSecond` share — and by `ApplyOfflineProgress` for managed shifts). `Company.AssessTaxes(now)`
+  bills ended periods into `TaxDue`; it is called by `/sync`, `/state`, `/prestige` and the pay routes
+  — no background job. **Billing never touches cash** (it never goes negative): bills add up until the
+  player pays (`PayBusinessTaxes` / `PayAllTaxes`, all or nothing). `CanPrestige` refuses while
+  `TaxesDue > 0` and `CloseBusiness` refuses a business with `TaxDue > 0` (no escaping a bill).
+  `Business` tax mutators are internal — go through the aggregate. `TaxesPaid` is the lifetime total.
 - **Managers** (2026-10-08): `Company.AutomateBusiness(id, manager, nowUtc)` charges
   `Business.ManagerCost = OpeningCost × GameConstants.ManagerCostMultiplier` (2×) for a
   **4-hour shift** (`GameConstants.ManagerShift`) from the hire, stored as
@@ -548,6 +557,9 @@ before it can be built.
 Last checked 2026-10-09, against the Aspire dev database (newest first).
 
 **Green.** `dotnet build RichLife.slnx` (0 warnings).
+2026-10-09: **185** tests green after business taxes (`TaxTests`, 14 cases); migration `BusinessTaxes`
+applied (existing businesses start their first period at the migration) and every tax route, error and
+the prestige/close blocks checked over HTTP.
 2026-10-09: **171** tests green after avatars; migration `Avatars` applied, routes checked over HTTP.
 2026-10-09: **167** tests green after diamonds and the store (`StoreTests`, 21 cases); migration
 `DiamondsAndStore` (with its backfill) applied and every store and admin-diamonds route checked over HTTP.
