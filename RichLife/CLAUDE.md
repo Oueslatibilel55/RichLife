@@ -44,7 +44,7 @@ src/
   RichLife.Application/     # -> Domain
     Services/               #   AuthService, CompanyService, BusinessService,
                             #   LeaderboardService, CatalogueAdminService, AdminService,
-                            #   ProfileService, LuxuryService, BankService
+                            #   ProfileService, LuxuryService, BankService, LuxuryAdminService
     Interfaces/             #   ICompanyRepository, IPlayerRepository, ILeaderboardRepository,
                             #   ICatalogueRepository, IManagerNameRepository,
                             #   IAdminReadRepository, IUnitOfWork, IDomainEventDispatcher,
@@ -67,6 +67,7 @@ src/
     Endpoints/              #   AuthEndpoints, GameEndpoints, BusinessEndpoints,
                             #   LeaderboardEndpoints, ProfileEndpoints, LuxuryEndpoints,
                             #   BankEndpoints, AdminCatalogueEndpoints, AdminEndpoints,
+                            #   AdminLuxuryEndpoints,
                             #   RateLimitPolicies, AuthPolicies, ClaimsPrincipalExtensions
     Program.cs
 
@@ -203,7 +204,15 @@ runtime failure that no domain test can catch.
   loan) — called by `/sync` after the clamp and by `/state` after offline earnings, so
   there is no background job. **Cash never goes negative**: a shortfall stays owed plus a
   10 % penalty (`GameConstants.LoanPenaltyRate`). `Loan` mutators are internal — only the
-  aggregate changes a loan. `AdminReset` deletes loans.
+  aggregate changes a loan. `AdminReset` deletes loans; `AdminForgiveLoan` closes the active
+  loan as forgiven (`ForgivenAmount` = what was owed, cash untouched).
+- **Admin catch-up** (2026-10-09, `features/010-admin-catch-up.md`): the luxury list is now
+  editable (`LuxuryCatalogueEntry.CreateNew` / `Update`, `LuxuryAdminService`,
+  `/api/admin/luxury` — no delete, retire with `IsActive`; not cached, so no invalidation);
+  `/api/admin/loans`, `/api/admin/banks` (banks read-only: rules in code) and
+  `/players/{id}/forgive-loan`; stats and the player list cover luxury, achievements, levels
+  and loans. In SQL projections, spell loan `Outstanding` out
+  (`TotalRepay + Penalties - Paid - ForgivenAmount`) — the property is computed, not mapped.
 - **Achievements** (2026-10-08, `features/007-player-profile.md`): defined in code in
   `Domain/Achievements/Achievements.cs` — **codes are persisted, never rename or reuse one**.
   `Company.UnlockAchievements(now)` records newly met ones (owned `company_achievements`,
@@ -514,6 +523,8 @@ before it can be built.
 Last checked 2026-10-02, against the Aspire dev database.
 
 **Green.** `dotnet build RichLife.slnx` (0 warnings) and the 72 domain unit tests.
+2026-10-09: **146** tests green after the admin catch-up (forgive-loan, luxury editor
+validation); migration `LoanForgiveness` applied and every new admin route checked over HTTP.
 2026-10-09: **133** tests green after the bank (`BankTests`, 22 cases); migration
 `BankLoans` applied to the Aspire database and the bank checked over HTTP (see
 `docs/features/009-bank-loans.md`).

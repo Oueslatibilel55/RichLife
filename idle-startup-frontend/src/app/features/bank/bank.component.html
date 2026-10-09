@@ -89,8 +89,11 @@
             <li>
               <span class="logo logo--sm" aria-hidden="true">{{ h.bankIcon }}</span>
               <div class="history__main">
-                <strong>{{ h.bankName }}</strong>
-                <small>{{ 'bank.history.repaidOn' | t: { date: date(h.repaidAt) } }}</small>
+                <strong>
+                  {{ h.bankName }}
+                  @if (h.forgiven) { <span class="badge badge--violet">{{ 'bank.history.forgiven' | t }}</span> }
+                </strong>
+                <small>{{ (h.forgiven ? 'bank.history.forgivenOn' : 'bank.history.repaidOn') | t: { date: date(h.repaidAt) } }}</small>
               </div>
               <div class="history__nums num">
                 <span>{{ 'bank.history.borrowed' | t }} {{ h.principal | money }}</span>

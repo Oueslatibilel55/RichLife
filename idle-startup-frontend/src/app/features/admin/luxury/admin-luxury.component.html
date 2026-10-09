@@ -1,0 +1,50 @@
+<div class="toolbar">
+  <input class="form-input" type="search" [placeholder]="'admin.catalogue.searchPlaceholder' | t" [attr.aria-label]="'admin.luxury.searchAria' | t"
+         [ngModel]="search()" (ngModelChange)="search.set($event)" />
+  <select class="form-input form-select" [attr.aria-label]="'admin.catalogue.levelAria' | t" [ngModel]="level()" (ngModelChange)="level.set($event)">
+    <option [value]="all">{{ 'admin.catalogue.allLevels' | t }}</option>
+    @for (l of levels; track l) { <option [value]="l">{{ prestigeLabel(l) }}</option> }
+  </select>
+  <label class="check">
+    <input type="checkbox" [ngModel]="showRetired()" (ngModelChange)="showRetired.set($event)" /> {{ 'admin.catalogue.showRetired' | t }}
+  </label>
+  <a routerLink="/admin/luxury/new" class="btn btn--primary">+ {{ 'admin.luxury.newItem' | t }}</a>
+</div>
+
+<p class="muted num">{{ 'admin.luxury.summary' | t: { active: activeCount(), total: items().length } }}</p>
+
+@if (error()) {
+  <div class="alert alert--error" role="alert">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'admin.luxury.loading' | t }}</p></div>
+} @else {
+  @for (group of groups(); track group.level) {
+    <section class="group">
+      <h2 [style.color]="prestigeColor(group.level)">{{ prestigeLabel(group.level) }}</h2>
+      <ul class="list">
+        @for (i of group.items; track i.id) {
+          <li class="card item" [class.item--retired]="!i.isActive">
+            <span class="item__icon thumb">
+              <img [src]="i.imageUrl" alt="" loading="lazy" decoding="async" />
+            </span>
+            <div class="item__main">
+              <span class="item__name">
+                {{ i.name }}
+                @if (!i.isActive) { <span class="badge badge--neutral">{{ 'admin.catalogue.retired' | t }}</span> }
+              </span>
+              <span class="item__meta num">
+                {{ categoryIcon(i.category) }} {{ categoryLabel(i.category) }} · {{ i.price | money }}
+                · {{ 'admin.luxury.owners' | t: { n: i.owners } }} · {{ i.id }}
+              </span>
+            </div>
+            <a class="btn btn--outline btn--sm" [routerLink]="['/admin/luxury', i.id]">{{ 'admin.catalogue.edit' | t }}</a>
+          </li>
+        }
+      </ul>
+    </section>
+  } @empty {
+    <div class="empty-state"><div class="empty-state__icon" aria-hidden="true">🔍</div><p class="empty-state__text">{{ 'admin.catalogue.empty' | t }}</p></div>
+  }
+}

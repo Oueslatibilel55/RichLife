@@ -7,6 +7,7 @@ import { toErrorMessage } from '../../../core/http/api-error';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { t } from '../../../core/i18n/i18n';
 
 @Component({
   selector: 'app-admin-overview',
@@ -32,6 +33,17 @@ export class AdminOverviewComponent implements OnInit {
   );
 
   readonly maxOwners = computed(() => Math.max(1, ...(this.stats()?.topBusinesses.map((b) => b.owners) ?? [0])));
+
+  readonly maxPerAchievement = computed(() =>
+    Math.max(1, ...(this.stats()?.achievementDistribution.map((a) => a.companies) ?? [0])),
+  );
+
+  /** Translated title (`ach.<code>.title`); a code the client does not know yet shows the server's English. */
+  achTitle(code: string, fallback: string): string {
+    const key = `ach.${code}.title`;
+    const text = t(key);
+    return text === key ? fallback : text;
+  }
 
   ngOnInit(): void {
     this.load();

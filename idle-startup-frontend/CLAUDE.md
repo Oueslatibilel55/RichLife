@@ -64,7 +64,8 @@ core/
   interceptors/auth.interceptor.ts
   services/    auth.service.ts, game.service.ts
 features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury, bank, leaderboard, profile,
-               admin/ (admin-layout, overview, players, catalogue (+ editor), managers; admin.service, admin.models)
+               admin/ (admin-layout, overview, players, catalogue (+ editor), managers, loans, luxury (+ editor);
+                       admin.service, admin.models)
 shared/
   components/layout  — persistent HUD/nav shell (top bar + mobile tab bar)
   components/icon    — inline SVG icon set
@@ -83,7 +84,8 @@ returns a `UrlTree` carrying a `returnUrl`, which `LoginComponent` honours.
 
 **Two apps behind one login** (`features/006-admin-panel.md`): admins are staff, not players.
 - `/admin` is a **top-level** route loading `AdminLayoutComponent` (staff top bar + phone tab bar: Overview,
-  Players, Catalogue, Managers; no cash HUD; section heading from each child route's `data`). Guarded by
+  Players, Catalogue, Managers, Loans, Luxury; no cash HUD; section heading from each child route's `data`;
+  between 900 and 1199 px the top nav drops its icons and the brand text so six sections fit). Guarded by
   `canMatch: [adminMatchGuard]` — a non-admin never matches it (nor downloads its chunk) and falls through to
   the game — plus `canActivateChild: [adminChildGuard]`.
 - The game layout route has `canActivate: [authGuard, playerGuard]`: an admin is sent to `/admin`, so
@@ -94,6 +96,18 @@ returns a `UrlTree` carrying a `returnUrl`, which `LoginComponent` honours.
   players on `/api/admin/*`. A role change shows up after the next login/refresh (new token).
 - Admin pages call `AdminService` (stateless HTTP); keep their requests modest — the server's `game-actions`
   rate limit (20 req / 10 s) is shared by everyone.
+- Admin pages (contract §7–§7d): **Overview** (stats incl. luxury, achievement distribution — titles via
+  `ach.<code>.title`, server English as fallback — and loan totals); **Players** (cash, reset, role, delete,
+  and **Forgive loan** when `loanOutstanding` is not null — `POST /admin/players/{id}/forgive-loan`, same
+  in-page confirmation modal, the returned row replaces the old one); **Catalogue** (business editor in a
+  modal); **Managers**; **Loans** (`/admin/loans`: Active/All toggle over `GET /admin/loans?active=`, a Forgive
+  action per active loan — the API returns the player row, so the page closes the loan locally — and the
+  20 banks read-only from `GET /admin/banks`: bank rules live in code); **Luxury** (`/admin/luxury` list reusing
+  the catalogue list styles, and a routed editor at `/admin/luxury/new` and `/admin/luxury/:id` — `id` bound
+  as a component input — with client-side checks that return the server's exact validation messages, so
+  they translate through `dict/server.ts`, and a live photo preview). The luxury routes use the title key
+  `admin.title.luxury` (in `dict/admin.ts`). A forgiven loan shows a "Forgiven" badge in the player's
+  bank history (`LoanDto.forgiven`).
 
 ### GameService — the idle-game loop
 

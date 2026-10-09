@@ -38,7 +38,8 @@ public record LoanDto(
     int MissedPayments,
     DateTime TakenAt,
     DateTime? NextPaymentAt,
-    DateTime? RepaidAt);
+    DateTime? RepaidAt,
+    bool Forgiven);
 
 /// <summary>What the bank collected during a /sync or /state call.</summary>
 public record LoanPaymentDto(string BankName, decimal Paid, decimal Penalty, decimal Outstanding, bool Repaid);

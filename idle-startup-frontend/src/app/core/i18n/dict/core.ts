@@ -46,6 +46,7 @@ export const CORE: DictSet = {
     'title.adminPlayers': 'Players — Rich Life admin',
     'title.adminCatalogue': 'Catalogue — Rich Life admin',
     'title.adminManagers': 'Manager names — Rich Life admin',
+    'title.adminLoans': 'Loans — Rich Life admin',
 
     'ach.earn-1k.title': 'First thousand',
     'ach.earn-1k.desc': 'Earn $1,000 all-time.',
@@ -129,6 +130,7 @@ export const CORE: DictSet = {
     'title.adminPlayers': 'Joueurs — Rich Life admin',
     'title.adminCatalogue': 'Catalogue — Rich Life admin',
     'title.adminManagers': 'Noms des managers — Rich Life admin',
+    'title.adminLoans': 'Prêts — Rich Life admin',
 
     'ach.earn-1k.title': 'Premier millier',
     'ach.earn-1k.desc': 'Gagnez 1 000 $ au total.',
@@ -212,6 +214,7 @@ export const CORE: DictSet = {
     'title.adminPlayers': 'اللاعبون — إدارة Rich Life',
     'title.adminCatalogue': 'الكتالوج — إدارة Rich Life',
     'title.adminManagers': 'أسماء المديرين — إدارة Rich Life',
+    'title.adminLoans': 'القروض — إدارة Rich Life',
 
     'ach.earn-1k.title': 'الألف الأولى',
     'ach.earn-1k.desc': 'اربح 1,000$ إجمالًا.',

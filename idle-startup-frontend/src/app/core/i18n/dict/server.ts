@@ -39,6 +39,18 @@ export const SERVER: DictSet = {
     'server.requiresPrestige': 'Requires prestige {level}.',
     'server.needAssets': 'Need {n} assets to unlock this.',
     'server.prestigeCosts': 'Prestige costs {price} in cash.',
+
+    'Player has no active loan.': 'Player has no active loan.',
+    'Item id already exists.': 'Item id already exists.',
+    'Item id must be lowercase letters, digits and single dashes, at most 60 characters.': 'Item id must be lowercase letters, digits and single dashes, at most 60 characters.',
+    'Name is required and must be at most 80 characters.': 'Name is required and must be at most 80 characters.',
+    'Description must be at most 300 characters.': 'Description must be at most 300 characters.',
+    'Price must be positive.': 'Price must be positive.',
+    'Image URL is required, at most 300 characters, and must start with / or https://.': 'Image URL is required, at most 300 characters, and must start with / or https://.',
+    'Image credit must be at most 200 characters.': 'Image credit must be at most 200 characters.',
+    'Image source URL must be at most 500 characters.': 'Image source URL must be at most 500 characters.',
+    'Unknown category.': 'Unknown category.',
+    'Unknown prestige level.': 'Unknown prestige level.',
   },
 
   fr: {
@@ -74,6 +86,18 @@ export const SERVER: DictSet = {
     'server.requiresPrestige': 'Nécessite le prestige {level}.',
     'server.needAssets': 'Il faut {n} actifs pour débloquer ceci.',
     'server.prestigeCosts': 'Le prestige coûte {price} en espèces.',
+
+    'Player has no active loan.': 'Ce joueur n’a aucun prêt en cours.',
+    'Item id already exists.': 'Cet identifiant d’article existe déjà.',
+    'Item id must be lowercase letters, digits and single dashes, at most 60 characters.': 'L’identifiant ne contient que des minuscules, des chiffres et des tirets simples, 60 caractères au plus.',
+    'Name is required and must be at most 80 characters.': 'Le nom est requis et fait au plus 80 caractères.',
+    'Description must be at most 300 characters.': 'La description fait au plus 300 caractères.',
+    'Price must be positive.': 'Le prix doit être positif.',
+    'Image URL is required, at most 300 characters, and must start with / or https://.': 'L’URL de l’image est requise, fait au plus 300 caractères et commence par / ou https://.',
+    'Image credit must be at most 200 characters.': 'Le crédit photo fait au plus 200 caractères.',
+    'Image source URL must be at most 500 characters.': 'L’URL de la source fait au plus 500 caractères.',
+    'Unknown category.': 'Catégorie inconnue.',
+    'Unknown prestige level.': 'Niveau de prestige inconnu.',
   },
 
   ar: {
@@ -109,5 +133,17 @@ export const SERVER: DictSet = {
     'server.requiresPrestige': 'يتطلب مكانة {level}.',
     'server.needAssets': 'تحتاج إلى {n} أصول لفتح هذا.',
     'server.prestigeCosts': 'تكلفة الارتقاء {price} نقدًا.',
+
+    'Player has no active loan.': 'ليس لدى هذا اللاعب قرض جارٍ.',
+    'Item id already exists.': 'معرّف هذا العنصر موجود بالفعل.',
+    'Item id must be lowercase letters, digits and single dashes, at most 60 characters.': 'يتكوّن المعرّف من أحرف لاتينية صغيرة وأرقام وشرطات مفردة، بحد أقصى 60 حرفًا.',
+    'Name is required and must be at most 80 characters.': 'الاسم مطلوب ولا يتجاوز 80 حرفًا.',
+    'Description must be at most 300 characters.': 'لا يتجاوز الوصف 300 حرف.',
+    'Price must be positive.': 'يجب أن يكون السعر موجبًا.',
+    'Image URL is required, at most 300 characters, and must start with / or https://.': 'رابط الصورة مطلوب، ولا يتجاوز 300 حرف، ويبدأ بـ / أو https://.',
+    'Image credit must be at most 200 characters.': 'لا يتجاوز حق نشر الصورة 200 حرف.',
+    'Image source URL must be at most 500 characters.': 'لا يتجاوز رابط مصدر الصورة 500 حرف.',
+    'Unknown category.': 'فئة غير معروفة.',
+    'Unknown prestige level.': 'مستوى مكانة غير معروف.',
   },
 };

@@ -1,0 +1,87 @@
+<a routerLink="/admin/luxury" class="link-btn back"><span class="rtl-flip" aria-hidden="true">←</span> {{ 'admin.luxury.back' | t }}</a>
+
+@if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
+@if (notice()) { <div class="alert alert--success" role="status">{{ notice() }}</div> }
+
+@if (loading()) {
+  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'admin.luxury.loadingItem' | t }}</p></div>
+} @else {
+  <div class="layout">
+    <form class="card grid" (ngSubmit)="save()">
+      <div class="form-group">
+        <label for="l-id">{{ 'admin.editor.id' | t }}</label>
+        <input id="l-id" class="form-input" name="id" [(ngModel)]="form.id" [readonly]="!isNew" placeholder="rolex-daytona" maxlength="60" />
+      </div>
+      <div class="form-group">
+        <label for="l-name">{{ 'admin.editor.name' | t }}</label>
+        <input id="l-name" class="form-input" name="name" [(ngModel)]="form.name" maxlength="80" />
+      </div>
+      <div class="form-group">
+        <label for="l-cat">{{ 'admin.luxury.category' | t }}</label>
+        <select id="l-cat" class="form-input form-select" name="category" [(ngModel)]="form.category">
+          @for (c of categories; track c) { <option [value]="c">{{ categoryIcons[c] }} {{ categoryLabels[c] | t }}</option> }
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="l-level">{{ 'admin.editor.requiredPrestige' | t }}</label>
+        <select id="l-level" class="form-input form-select" name="level" [(ngModel)]="form.requiredPrestige">
+          @for (l of levels; track l) { <option [value]="l">{{ prestigeLabel(l) }}</option> }
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="l-price">{{ 'admin.luxury.price' | t }}</label>
+        <input id="l-price" class="form-input num" type="number" min="1" name="price" [(ngModel)]="form.price" />
+      </div>
+      <div class="form-group">
+        <label for="l-order">{{ 'admin.editor.displayOrder' | t }}</label>
+        <input id="l-order" class="form-input num" type="number" name="order" [(ngModel)]="form.displayOrder" />
+      </div>
+      <div class="form-group grid__wide">
+        <label for="l-desc">{{ 'admin.editor.description' | t }}</label>
+        <textarea id="l-desc" class="form-input" name="desc" rows="2" maxlength="300" [(ngModel)]="form.description"></textarea>
+      </div>
+      <div class="form-group grid__wide">
+        <label for="l-img">{{ 'admin.luxury.imageUrl' | t }}</label>
+        <input id="l-img" class="form-input" name="img" maxlength="300" placeholder="/luxury/rolex-daytona.jpg"
+               [ngModel]="form.imageUrl" (ngModelChange)="onImageUrlChange($event)" />
+        <small class="muted">{{ 'admin.luxury.imageHelp' | t }}</small>
+      </div>
+      <div class="form-group">
+        <label for="l-credit">{{ 'admin.luxury.imageCredit' | t }}</label>
+        <input id="l-credit" class="form-input" name="credit" maxlength="200" placeholder="Author · CC BY-SA 4.0" [(ngModel)]="form.imageCredit" />
+      </div>
+      <div class="form-group">
+        <label for="l-src">{{ 'admin.luxury.imageSource' | t }}</label>
+        <input id="l-src" class="form-input" name="src" maxlength="500" placeholder="https://commons.wikimedia.org/wiki/File:…" [(ngModel)]="form.imageSourceUrl" />
+      </div>
+      @if (!isNew) {
+        <label class="check grid__wide">
+          <input type="checkbox" name="active" [(ngModel)]="form.isActive" />
+          {{ 'admin.luxury.active' | t }}
+        </label>
+      }
+      <button type="submit" class="btn btn--primary grid__wide" [disabled]="saving()">
+        {{ (saving() ? 'admin.editor.saving' : isNew ? 'admin.luxury.create' : 'admin.luxury.save') | t }}
+      </button>
+    </form>
+
+    <aside class="card preview">
+      <h3>{{ 'admin.luxury.preview' | t }}</h3>
+      <figure class="preview__photo">
+        @if (form.imageUrl.trim() && !imageBroken()) {
+          <img [src]="form.imageUrl.trim()" [alt]="form.name" (error)="imageBroken.set(true)" />
+        } @else {
+          <span class="preview__none">{{ categoryIcons[form.category] }}<small>{{ 'admin.luxury.noImage' | t }}</small></span>
+        }
+        @if (form.imageCredit) {
+          <figcaption class="photo-credit">{{ form.imageCredit }}</figcaption>
+        }
+      </figure>
+      <strong>{{ form.name || ('admin.editor.name' | t) }}</strong>
+      <span class="muted num">{{ categoryLabels[form.category] | t }} · {{ (form.price || 0) | money }} · {{ prestigeLabel(form.requiredPrestige) }}</span>
+      @if (!isNew) {
+        <span class="muted num">{{ 'admin.luxury.owners' | t: { n: owners() } }}</span>
+      }
+    </aside>
+  </div>
+}

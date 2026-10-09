@@ -162,5 +162,6 @@ app.MapLuxuryEndpoints();
 app.MapBankEndpoints();
 app.MapAdminCatalogueEndpoints();
 app.MapAdminEndpoints();
+app.MapAdminLuxuryEndpoints();
 
 app.Run();

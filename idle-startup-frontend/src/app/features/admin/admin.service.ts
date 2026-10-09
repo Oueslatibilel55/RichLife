@@ -3,12 +3,17 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  AdminBank,
   AdminCatalogueEntry,
+  AdminLoan,
+  AdminLuxuryItem,
   AdminPlayer,
   AdminStats,
   CatalogueAssetFields,
   CatalogueEntryFields,
+  CreateLuxuryRequest,
   ManagerNameRow,
+  UpdateLuxuryRequest,
 } from './admin.models';
 
 /** HTTP for the admin panel. Stateless — each page holds its own signals. */
@@ -42,6 +47,40 @@ export class AdminService {
 
   deletePlayer(id: string): Observable<void> {
     return this.http.delete<void>(`${this.api}/players/${id}`);
+  }
+
+  /** Cancels what the player still owes; returns the updated row (loanOutstanding null). */
+  forgiveLoan(playerId: string): Observable<AdminPlayer> {
+    return this.http.post<AdminPlayer>(`${this.api}/players/${playerId}/forgive-loan`, null);
+  }
+
+  // -- Bank (contract §7c) ------------------------------------------------------------
+
+  /** active = true: loans still being repaid; false: every loan. Newest first, max 200. */
+  getLoans(active: boolean): Observable<AdminLoan[]> {
+    return this.http.get<AdminLoan[]>(`${this.api}/loans`, { params: new HttpParams().set('active', active) });
+  }
+
+  getBanks(): Observable<AdminBank[]> {
+    return this.http.get<AdminBank[]>(`${this.api}/banks`);
+  }
+
+  // -- Luxury catalogue (contract §7d) -------------------------------------------------
+
+  getLuxury(): Observable<AdminLuxuryItem[]> {
+    return this.http.get<AdminLuxuryItem[]>(`${this.api}/luxury`);
+  }
+
+  getLuxuryItem(id: string): Observable<AdminLuxuryItem> {
+    return this.http.get<AdminLuxuryItem>(`${this.api}/luxury/${id}`);
+  }
+
+  createLuxury(req: CreateLuxuryRequest): Observable<AdminLuxuryItem> {
+    return this.http.post<AdminLuxuryItem>(`${this.api}/luxury`, req);
+  }
+
+  updateLuxury(id: string, req: UpdateLuxuryRequest): Observable<AdminLuxuryItem> {
+    return this.http.put<AdminLuxuryItem>(`${this.api}/luxury/${id}`, req);
   }
 
   // -- Catalogue (contract §7) --------------------------------------------------

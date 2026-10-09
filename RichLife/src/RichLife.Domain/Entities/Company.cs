@@ -416,6 +416,20 @@ public class Company : AggregateRoot
         MarkUpdated();
     }
 
+    /// <summary>
+    /// Admin: cancels what is still owed on the active loan. Cash is untouched; the loan is
+    /// closed as forgiven, so the player may take a new one.
+    /// </summary>
+    public Result AdminForgiveLoan(DateTime nowUtc)
+    {
+        var loan = ActiveLoan;
+        if (loan is null) return Result.Fail("Player has no active loan.");
+
+        loan.Forgive(nowUtc);
+        MarkUpdated();
+        return Result.Ok();
+    }
+
     public Result ListBusinessForSale(Guid businessId, decimal askingPrice)
     {
         var biz = _businesses.FirstOrDefault(b => b.Id == businessId);

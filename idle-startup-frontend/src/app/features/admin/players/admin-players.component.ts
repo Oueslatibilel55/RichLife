@@ -14,7 +14,8 @@ import { t } from '../../../core/i18n/i18n';
 type PendingAction =
   | { kind: 'cash'; player: AdminPlayer }
   | { kind: 'reset'; player: AdminPlayer }
-  | { kind: 'delete'; player: AdminPlayer };
+  | { kind: 'delete'; player: AdminPlayer }
+  | { kind: 'forgive'; player: AdminPlayer };
 
 @Component({
   selector: 'app-admin-players',
@@ -101,6 +102,9 @@ export class AdminPlayersComponent implements OnInit {
       case 'reset':
         this.run(p, this.admin.resetPlayer(p.id), t('admin.players.wasReset', { name: p.username }));
         break;
+      case 'forgive':
+        this.run(p, this.admin.forgiveLoan(p.id), t('admin.players.loanForgiven', { name: p.username }));
+        break;
       case 'delete':
         this.busyId.set(p.id);
         this.admin.deletePlayer(p.id).subscribe({
@@ -111,6 +115,16 @@ export class AdminPlayersComponent implements OnInit {
           error: (err: unknown) => this.fail(err),
         });
         break;
+    }
+  }
+
+  /** Confirm button label (a translation key) for each pending action. */
+  confirmLabel(kind: PendingAction['kind']): string {
+    switch (kind) {
+      case 'cash': return 'admin.save';
+      case 'reset': return 'admin.players.reset';
+      case 'forgive': return 'admin.players.forgiveLoan';
+      case 'delete': return 'admin.players.delete';
     }
   }
 

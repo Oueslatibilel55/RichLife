@@ -1,5 +1,6 @@
 using RichLife.Application.DTOs;
 using RichLife.Application.Interfaces;
+using RichLife.Domain.Banking;
 using RichLife.Domain.Catalogue;
 using RichLife.Domain.Common;
 
@@ -88,6 +89,41 @@ public class AdminService(
         playerRepo.Remove(player);
         await uow.CommitAsync(ct);
         return Result.Ok();
+    }
+
+    public async Task<Result<AdminPlayerDto>> ForgiveLoanAsync(Guid playerId, CancellationToken ct = default)
+    {
+        if (await playerRepo.GetByIdAsync(playerId, ct) is null)
+            return Result.Fail<AdminPlayerDto>("Player not found.");
+
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<AdminPlayerDto>("Player has no company.");
+
+        var result = company.AdminForgiveLoan(UtcNow);
+        if (!result.IsSuccess) return Result.Fail<AdminPlayerDto>(result.Error!);
+
+        companyRepo.Update(company);
+        await uow.CommitAsync(ct);
+
+        return await ReloadAsync(playerId, ct);
+    }
+
+    // -- Bank -------------------------------------------------------------------
+
+    public Task<IReadOnlyList<AdminLoanDto>> GetLoansAsync(bool activeOnly, CancellationToken ct = default)
+        => reads.GetLoansAsync(activeOnly, MaxPlayersListed, ct);
+
+    /// <summary>The banks are rules in code; their usage comes from the loans table.</summary>
+    public async Task<IReadOnlyList<AdminBankDto>> GetBanksAsync(CancellationToken ct = default)
+    {
+        var usage = (await reads.GetBankUsageAsync(ct)).ToDictionary(u => u.BankId);
+        return BankCatalog.All.Select(b =>
+        {
+            var u = usage.GetValueOrDefault(b.Id);
+            return new AdminBankDto(
+                b.Id, b.Name, b.Icon, b.MinRate, b.MaxRate, b.MinInstallments, b.MaxInstallments,
+                u?.LoansTaken ?? 0, u?.ActiveLoans ?? 0, u?.TotalLent ?? 0m);
+        }).ToList();
     }
 
     private async Task<Result<AdminPlayerDto>> ReloadAsync(Guid playerId, CancellationToken ct)

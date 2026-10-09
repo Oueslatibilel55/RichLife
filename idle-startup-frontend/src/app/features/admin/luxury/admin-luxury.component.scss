@@ -1,0 +1,9 @@
+// On top of the business catalogue's list styles: a photo thumbnail instead of a sector icon.
+.thumb {
+  position: relative;
+  overflow: hidden;
+  width: 52px;
+  height: 52px;
+
+  img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+}

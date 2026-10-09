@@ -645,12 +645,13 @@ only valid until `offersRefreshAt`.
   "installments": 8, "installmentAmount": 13125,
   "paid": 26250, "penalties": 0, "outstanding": 78750, "missedPayments": 0,
   "takenAt": "2026-10-09T08:00:00Z", "nextPaymentAt": "2026-10-09T20:00:00Z",
-  "repaidAt": null
+  "repaidAt": null, "forgiven": false
 }
 ```
 
 `outstanding = totalRepay + penalties − paid`. `nextPaymentAt` is `null` and `repaidAt` set
-once repaid.
+once closed — repaid, or **forgiven** by an admin (`forgiven: true`, §7b; `outstanding` is
+then 0 and `paid` is what was actually paid).
 
 ### `POST /api/game/bank/loans/{offerId}` — take a loan
 
@@ -803,13 +804,20 @@ Added 2026-10-08 — see `features/006-admin-panel.md`. Same gate as §7: bearer
   "businessesOwned": 118, "managersOnShift": 17, "averageBusinessLevel": 2.4,
   "prestigeDistribution": [ { "level": "TheHustle", "companies": 30 } ],
   "topBusinesses": [ { "catalogueId": "food-cart", "name": "Food Cart", "owners": 31 } ],
-  "catalogueBusinesses": 52, "catalogueActive": 52, "catalogueAssets": 156, "managerNames": 130
+  "catalogueBusinesses": 52, "catalogueActive": 52, "catalogueAssets": 156, "managerNames": 130,
+  "luxuryOwned": 23, "luxuryCatalogue": 76, "luxuryCatalogueActive": 76,
+  "achievementsUnlocked": 214,
+  "achievementDistribution": [ { "code": "earn-1k", "title": "First thousand", "icon": "💵", "companies": 38 } ],
+  "loansTaken": 19, "activeLoans": 6, "loansOutstanding": 812400.5, "loansMissedPayments": 3
 }
 ```
 
 Every player figure excludes admins (`admins` counts them): `players`, `newPlayers*`, `companies`, cash, earnings, businesses, managers, levels and both lists. `activePlayers24h` = player companies whose `lastSyncAt` is within 24 h. `prestigeDistribution`
 lists all 7 levels in order (zeros included). `topBusinesses` = the 5 most-owned catalogue
-entries.
+entries. `achievementDistribution` lists every achievement in display order with how many
+player companies unlocked it (zeros included). `activeLoans` / `loansOutstanding` /
+`loansMissedPayments` cover loans still being repaid; `loansTaken` counts every loan ever
+taken. (Added 2026-10-09: the luxury, achievement and loan fields.)
 
 ### `GET /api/admin/players?search=` → `200` `AdminPlayerDto[]`
 
@@ -821,11 +829,16 @@ entries.
   "isAdmin": false, "createdAt": "2026-10-01T09:00:00Z",
   "companyName": "Oueslati", "cash": 1500.25, "prestigeLevel": "TheHustle",
   "prestigeCount": 0, "allTimeEarnings": 9000, "businesses": 2,
-  "lastSeenAt": "2026-10-08T11:58:00Z"
+  "lastSeenAt": "2026-10-08T11:58:00Z",
+  "highestBusinessLevel": 7, "luxuryOwned": 2, "achievementsUnlocked": 6,
+  "loanOutstanding": 17280
 }
 ```
 
 The company fields are `null` for a player who has not created a company yet.
+`loanOutstanding` is what the player still owes on an active loan, `null` without one.
+(`highestBusinessLevel`, `luxuryOwned`, `achievementsUnlocked` and `loanOutstanding` added
+2026-10-09.)
 
 ### `PUT /api/admin/players/{id}/role`
 
@@ -856,6 +869,13 @@ admin's value, and clears the mark. The client adopts it and refreshes the compa
 → `200` (empty) · `400` `"Player not found."` | `"You cannot delete your own account."`.
 Deletes the player, their company, businesses and assets.
 
+### `POST /api/admin/players/{id}/forgive-loan`
+
+No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has no company."` |
+`"Player has no active loan."`. Cancels what is still owed: the loan is closed as **forgiven**
+(`LoanDto.forgiven: true`, §6d) and the player can take a new one. Cash is not touched.
+Added 2026-10-09.
+
 ### Manager names — `/api/admin/manager-names`
 
 - `GET` → `200` `[ { "id": 1, "name": "Lucy", "inUse": 3 } ]` — `inUse` = businesses
@@ -864,6 +884,95 @@ Deletes the player, their company, businesses and assets.
   `"Name is required and must be at most 40 characters."` | `"Name already exists."`.
 - `DELETE /{id}` → `200` (empty) · `400` `"Name not found."` |
   `"Name is used by a business."` (a database foreign key protects it).
+
+---
+
+## 7c. Admin — bank — `/api/admin`
+
+Added 2026-10-09 — see `features/010-admin-catch-up.md`. Same gate as §7.
+
+The 20 banks and the offer rules are **rules in code** (`Domain/Banking`), not content, so
+they are read-only here — changing a bank's rates is a code change.
+
+### `GET /api/admin/loans?active={bool}` → `200` `AdminLoanDto[]`
+
+`active=true` (the default) lists loans still being repaid; `active=false` lists every loan.
+Newest first, max 200. Admins' own loans are included (they cannot take any).
+
+```json
+{
+  "id": "5b2e…", "playerId": "0f6b…", "username": "bilel", "companyName": "Oueslati",
+  "bankId": "carthage-credit", "bankName": "Carthage Credit", "bankIcon": "🏺",
+  "principal": 100000, "interestRate": 0.05, "totalRepay": 105000,
+  "paid": 26250, "penalties": 0, "outstanding": 78750, "missedPayments": 0,
+  "takenAt": "2026-10-09T08:00:00Z", "nextPaymentAt": "2026-10-09T20:00:00Z",
+  "repaidAt": null, "forgiven": false
+}
+```
+
+### `GET /api/admin/banks` → `200` `AdminBankDto[]`
+
+The 20 banks in catalogue order, with their rate and term bands and usage.
+
+```json
+{
+  "id": "carthage-credit", "name": "Carthage Credit", "icon": "🏺",
+  "minRate": 0.04, "maxRate": 0.08, "minInstallments": 4, "maxInstallments": 10,
+  "loansTaken": 5, "activeLoans": 1, "totalLent": 412000
+}
+```
+
+Forgiving a player's loan: `POST /api/admin/players/{id}/forgive-loan` (§7b).
+
+---
+
+## 7d. Admin — luxury catalogue — `/api/admin/luxury`
+
+Added 2026-10-09 — see `features/010-admin-catch-up.md`. Same gate as §7.
+
+The luxury list (§6c) is content in `luxury_catalogue`. Like the business catalogue, an
+edit applies to purchases made **after** it — a bought item keeps the name, price and photo
+it was bought with. There is **no delete** (a foreign key protects owned items): retire with
+`isActive: false`, which hides the item from the shop.
+
+### `AdminLuxuryItemDto`
+
+```json
+{
+  "id": "rolex-submariner", "name": "Rolex Submariner", "category": "Watch",
+  "description": "The diver's watch everyone recognises.", "price": 150000,
+  "requiredPrestige": "SmallBusiness",
+  "imageUrl": "/luxury/rolex-submariner.jpg", "imageCredit": "Author · CC BY-SA 4.0",
+  "imageSourceUrl": "https://commons.wikimedia.org/wiki/File:…",
+  "displayOrder": 10, "isActive": true, "owners": 3
+}
+```
+
+`owners` = companies that bought it. `imageUrl` is a path on the **frontend** origin: a new
+photo must be added to `idle-startup-frontend/public/luxury/` (and deployed) before an item
+can point at it. Keep the credit and source with the photo — the licenses require it.
+
+**Validation** (each a `400` JSON string): `id` a slug (lowercase letters, digits, single
+dashes, ≤ 60); `name` required, ≤ 80; `description` ≤ 300; `price` > 0; `imageUrl`
+required, ≤ 300, starting with `/` or `https://`; `imageCredit` ≤ 200; `imageSourceUrl` ≤ 500;
+`category` (the 16 values in §6c) and `requiredPrestige` must be known — an unknown enum
+*string* is a framework `400` with an empty body.
+
+### `GET /api/admin/luxury` → `200` `AdminLuxuryItemDto[]`
+
+Every item, retired ones included, by required prestige, display order, price.
+
+### `GET /api/admin/luxury/{id}` → `200` `AdminLuxuryItemDto` · `404` `"Item not found."`
+
+### `POST /api/admin/luxury` → `201` `AdminLuxuryItemDto` · `400`
+
+Body: the DTO without `owners` and `isActive` (new items start active). `400`
+`"Item id already exists."` or a validation message.
+
+### `PUT /api/admin/luxury/{id}` → `200` `AdminLuxuryItemDto` · `400`
+
+Body: the DTO without `id` and `owners`, **with** `isActive`. `400` `"Item not found."` or a
+validation message.
 
 ---
 

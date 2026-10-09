@@ -46,3 +46,4 @@ still in the contract, the next person cannot tell what is real.
 | 007 | [Player profile and achievements](007-player-profile.md) | Done |
 | 008 | [Luxury collection](008-luxury-collection.md) | Done |
 | 009 | [Bank and loans](009-bank-loans.md) | Done |
+| 010 | [Admin catch-up: luxury, bank, achievements, levels](010-admin-catch-up.md) | Done |

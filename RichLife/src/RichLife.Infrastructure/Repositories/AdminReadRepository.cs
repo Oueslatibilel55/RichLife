@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RichLife.Application.DTOs;
 using RichLife.Application.Interfaces;
+using RichLife.Domain.Achievements;
 using RichLife.Domain.Enums;
 using RichLife.Infrastructure.Persistence;
 
@@ -56,13 +57,39 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
         var catalogueAssets = await db.Catalogue.SelectMany(e => e.AvailableAssets).CountAsync(ct);
         var names = await db.ManagerNames.CountAsync(ct);
 
+        var luxuryOwned = await db.LuxuryAssets.CountAsync(l => companyIds.Contains(l.CompanyId), ct);
+        var luxuryCatalogue = await db.LuxuryCatalogue.CountAsync(ct);
+        var luxuryActive = await db.LuxuryCatalogue.CountAsync(i => i.IsActive, ct);
+
+        var unlocks = await companiesQ
+            .SelectMany(c => c.Achievements)
+            .GroupBy(a => a.Code)
+            .Select(g => new { Code = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var achievementDistribution = AchievementCatalog.All
+            .Select(a => new AchievementCountDto(a.Code, a.Title, a.Icon,
+                unlocks.FirstOrDefault(u => u.Code == a.Code)?.Count ?? 0))
+            .ToList();
+
+        // Outstanding is computed on the entity; spelled out here so it runs in SQL.
+        var loansQ = db.Loans.Where(l => companyIds.Contains(l.CompanyId));
+        var activeLoansQ = loansQ.Where(l => l.RepaidAt == null);
+        var loansTaken = await loansQ.CountAsync(ct);
+        var activeLoans = await activeLoansQ.CountAsync(ct);
+        var outstanding = await activeLoansQ
+            .SumAsync(l => (decimal?)(l.TotalRepay + l.Penalties - l.Paid - l.ForgivenAmount), ct) ?? 0m;
+        var missed = await activeLoansQ.SumAsync(l => (int?)l.MissedPayments, ct) ?? 0;
+
         return new AdminStatsDto(
             nowUtc, players, admins, new24h, new7d, active24h,
             companies, totalCash, totalEarnings,
             businesses, onShift, Math.Round(avgLevel, 2),
             distribution,
             top.Select(t => new TopBusinessDto(t.CatalogueId, t.Name, t.Owners)).ToList(),
-            catalogue, catalogueActive, catalogueAssets, names);
+            catalogue, catalogueActive, catalogueAssets, names,
+            luxuryOwned, luxuryCatalogue, luxuryActive,
+            unlocks.Sum(u => u.Count), achievementDistribution,
+            loansTaken, activeLoans, outstanding, missed);
     }
 
     public async Task<IReadOnlyList<AdminPlayerDto>> GetPlayersAsync(
@@ -91,11 +118,45 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             .Select(m => new ManagerNameDto(m.Id, m.Name, db.Businesses.Count(b => b.ManagerNameId == m.Id)))
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<AdminLoanDto>> GetLoansAsync(
+        bool activeOnly, int take, CancellationToken ct = default)
+    {
+        var loans = db.Loans.AsNoTracking();
+        if (activeOnly) loans = loans.Where(l => l.RepaidAt == null);
+
+        return await (
+            from l in loans
+            join c in db.Companies on l.CompanyId equals c.Id
+            join p in db.Players on c.PlayerId equals p.Id
+            orderby l.CreatedAt descending
+            select new AdminLoanDto(
+                l.Id, p.Id, p.Username, c.Name, l.BankId, l.BankName, l.BankIcon,
+                l.Principal, l.InterestRate, l.TotalRepay, l.Paid, l.Penalties,
+                l.TotalRepay + l.Penalties - l.Paid - l.ForgivenAmount,
+                l.MissedPayments, l.CreatedAt, l.NextPaymentAt, l.RepaidAt, l.ForgivenAmount > 0m))
+            .Take(take)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<BankUsage>> GetBankUsageAsync(CancellationToken ct = default)
+        => await db.Loans.AsNoTracking()
+            .GroupBy(l => l.BankId)
+            .Select(g => new BankUsage(
+                g.Key, g.Count(), g.Count(l => l.RepaidAt == null), g.Sum(l => l.Principal)))
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyDictionary<string, int>> GetLuxuryOwnersAsync(CancellationToken ct = default)
+        => await db.LuxuryAssets.AsNoTracking()
+            .GroupBy(l => l.CatalogueId)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Count, ct);
+
     // Enums are mapped to strings after the query, not inside it.
     private sealed record PlayerRow(
         Guid Id, string Username, string Email, string Country, bool IsAdmin, DateTime CreatedAt,
         string? CompanyName, decimal? Cash, PrestigeLevel? PrestigeLevel, int? PrestigeCount,
-        decimal? AllTimeEarnings, int? Businesses, DateTime? LastSeenAt);
+        decimal? AllTimeEarnings, int? Businesses, DateTime? LastSeenAt,
+        int? HighestBusinessLevel, int? LuxuryOwned, int? AchievementsUnlocked, decimal? LoanOutstanding);
 
     private static IQueryable<PlayerRow> Project(IQueryable<Domain.Entities.Player> players) =>
         players.Select(p => new PlayerRow(
@@ -106,10 +167,18 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             p.Company == null ? null : p.Company.PrestigeCount,
             p.Company == null ? null : p.Company.AllTimeEarnings,
             p.Company == null ? null : p.Company.Businesses.Count,
-            p.Company == null ? null : p.Company.LastSyncAt));
+            p.Company == null ? null : p.Company.LastSyncAt,
+            p.Company == null ? null : p.Company.Businesses.Max(b => (int?)b.Level),
+            p.Company == null ? null : p.Company.LuxuryAssets.Count,
+            p.Company == null ? null : p.Company.Achievements.Count,
+            p.Company == null ? null : p.Company.Loans
+                .Where(l => l.RepaidAt == null)
+                .Select(l => (decimal?)(l.TotalRepay + l.Penalties - l.Paid - l.ForgivenAmount))
+                .FirstOrDefault()));
 
     private static AdminPlayerDto ToDto(PlayerRow r) => new(
         r.Id, r.Username, r.Email, r.Country, r.IsAdmin, r.CreatedAt,
         r.CompanyName, r.Cash, r.PrestigeLevel?.ToString(), r.PrestigeCount,
-        r.AllTimeEarnings, r.Businesses, r.LastSeenAt);
+        r.AllTimeEarnings, r.Businesses, r.LastSeenAt,
+        r.HighestBusinessLevel, r.LuxuryOwned, r.AchievementsUnlocked, r.LoanOutstanding);
 }

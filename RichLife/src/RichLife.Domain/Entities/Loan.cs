@@ -26,11 +26,15 @@ public class Loan : BaseEntity
     public decimal Penalties { get; private set; }
     public int MissedPayments { get; private set; }
 
+    /// <summary>What an admin cancelled (<see cref="Company.AdminForgiveLoan"/>); 0 for a loan paid in full.</summary>
+    public decimal ForgivenAmount { get; private set; }
+
     /// <summary>When the bank collects next; null once repaid.</summary>
     public DateTime? NextPaymentAt { get; private set; }
     public DateTime? RepaidAt { get; private set; }
 
-    public decimal Outstanding => TotalRepay + Penalties - Paid;
+    public decimal Outstanding => TotalRepay + Penalties - Paid - ForgivenAmount;
+    public bool Forgiven => ForgivenAmount > 0m;
     public bool IsActive => RepaidAt is null;
 
     private Loan() { }
@@ -81,6 +85,13 @@ public class Loan : BaseEntity
     internal void RepayAll(DateTime nowUtc)
     {
         Paid += Outstanding;
+        MarkRepaid(nowUtc);
+        MarkUpdated();
+    }
+
+    internal void Forgive(DateTime nowUtc)
+    {
+        ForgivenAmount = Outstanding;
         MarkRepaid(nowUtc);
         MarkUpdated();
     }

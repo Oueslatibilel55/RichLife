@@ -18,3 +18,10 @@
 
 .topnav__link.active { background: var(--text); color: #fff; }
 .tabbar__link.active { color: var(--text); }
+
+// Six sections: between 900 and 1200 px the top bar would overflow, so the nav drops its
+// icons and the brand keeps only its mark. Phones use the tab bar (six equal columns).
+@media (min-width: 900px) and (max-width: 1199px) {
+  .brand__name, .staff-badge { display: none; }
+  .topnav__link { padding: 8px 10px; app-icon { display: none; } }
+}

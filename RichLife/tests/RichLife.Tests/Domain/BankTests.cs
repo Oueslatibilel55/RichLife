@@ -271,4 +271,32 @@ public class BankTests
 
         Assert.Empty(company.Loans);
     }
+
+    // -- Admin: forgive ------------------------------------------------------------
+
+    [Fact]
+    public void AdminForgiveLoan_ClosesTheLoan_KeepsCash_AndAllowsANewOne()
+    {
+        var company = NewCompany();
+        company.TakeLoan(Offer(), T0);
+        company.CollectLoanPayments(T0 + Interval);           // 26,250 paid
+
+        var result = company.AdminForgiveLoan(T0 + Interval);
+
+        Assert.True(result.IsSuccess);
+        var loan = Assert.Single(company.Loans);
+        Assert.True(loan.Forgiven);
+        Assert.Equal(78_750m, loan.ForgivenAmount);
+        Assert.Equal(0m, loan.Outstanding);
+        Assert.Equal(26_250m, loan.Paid);
+        Assert.Equal(73_750m, company.Cash);
+        Assert.Null(company.ActiveLoan);
+        Assert.True(company.TakeLoan(Offer(), T0.AddHours(5)).IsSuccess);   // inside the offer's window
+    }
+
+    [Fact]
+    public void AdminForgiveLoan_WithNoLoan_Fails()
+    {
+        Assert.Equal("Player has no active loan.", NewCompany().AdminForgiveLoan(T0).Error);
+    }
 }

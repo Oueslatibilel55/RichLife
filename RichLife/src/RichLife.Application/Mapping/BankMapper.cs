@@ -14,7 +14,7 @@ public static class BankMapper
         l.Id, l.BankId, l.BankName, l.BankIcon,
         l.Principal, l.InterestRate, l.TotalRepay, l.Installments, l.InstallmentAmount,
         l.Paid, l.Penalties, l.Outstanding, l.MissedPayments,
-        l.CreatedAt, l.NextPaymentAt, l.RepaidAt);
+        l.CreatedAt, l.NextPaymentAt, l.RepaidAt, l.Forgiven);
 
     public static LoanPaymentDto? ToDto(LoanCollection? c) => c is null
         ? null

@@ -20,7 +20,18 @@ public record AdminStatsDto(
     int CatalogueBusinesses,
     int CatalogueActive,
     int CatalogueAssets,
-    int ManagerNames);
+    int ManagerNames,
+    int LuxuryOwned,
+    int LuxuryCatalogue,
+    int LuxuryCatalogueActive,
+    int AchievementsUnlocked,
+    IReadOnlyList<AchievementCountDto> AchievementDistribution,
+    int LoansTaken,
+    int ActiveLoans,
+    decimal LoansOutstanding,
+    int LoansMissedPayments);
+
+public record AchievementCountDto(string Code, string Title, string Icon, int Companies);
 
 public record PrestigeCountDto(string Level, int Companies);
 
@@ -39,7 +50,11 @@ public record AdminPlayerDto(
     int? PrestigeCount,
     decimal? AllTimeEarnings,
     int? Businesses,
-    DateTime? LastSeenAt);
+    DateTime? LastSeenAt,
+    int? HighestBusinessLevel,
+    int? LuxuryOwned,
+    int? AchievementsUnlocked,
+    decimal? LoanOutstanding);
 
 public record SetAdminRoleRequest(bool IsAdmin);
 
@@ -48,3 +63,80 @@ public record SetCashRequest(decimal Cash);
 public record ManagerNameDto(int Id, string Name, int InUse);
 
 public record CreateManagerNameRequest(string Name);
+
+// Bank — contract §7c.
+
+public record AdminLoanDto(
+    Guid Id,
+    Guid PlayerId,
+    string Username,
+    string CompanyName,
+    string BankId,
+    string BankName,
+    string BankIcon,
+    decimal Principal,
+    decimal InterestRate,
+    decimal TotalRepay,
+    decimal Paid,
+    decimal Penalties,
+    decimal Outstanding,
+    int MissedPayments,
+    DateTime TakenAt,
+    DateTime? NextPaymentAt,
+    DateTime? RepaidAt,
+    bool Forgiven);
+
+public record AdminBankDto(
+    string Id,
+    string Name,
+    string Icon,
+    decimal MinRate,
+    decimal MaxRate,
+    int MinInstallments,
+    int MaxInstallments,
+    int LoansTaken,
+    int ActiveLoans,
+    decimal TotalLent);
+
+/// <summary>Per-bank usage, read from the loans table.</summary>
+public record BankUsage(string BankId, int LoansTaken, int ActiveLoans, decimal TotalLent);
+
+// Luxury catalogue editor — contract §7d.
+
+public record AdminLuxuryItemDto(
+    string Id,
+    string Name,
+    string Category,
+    string Description,
+    decimal Price,
+    string RequiredPrestige,
+    string ImageUrl,
+    string ImageCredit,
+    string ImageSourceUrl,
+    int DisplayOrder,
+    bool IsActive,
+    int Owners);
+
+public record CreateLuxuryItemRequest(
+    string Id,
+    string Name,
+    Domain.Enums.LuxuryCategory Category,
+    string? Description,
+    decimal Price,
+    Domain.Enums.PrestigeLevel RequiredPrestige,
+    string ImageUrl,
+    string? ImageCredit,
+    string? ImageSourceUrl,
+    int DisplayOrder);
+
+public record UpdateLuxuryItemRequest(
+    string Name,
+    Domain.Enums.LuxuryCategory Category,
+    string? Description,
+    decimal Price,
+    Domain.Enums.PrestigeLevel RequiredPrestige,
+    string ImageUrl,
+    string? ImageCredit,
+    string? ImageSourceUrl,
+    int DisplayOrder,
+    bool IsActive);

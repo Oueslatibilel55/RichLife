@@ -56,6 +56,35 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/admin/managers/admin-managers.component').then((m) => m.AdminManagersComponent),
       },
+      {
+        path: 'loans',
+        title: 'title.adminLoans',
+        data: { heading: 'admin.section.loans', blurb: 'admin.blurb.loans' },
+        loadComponent: () =>
+          import('./features/admin/loans/admin-loans.component').then((m) => m.AdminLoansComponent),
+      },
+      {
+        path: 'luxury',
+        title: 'admin.title.luxury',
+        data: { heading: 'admin.section.luxury', blurb: 'admin.blurb.luxury' },
+        loadComponent: () =>
+          import('./features/admin/luxury/admin-luxury.component').then((m) => m.AdminLuxuryComponent),
+      },
+      {
+        path: 'luxury/new',
+        title: 'admin.title.luxury',
+        data: { heading: 'admin.luxury.newItem', blurb: 'admin.blurb.luxuryEditor' },
+        loadComponent: () =>
+          import('./features/admin/luxury/luxury-editor.component').then((m) => m.LuxuryEditorComponent),
+      },
+      {
+        // :id binds to the editor's `id` input (withComponentInputBinding).
+        path: 'luxury/:id',
+        title: 'admin.title.luxury',
+        data: { heading: 'admin.luxury.editItem', blurb: 'admin.blurb.luxuryEditor' },
+        loadComponent: () =>
+          import('./features/admin/luxury/luxury-editor.component').then((m) => m.LuxuryEditorComponent),
+      },
     ],
   },
   {

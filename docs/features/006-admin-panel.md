@@ -2,6 +2,8 @@
 
 **Status:** Done (2026-10-08 — contract §7b, backend and frontend in one change)
 
+> Extended 2026-10-09 by [010 — Admin catch-up](010-admin-catch-up.md): luxury editor, loans and banks, forgive loan, and luxury / achievement / loan figures in stats and the player list.
+
 ## Why
 
 Running the game meant SQL by hand: promoting a player, giving test cash, resetting a

@@ -47,6 +47,26 @@
       <span class="tile__value num">{{ s.admins }}</span>
       <span class="tile__sub num">{{ 'admin.overview.catalogueSummary' | t: { active: s.catalogueActive, total: s.catalogueBusinesses, assets: s.catalogueAssets } }}</span>
     </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">💎</span>
+      <span class="stat__label">{{ 'admin.overview.luxury' | t }}</span>
+      <span class="tile__value num">{{ s.luxuryOwned }}</span>
+      <span class="tile__sub num">{{ 'admin.overview.luxuryCatalogue' | t: { active: s.luxuryCatalogueActive, total: s.luxuryCatalogue } }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🏦</span>
+      <span class="stat__label">{{ 'admin.overview.activeLoans' | t }}</span>
+      <span class="tile__value num">{{ s.activeLoans }}</span>
+      <span class="tile__sub num">{{ 'admin.overview.loansTaken' | t: { n: s.loansTaken } }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🧾</span>
+      <span class="stat__label">{{ 'admin.overview.outstanding' | t }}</span>
+      <span class="tile__value tile__value--money num">{{ s.loansOutstanding | money }}</span>
+      <span class="tile__sub num" [class.tile__sub--danger]="s.loansMissedPayments > 0">
+        {{ 'admin.overview.missed' | t: { n: s.loansMissedPayments } }}
+      </span>
+    </div>
   </section>
 
   <div class="panels">
@@ -86,6 +106,21 @@
           }
         </ul>
       }
+    </section>
+
+    <section class="card panel panel--wide">
+      <h2>{{ 'admin.overview.achievements' | t: { n: s.achievementsUnlocked } }}</h2>
+      <ul class="bars bars--cols">
+        @for (a of s.achievementDistribution; track a.code) {
+          <li class="bars__row">
+            <span class="bars__label" [title]="achTitle(a.code, a.title)">{{ a.icon }} {{ achTitle(a.code, a.title) }}</span>
+            <span class="bars__track">
+              <span class="bars__fill bars__fill--violet" [style.width.%]="(a.companies / maxPerAchievement()) * 100"></span>
+            </span>
+            <span class="bars__value num">{{ a.companies }}</span>
+          </li>
+        }
+      </ul>
     </section>
   </div>
 } @else if (loading()) {

@@ -37,6 +37,8 @@ export const BANK: DictSet = {
     'bank.history.paid': 'Total paid',
     'bank.history.penalties': 'Penalties',
     'bank.history.repaidOn': 'Repaid {date}',
+    'bank.history.forgiven': 'Forgiven',
+    'bank.history.forgivenOn': 'Debt cancelled {date}',
 
     'bank.take.title': 'Borrow {amount} from {bank}?',
     'bank.take.firstPayment': 'First payment {h} h after you take it.',
@@ -94,6 +96,8 @@ export const BANK: DictSet = {
     'bank.history.paid': 'Total payé',
     'bank.history.penalties': 'Pénalités',
     'bank.history.repaidOn': 'Remboursé le {date}',
+    'bank.history.forgiven': 'Dette annulée',
+    'bank.history.forgivenOn': 'Dette annulée le {date}',
 
     'bank.take.title': 'Emprunter {amount} auprès de {bank} ?',
     'bank.take.firstPayment': 'Premier prélèvement {h} h après la signature.',
@@ -151,6 +155,8 @@ export const BANK: DictSet = {
     'bank.history.paid': 'إجمالي المدفوع',
     'bank.history.penalties': 'الغرامات',
     'bank.history.repaidOn': 'سُدّد في {date}',
+    'bank.history.forgiven': 'مُعفى',
+    'bank.history.forgivenOn': 'أُلغي الدين في {date}',
 
     'bank.take.title': 'اقتراض {amount} من {bank}؟',
     'bank.take.firstPayment': 'أول قسط بعد {h} ساعات من الاقتراض.',

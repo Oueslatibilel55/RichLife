@@ -38,6 +38,8 @@ export class AdminLayoutComponent {
     { path: '/admin/players', label: 'admin.section.players', icon: 'users', exact: false },
     { path: '/admin/catalogue', label: 'admin.section.catalogue', icon: 'briefcase', exact: false },
     { path: '/admin/managers', label: 'admin.section.managers', icon: 'contact', exact: false },
+    { path: '/admin/loans', label: 'admin.section.loans', icon: 'bank', exact: false },
+    { path: '/admin/luxury', label: 'admin.section.luxury', icon: 'gem', exact: false },
   ];
 
   readonly initial = computed(() => (this.auth.currentUser()?.username ?? '?').charAt(0).toUpperCase());

@@ -181,7 +181,10 @@ export interface LoanDto {
   takenAt: string;
   /** null once repaid. */
   nextPaymentAt: string | null;
+  /** Set once closed — repaid, or forgiven by an admin. */
   repaidAt: string | null;
+  /** Closed by an admin (§7b forgive-loan): outstanding is 0 and `paid` is what was actually paid. */
+  forgiven: boolean;
 }
 
 /** What one /sync or /state collected (possibly several installments). */

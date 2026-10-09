@@ -1,0 +1,60 @@
+:host { display: flex; flex-direction: column; gap: 14px; }
+
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.muted { font-size: 13px; color: var(--text-3); }
+
+.chips { display: flex; gap: 6px; }
+.chip {
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  &--active { background: var(--text); border-color: var(--text); color: #fff; }
+}
+
+// Wide tables scroll inside their card on phones — never the page.
+.scroll { padding: 0; overflow-x: auto; }
+
+.table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 10px 12px;
+    text-align: start;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    white-space: nowrap;
+    background: var(--surface-2);
+  }
+
+  td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+  strong, small { display: block; }
+  strong.inline { display: inline; }
+  small { font-size: 12px; color: var(--text-3); }
+  .end { text-align: end; }
+  .strong { font-weight: 700; }
+  .danger { color: var(--danger); font-weight: 700; }
+  tr.busy { opacity: 0.5; pointer-events: none; }
+}
+
+.banks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  h2 { font-size: 16px; }
+  .table { min-width: 560px; }
+}
+
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

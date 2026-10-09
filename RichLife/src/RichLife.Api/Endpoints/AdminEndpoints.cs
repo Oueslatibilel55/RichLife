@@ -70,6 +70,27 @@ public static class AdminEndpoints
 
         // -- Manager names ------------------------------------------------------
 
+        group.MapPost("/players/{id:guid}/forgive-loan", async Task<Results<Ok<AdminPlayerDto>, BadRequest<string>>> (
+            Guid id, AdminService svc, CancellationToken ct) =>
+        {
+            var result = await svc.ForgiveLoanAsync(id, ct);
+            return result.IsSuccess ? TypedResults.Ok(result.Value) : TypedResults.BadRequest(result.Error!);
+        })
+        .WithName("AdminForgiveLoan")
+        .WithSummary("Cancel what a player still owes on their active loan");
+
+        // Bank — contract §7c. Banks are rules in code: read-only here.
+        group.MapGet("/loans", async Task<Ok<IReadOnlyList<AdminLoanDto>>> (
+            AdminService svc, CancellationToken ct, bool active = true) =>
+            TypedResults.Ok(await svc.GetLoansAsync(active, ct)))
+        .WithName("AdminListLoans")
+        .WithSummary("Loans, newest first (active only by default)");
+
+        group.MapGet("/banks", async Task<Ok<IReadOnlyList<AdminBankDto>>> (AdminService svc, CancellationToken ct) =>
+            TypedResults.Ok(await svc.GetBanksAsync(ct)))
+        .WithName("AdminListBanks")
+        .WithSummary("The 20 banks with their rate bands and usage");
+
         group.MapGet("/manager-names", async Task<Ok<IReadOnlyList<ManagerNameDto>>> (
             AdminService svc, CancellationToken ct) =>
             TypedResults.Ok(await svc.GetManagerNamesAsync(ct)))

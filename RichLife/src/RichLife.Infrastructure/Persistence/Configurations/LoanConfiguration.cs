@@ -19,9 +19,11 @@ public class LoanConfiguration : IEntityTypeConfiguration<Loan>
         b.Property(x => x.InstallmentAmount).HasPrecision(24, 4);
         b.Property(x => x.Paid).HasPrecision(24, 4);
         b.Property(x => x.Penalties).HasPrecision(24, 4);
+        b.Property(x => x.ForgivenAmount).HasPrecision(24, 4);
 
         b.Ignore(x => x.Outstanding);
         b.Ignore(x => x.IsActive);
+        b.Ignore(x => x.Forgiven);
 
         // At most one active loan per company: the aggregate checks it, the index enforces it.
         b.HasIndex(x => x.CompanyId)
