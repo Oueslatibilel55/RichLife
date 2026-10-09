@@ -133,6 +133,9 @@ export class GameService {
     return this._cash() + (c.netWorth - c.cash);
   });
 
+  /** The player's avatar (§6e) for the top bar; null shows the initial. */
+  readonly avatar = computed(() => this._company()?.avatar ?? null);
+
   readonly isMaxPrestige = computed(() => this._company()?.prestigeLevel === 'GlobalEmpire');
 
   /** Cash price of the next prestige — straight from the server, never hardcoded. */
@@ -484,6 +487,27 @@ export class GameService {
   buyBadge(badgeId: string): Observable<StoreDto> {
     return this.storeAction(() =>
       this.http.post<StoreDto>(`${this.api}/game/store/badges/${encodeURIComponent(badgeId)}`, null),
+    );
+  }
+
+  /** Buys an avatar (and puts it on). */
+  buyAvatar(avatarId: string): Observable<StoreDto> {
+    return this.storeAction(() =>
+      this.http.post<StoreDto>(`${this.api}/game/store/avatars/${encodeURIComponent(avatarId)}`, null),
+    );
+  }
+
+  /** Puts on an owned or free avatar (null = the initial). No money moves: no sync, cash not adopted. */
+  selectAvatar(avatarId: string | null): Observable<StoreDto> {
+    return this.http.put<StoreDto>(`${this.api}/game/store/avatar`, { avatarId }).pipe(
+      tap((s) => {
+        this._store.set(s);
+        this.adoptDiamonds(s.diamonds, s.boostUntil);
+        const picked = s.avatars.find((a) => a.id === s.avatarId) ?? null;
+        this._company.update((c) =>
+          c ? { ...c, avatar: picked ? { id: picked.id, icon: picked.icon, from: picked.from, to: picked.to } : null } : c,
+        );
+      }),
     );
   }
 

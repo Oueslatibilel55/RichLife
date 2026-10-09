@@ -39,6 +39,9 @@ public class Company : AggregateRoot
     /// <summary>The bought badge shown next to the name; null for none.</summary>
     public string? FeaturedBadgeId { get; private set; }
 
+    /// <summary>The profile avatar in use (a free or bought one); null shows the initial.</summary>
+    public string? AvatarId { get; private set; }
+
     /// <summary>Cash plus the liquidation value of everything owned, minus what is still owed to a bank.</summary>
     public decimal NetWorth =>
         Cash
@@ -75,6 +78,7 @@ public class Company : AggregateRoot
     private readonly List<CompanyAchievement> _achievements = [];
     private readonly List<Loan> _loans = [];
     private readonly List<CompanyBadge> _badges = [];
+    private readonly List<CompanyAvatar> _avatars = [];
     private readonly List<DiamondTransaction> _diamondLedger = [];
 
     public IReadOnlyList<Business> Businesses => _businesses.AsReadOnly();
@@ -83,6 +87,9 @@ public class Company : AggregateRoot
     public IReadOnlyList<CompanyAchievement> Achievements => _achievements.AsReadOnly();
     public IReadOnlyList<Loan> Loans => _loans.AsReadOnly();
     public IReadOnlyList<CompanyBadge> Badges => _badges.AsReadOnly();
+
+    /// <summary>Avatars bought — free ones are available to everyone and never listed here.</summary>
+    public IReadOnlyList<CompanyAvatar> Avatars => _avatars.AsReadOnly();
 
     /// <summary>
     /// Ledger lines added since the company was loaded — the ledger itself is never loaded
@@ -483,6 +490,34 @@ public class Company : AggregateRoot
             return Result.Fail("You do not own this badge.");
 
         FeaturedBadgeId = badgeId;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    public bool OwnsAvatar(AvatarDefinition avatar) =>
+        avatar.IsFree || _avatars.Any(a => a.AvatarId == avatar.Id);
+
+    /// <summary>Buys an avatar for good and puts it on. Free ones need no buying.</summary>
+    public Result BuyAvatar(AvatarDefinition avatar, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(avatar);
+        if (OwnsAvatar(avatar)) return Result.Fail("You already own this avatar.");
+
+        var paid = SpendDiamonds(avatar.Price, DiamondReasons.Avatar, avatar.Id, nowUtc);
+        if (!paid.IsSuccess) return paid;
+
+        _avatars.Add(CompanyAvatar.Create(avatar.Id, nowUtc));
+        AvatarId = avatar.Id;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>Puts on an owned (or free) avatar; null goes back to the initial.</summary>
+    public Result SelectAvatar(AvatarDefinition? avatar)
+    {
+        if (avatar is not null && !OwnsAvatar(avatar)) return Result.Fail("You do not own this avatar.");
+
+        AvatarId = avatar?.Id;
         MarkUpdated();
         return Result.Ok();
     }

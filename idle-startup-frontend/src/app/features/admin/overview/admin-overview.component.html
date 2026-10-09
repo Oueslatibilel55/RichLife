@@ -80,6 +80,12 @@
       <span class="tile__sub num">{{ 'admin.overview.badgesCatalogue' | t: { n: s.badgeDistribution.length } }}</span>
     </div>
     <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🧑‍🎨</span>
+      <span class="stat__label">{{ 'admin.overview.avatars' | t }}</span>
+      <span class="tile__value num">{{ s.avatarsOwned }}</span>
+      <span class="tile__sub num">{{ 'admin.overview.avatarsCatalogue' | t: { n: s.avatarDistribution.length } }}</span>
+    </div>
+    <div class="card tile">
       <span class="tile__icon" aria-hidden="true">⚡</span>
       <span class="stat__label">{{ 'admin.overview.boosts' | t }}</span>
       <span class="tile__value num">{{ s.boostsActive }}</span>
@@ -151,6 +157,21 @@
               <span class="bars__fill bars__fill--violet" [style.width.%]="(b.owners / maxPerBadge()) * 100"></span>
             </span>
             <span class="bars__value num">{{ b.owners }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="card panel panel--wide">
+      <h2>{{ 'admin.overview.avatarUse' | t }}</h2>
+      <ul class="bars bars--cols">
+        @for (a of s.avatarDistribution; track a.id) {
+          <li class="bars__row">
+            <span class="bars__label" [title]="('avatar.' + a.id) | t">{{ a.icon }} {{ ('avatar.' + a.id) | t }} · <span class="num">{{ a.price ? a.price + ' 💎' : ('store.free' | t) }}</span></span>
+            <span class="bars__track">
+              <span class="bars__fill bars__fill--violet" [style.width.%]="(a.inUse / maxAvatarUse()) * 100"></span>
+            </span>
+            <span class="bars__value num" [title]="'admin.overview.avatarOwnersInUse' | t: { owners: a.owners, inUse: a.inUse }">{{ a.inUse }}/{{ a.owners }}</span>
           </li>
         }
       </ul>

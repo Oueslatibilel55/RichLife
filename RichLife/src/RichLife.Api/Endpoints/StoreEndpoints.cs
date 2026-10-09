@@ -45,6 +45,16 @@ public static class StoreEndpoints
             Run(user, id => svc.FeatureBadgeAsync(id, req.BadgeId, ct)))
         .WithName("FeatureBadge")
         .WithSummary("Choose the badge shown next to the name");
+
+        group.MapPost("/avatars/{avatarId}", (string avatarId, ClaimsPrincipal user, StoreService svc, CancellationToken ct) =>
+            Run(user, id => svc.BuyAvatarAsync(id, avatarId, ct)))
+        .WithName("BuyAvatar")
+        .WithSummary("Buy a profile avatar (and put it on)");
+
+        group.MapPut("/avatar", (SelectAvatarRequest req, ClaimsPrincipal user, StoreService svc, CancellationToken ct) =>
+            Run(user, id => svc.SelectAvatarAsync(id, req.AvatarId, ct)))
+        .WithName("SelectAvatar")
+        .WithSummary("Choose the avatar in use (null for the initial)");
     }
 
     private static async Task<Results<Ok<StoreDto>, BadRequest<string>, UnauthorizedHttpResult>> Run(

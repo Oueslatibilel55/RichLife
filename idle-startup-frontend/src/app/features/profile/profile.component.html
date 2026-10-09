@@ -6,7 +6,10 @@
   <div class="page">
     <!-- Who -->
     <section class="card hero">
-      <span class="hero__avatar" aria-hidden="true">{{ initial() }}</span>
+      <a routerLink="/store" [queryParams]="{ tab: 'avatars' }" class="hero__pic" [title]="'profile.changeAvatar' | t" [attr.aria-label]="'profile.changeAvatar' | t">
+        <app-avatar [avatar]="p.avatar" [name]="p.username" [size]="72" />
+        <span class="hero__edit" aria-hidden="true">✏️</span>
+      </a>
       <div class="hero__who">
         <h1>
           {{ p.username }}

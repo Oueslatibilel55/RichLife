@@ -16,6 +16,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.Property(x => x.AllTimeEarnings).HasPrecision(20, 4);
         b.Property(x => x.OfflineBonusAmount).HasPrecision(20, 4);
         b.Property(x => x.FeaturedBadgeId).HasMaxLength(60);
+        b.Property(x => x.AvatarId).HasMaxLength(60);
 
         b.HasIndex(x => x.AllTimeEarnings);   // leaderboard ordering
 
@@ -67,6 +68,17 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             a.Property(x => x.BadgeId).HasMaxLength(60);
         });
         b.Navigation(x => x.Badges).HasField("_badges")
+         .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Bought avatars: owned the same way, keyed (CompanyId, AvatarId).
+        b.OwnsMany(x => x.Avatars, a =>
+        {
+            a.ToTable("company_avatars");
+            a.WithOwner().HasForeignKey("CompanyId");
+            a.HasKey("CompanyId", nameof(CompanyAvatar.AvatarId));
+            a.Property(x => x.AvatarId).HasMaxLength(60);
+        });
+        b.Navigation(x => x.Avatars).HasField("_avatars")
          .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // The diamond ledger only grows, so it is never loaded with the company: the

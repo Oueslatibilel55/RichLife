@@ -48,5 +48,6 @@ public static class CompanyMapper
         c.Diamonds,
         c.BoostUntil,
         Domain.GameConstants.BoostMultiplier,
+        Services.StoreService.Avatar(c.AvatarId),
         c.Businesses.Select(b => ToDto(b, nowUtc)).ToList());
 }

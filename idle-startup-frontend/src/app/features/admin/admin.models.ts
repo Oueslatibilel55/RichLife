@@ -43,6 +43,10 @@ export interface AdminStats {
   boostsActive: number;
   /** Every badge in display order, zeros included. `name` is English — show `badge.<id>`. */
   badgeDistribution: { id: string; icon: string; name: string; price: number; owners: number }[];
+  /** Avatars bought (free ones are never bought). */
+  avatarsOwned: number;
+  /** Every avatar: `owners` bought it, `inUse` show it now. */
+  avatarDistribution: { id: string; icon: string; name: string; price: number; owners: number; inUse: number }[];
 }
 
 export interface AdminPlayer {

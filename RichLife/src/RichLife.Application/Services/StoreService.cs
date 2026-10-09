@@ -41,6 +41,18 @@ public class StoreService(
     public Task<Result<StoreDto>> FeatureBadgeAsync(Guid playerId, string? badgeId, CancellationToken ct = default)
         => RunAsync(playerId, (c, _) => c.FeatureBadge(string.IsNullOrWhiteSpace(badgeId) ? null : badgeId), ct);
 
+    public Task<Result<StoreDto>> BuyAvatarAsync(Guid playerId, string avatarId, CancellationToken ct = default)
+        => RunAsync(playerId, (c, now) => AvatarCatalog.Find(avatarId) is { } avatar
+            ? c.BuyAvatar(avatar, now)
+            : Result.Fail("Avatar not found."), ct);
+
+    public Task<Result<StoreDto>> SelectAvatarAsync(Guid playerId, string? avatarId, CancellationToken ct = default)
+        => RunAsync(playerId, (c, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(avatarId)) return c.SelectAvatar(null);
+            return AvatarCatalog.Find(avatarId) is { } avatar ? c.SelectAvatar(avatar) : Result.Fail("Avatar not found.");
+        }, ct);
+
     private async Task<Result<StoreDto>> RunAsync(
         Guid playerId, Func<Company, DateTime, Result> action, CancellationToken ct)
     {
@@ -75,6 +87,11 @@ public class StoreService(
                     owned.Contains(b.Id), b.Id == c.FeaturedBadgeId))
                 .ToList(),
             c.FeaturedBadgeId,
+            AvatarCatalog.All
+                .Select(a => new StoreAvatarDto(a.Id, a.Icon, a.Name, a.From, a.To, a.Price, a.Rarity,
+                    c.OwnsAvatar(a), a.Id == c.AvatarId))
+                .ToList(),
+            c.AvatarId,
             history.Select(h => new DiamondTransactionDto(h.Amount, h.Balance, h.Reason, h.Detail, h.CreatedAt)).ToList());
     }
 
@@ -83,6 +100,10 @@ public class StoreService(
         c.HasOfflineDoubleAt(now)
             ? new OfflineDoubleOfferDto(c.OfflineBonusAmount, GameConstants.OfflineDoublePrice, c.OfflineBonusUntil!.Value)
             : null;
+
+    /// <summary>The avatar to show for a stored id; null for none or an id no longer in the catalogue.</summary>
+    public static AvatarDto? Avatar(string? avatarId) =>
+        AvatarCatalog.Find(avatarId) is { } a ? new AvatarDto(a.Id, a.Icon, a.From, a.To) : null;
 
     public static IReadOnlyList<OwnedBadgeDto> OwnedBadges(Company c) =>
         c.Badges

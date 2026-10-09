@@ -33,12 +33,13 @@ src/
   RichLife.Domain/          # No project references. No EF, no ASP.NET, no DI.
     Common/                 #   AggregateRoot, BaseEntity, IDomainEvent, Result
     Entities/               #   Company (aggregate root), Business, Asset, BusinessAsset,
-                            #   LuxuryAsset, Loan, CompanyAchievement, CompanyBadge,
+                            #   LuxuryAsset, Loan, CompanyAchievement, CompanyBadge, CompanyAvatar,
                             #   DiamondTransaction, Player
     Achievements/           #   Achievements — the list and its checks, rules in code
     Banking/                #   BankCatalog (20 banks), LoanOffers (offer generator),
                             #   LoanCollection — rules, in code
-    Store/                  #   BadgeCatalog (16 badges), DiamondReasons — rules, in code
+    Store/                  #   BadgeCatalog (16 badges), AvatarCatalog (22 avatars),
+                            #   StoreRarity, DiamondReasons — rules, in code
     Catalogue/              #   BusinessCatalogueEntry (aggregate) + AssetCatalogueEntry,
                             #   LuxuryCatalogueEntry, ManagerName — game content, stored in
                             #   the database, edited by admins
@@ -232,7 +233,11 @@ runtime failure that no domain test can catch.
   (offer set by `/state` via `OfferOfflineDouble`, 30 min, once), `ExchangeDiamonds` (cash, not
   earnings), `BuyBadge` / `FeatureBadge` (badges owned in `company_badges`; **badge ids are
   persisted, never rename or reuse one**). Prices and amounts in `GameConstants`. `AdminReset`
-  keeps diamonds and badges.
+  keeps diamonds and badges. **Avatars** (`features/012-avatars.md`): `Company.AvatarId` + owned
+  `company_avatars`; `BuyAvatar` (puts it on) / `SelectAvatar` (owned or free, null = initial);
+  free avatars (price 0) are never recorded as owned — `OwnsAvatar` treats them as owned. Avatar ids
+  are persisted too: never rename or reuse one. `StoreService.Avatar(id)` maps an id to the
+  `AvatarDto` shown on the company, the profile and the leaderboard.
 - **Achievements** (2026-10-08, `features/007-player-profile.md`): defined in code in
   `Domain/Achievements/Achievements.cs` — **codes are persisted, never rename or reuse one**.
   `Company.UnlockAchievements(now)` records newly met ones (owned `company_achievements`,
@@ -543,6 +548,7 @@ before it can be built.
 Last checked 2026-10-09, against the Aspire dev database (newest first).
 
 **Green.** `dotnet build RichLife.slnx` (0 warnings).
+2026-10-09: **171** tests green after avatars; migration `Avatars` applied, routes checked over HTTP.
 2026-10-09: **167** tests green after diamonds and the store (`StoreTests`, 21 cases); migration
 `DiamondsAndStore` (with its backfill) applied and every store and admin-diamonds route checked over HTTP.
 2026-10-09: **146** tests green after the admin catch-up (forgive-loan, luxury editor

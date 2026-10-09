@@ -49,6 +49,8 @@
   }
 }
 
+.avatar-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; .note { flex: 1; min-width: 200px; } }
+
 .offer {
   display: flex;
   flex-direction: column;
@@ -86,6 +88,7 @@
   &[data-rarity='rare'] { background: #DBEAFE; color: #1D4ED8; }
   &[data-rarity='epic'] { background: var(--violet-soft); color: var(--violet); }
   &[data-rarity='legendary'] { background: #FEF3C7; color: #B45309; }
+  &[data-rarity='free'] { background: var(--success-soft); color: var(--success); }
 }
 
 .exchange {

@@ -48,3 +48,4 @@ still in the contract, the next person cannot tell what is real.
 | 009 | [Bank and loans](009-bank-loans.md) | Done |
 | 010 | [Admin catch-up: luxury, bank, achievements, levels](010-admin-catch-up.md) | Done |
 | 011 | [Diamonds and the store](011-diamonds-and-store.md) | Done |
+| 012 | [Avatars (profile pictures)](012-avatars.md) | Done |

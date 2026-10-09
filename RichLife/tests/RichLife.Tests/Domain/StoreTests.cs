@@ -216,6 +216,53 @@ public class StoreTests
         Assert.Equal("legendary", BadgeCatalog.Find("crown")!.Rarity);
     }
 
+    // -- Avatars ----------------------------------------------------------------------
+
+    [Fact]
+    public void BuyAvatar_SpendsDiamonds_AndPutsItOn()
+    {
+        var company = WithDiamonds(100);
+        var fox = AvatarCatalog.Find("fox")!;
+
+        Assert.True(company.BuyAvatar(fox, T0).IsSuccess);
+
+        Assert.Equal(70, company.Diamonds);
+        Assert.Equal("fox", company.AvatarId);
+        Assert.Single(company.Avatars);
+        Assert.Equal("You already own this avatar.", company.BuyAvatar(fox, T0).Error);
+    }
+
+    [Fact]
+    public void FreeAvatars_NeedNoBuying_AndCannotBeBought()
+    {
+        var company = NewCompany();
+        var smile = AvatarCatalog.Find("smile")!;
+
+        Assert.True(company.SelectAvatar(smile).IsSuccess);
+        Assert.Equal("smile", company.AvatarId);
+        Assert.Equal("You already own this avatar.", company.BuyAvatar(smile, T0).Error);
+        Assert.Equal(25, company.Diamonds);
+    }
+
+    [Fact]
+    public void SelectAvatar_NotOwned_Fails_AndNullGoesBackToTheInitial()
+    {
+        var company = NewCompany();
+
+        Assert.Equal("You do not own this avatar.", company.SelectAvatar(AvatarCatalog.Find("king")!).Error);
+        Assert.Equal("Not enough diamonds.", company.BuyAvatar(AvatarCatalog.Find("king")!, T0).Error);
+        company.SelectAvatar(AvatarCatalog.Find("cat"));
+        Assert.True(company.SelectAvatar(null).IsSuccess);
+        Assert.Null(company.AvatarId);
+    }
+
+    [Fact]
+    public void AvatarCatalog_HasUniqueIds_AndFourFreeOnes()
+    {
+        Assert.Equal(AvatarCatalog.All.Count, AvatarCatalog.All.Select(a => a.Id).Distinct().Count());
+        Assert.Equal(4, AvatarCatalog.All.Count(a => a.IsFree));
+    }
+
     // -- Admin ------------------------------------------------------------------------
 
     [Theory]

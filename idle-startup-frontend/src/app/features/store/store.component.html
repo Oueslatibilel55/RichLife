@@ -57,6 +57,35 @@
         </ul>
       }
 
+      <!-- Avatars: the profile picture -->
+      @case ('avatars') {
+        <div class="avatar-head">
+          <app-avatar [avatar]="game.avatar()" [name]="'?'" [size]="56" />
+          <p class="note">{{ 'store.avatarNote' | t }}</p>
+          @if (s.avatarId) {
+            <button type="button" class="btn btn--outline btn--sm" [disabled]="busy() !== null" (click)="useAvatar(null)">{{ 'store.useInitial' | t }}</button>
+          }
+        </div>
+        <ul class="grid grid--badges">
+          @for (a of s.avatars; track a.id) {
+            <li class="card badge-card" [class.badge-card--owned]="a.selected">
+              <app-avatar [avatar]="a" [size]="64" />
+              <strong class="badge-card__name">{{ 'avatar.' + a.id | t }}</strong>
+              <span class="rarity" [attr.data-rarity]="a.price === 0 ? 'free' : a.rarity">{{ (a.price === 0 ? 'store.free' : 'store.rarity.' + a.rarity) | t }}</span>
+              @if (a.selected) {
+                <button type="button" class="btn btn--soft btn--sm btn--full" disabled>✓ {{ 'store.inUse' | t }}</button>
+              } @else if (a.owned) {
+                <button type="button" class="btn btn--outline btn--sm btn--full" [disabled]="busy() !== null" (click)="useAvatar(a)">{{ 'store.use' | t }}</button>
+              } @else {
+                <button type="button" class="btn btn--primary btn--sm btn--full" [disabled]="busy() !== null || game.diamonds() < a.price" (click)="buyAvatar(a)">
+                  {{ busy() === 'avatar-' + a.id ? ('store.buying' | t) : (a.price + ' 💎') }}
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+
       <!-- Badges -->
       @case ('badges') {
         <p class="note">{{ 'store.badgeNote' | t }}</p>

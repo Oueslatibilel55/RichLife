@@ -47,7 +47,7 @@
 
       <div class="user desk-only">
         <a routerLink="/profile" class="user__link" [title]="'layout.yourProfile' | t">
-          <span class="user__avatar" aria-hidden="true">{{ initial() }}</span>
+          <app-avatar class="user__avatar" [avatar]="game.avatar()" [name]="auth.currentUser()?.username" [size]="32" />
           <span class="user__name">{{ auth.currentUser()?.username }}</span>
         </a>
         <button type="button" class="icon-btn" [attr.aria-label]="'layout.logout' | t" [title]="'layout.logout' | t" (click)="logout()">
@@ -91,7 +91,7 @@
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="more-title" (click)="moreOpen.set(false)">
     <div class="modal more-sheet" (click)="$event.stopPropagation()">
       <div class="more-sheet__who">
-        <span class="more-sheet__avatar" aria-hidden="true">{{ initial() }}</span>
+        <app-avatar [avatar]="game.avatar()" [name]="auth.currentUser()?.username" [size]="44" />
         <div class="more-sheet__names">
           <strong id="more-title">{{ auth.currentUser()?.username }}</strong>
           <a routerLink="/store" class="more-sheet__gems num" (click)="moreOpen.set(false)">💎 {{ game.diamonds() }}</a>

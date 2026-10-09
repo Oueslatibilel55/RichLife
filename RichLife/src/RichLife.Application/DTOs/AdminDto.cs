@@ -35,7 +35,11 @@ public record AdminStatsDto(
     int DiamondsSpent,
     int BadgesOwned,
     int BoostsActive,
-    IReadOnlyList<BadgeCountDto> BadgeDistribution);
+    IReadOnlyList<BadgeCountDto> BadgeDistribution,
+    int AvatarsOwned,
+    IReadOnlyList<AvatarCountDto> AvatarDistribution);
+
+public record AvatarCountDto(string Id, string Icon, string Name, int Price, int Owners, int InUse);
 
 public record BadgeCountDto(string Id, string Icon, string Name, int Price, int Owners);
 

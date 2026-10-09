@@ -13,7 +13,17 @@ public record StoreDto(
     decimal DiamondValue,
     IReadOnlyList<StoreBadgeDto> Badges,
     string? FeaturedBadgeId,
+    IReadOnlyList<StoreAvatarDto> Avatars,
+    string? AvatarId,
     IReadOnlyList<DiamondTransactionDto> History);
+
+/// <summary>A profile picture: an emoji on a gradient — on the company, the profile and the leaderboard.</summary>
+public record AvatarDto(string Id, string Icon, string From, string To);
+
+public record StoreAvatarDto(
+    string Id, string Icon, string Name, string From, string To, int Price, string Rarity, bool Owned, bool Selected);
+
+public record SelectAvatarRequest(string? AvatarId);
 
 public record BoostOptionDto(int Hours, int Price);
 

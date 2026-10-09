@@ -32,7 +32,8 @@ public class LeaderboardRepository(GameDbContext db) : ILeaderboardRepository
                 p.Company.AllTimeEarnings,
                 p.Company.PrestigeLevel,
                 p.Company.PrestigeCount,
-                p.Company.FeaturedBadgeId
+                p.Company.FeaturedBadgeId,
+                p.Company.AvatarId
             })
             .ToListAsync(ct);
 
@@ -45,7 +46,8 @@ public class LeaderboardRepository(GameDbContext db) : ILeaderboardRepository
                 AllTimeEarnings: r.AllTimeEarnings,
                 PrestigeLevel: r.PrestigeLevel,
                 PrestigeCount: r.PrestigeCount,
-                BadgeIcon: BadgeCatalog.Find(r.FeaturedBadgeId)?.Icon))
+                BadgeIcon: BadgeCatalog.Find(r.FeaturedBadgeId)?.Icon,
+                Avatar: AvatarCatalog.Find(r.AvatarId) is { } a ? new AvatarDto(a.Id, a.Icon, a.From, a.To) : null))
             .ToList();
     }
 }

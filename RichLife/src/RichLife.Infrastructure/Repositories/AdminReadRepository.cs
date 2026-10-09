@@ -91,6 +91,21 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             .GroupBy(b => b.BadgeId)
             .Select(g => new { Id = g.Key, Count = g.Count() })
             .ToListAsync(ct);
+        var avatarOwners = await companiesQ
+            .SelectMany(c => c.Avatars)
+            .GroupBy(a => a.AvatarId)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var avatarsInUse = await companiesQ
+            .Where(c => c.AvatarId != null)
+            .GroupBy(c => c.AvatarId!)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var avatarDistribution = AvatarCatalog.All
+            .Select(a => new AvatarCountDto(a.Id, a.Icon, a.Name, a.Price,
+                avatarOwners.FirstOrDefault(o => o.Id == a.Id)?.Count ?? 0,
+                avatarsInUse.FirstOrDefault(u => u.Id == a.Id)?.Count ?? 0))
+            .ToList();
         var badgeDistribution = BadgeCatalog.All
             .Select(b => new BadgeCountDto(b.Id, b.Icon, b.Name, b.Price,
                 badgeOwners.FirstOrDefault(o => o.Id == b.Id)?.Count ?? 0))
@@ -106,7 +121,8 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             luxuryOwned, luxuryCatalogue, luxuryActive,
             unlocks.Sum(u => u.Count), achievementDistribution,
             loansTaken, activeLoans, outstanding, missed,
-            diamonds, earned, spent, badgeOwners.Sum(o => o.Count), boosts, badgeDistribution);
+            diamonds, earned, spent, badgeOwners.Sum(o => o.Count), boosts, badgeDistribution,
+            avatarOwners.Sum(o => o.Count), avatarDistribution);
     }
 
     public async Task<IReadOnlyList<AdminPlayerDto>> GetPlayersAsync(

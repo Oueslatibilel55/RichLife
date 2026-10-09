@@ -83,6 +83,8 @@ winnable without it (roadmap → "Diamonds (premium currency)").
   - Admin: ±diamonds validation and +100 with a note; the stats carry the new figures.
 - Frontend: production build clean (no budget warnings); i18n parity 0 problems. Not checked in a browser.
 
+Avatars (profile pictures) were added to the store afterwards — see [012](012-avatars.md).
+
 ## Later
 
 - Rewarded ads as a source (with server-side verification by the ad network).

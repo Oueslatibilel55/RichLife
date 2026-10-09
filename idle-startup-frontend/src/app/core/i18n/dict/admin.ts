@@ -257,6 +257,10 @@ export const ADMIN: DictSet = {
     'admin.luxury.preview': 'Preview',
     'admin.luxury.noImage': 'No image',
     'admin.luxury.created': 'Item created.',
+    'admin.overview.avatars': 'Avatars bought',
+    'admin.overview.avatarsCatalogue': '{n} avatars in the store',
+    'admin.overview.avatarUse': 'Avatars in use / bought',
+    'admin.overview.avatarOwnersInUse': '{inUse} in use · {owners} bought',
   },
   fr: {
     'admin.brandAria': 'Rich Life admin — vue d’ensemble',
@@ -503,6 +507,10 @@ export const ADMIN: DictSet = {
     'admin.luxury.preview': 'Aperçu',
     'admin.luxury.noImage': 'Pas d’image',
     'admin.luxury.created': 'Objet créé.',
+    'admin.overview.avatars': 'Avatars achetés',
+    'admin.overview.avatarsCatalogue': '{n} avatars en boutique',
+    'admin.overview.avatarUse': 'Avatars utilisés / achetés',
+    'admin.overview.avatarOwnersInUse': '{inUse} utilisés · {owners} achetés',
   },
   ar: {
     'admin.brandAria': 'إدارة Rich Life — نظرة عامة',
@@ -748,5 +756,9 @@ export const ADMIN: DictSet = {
     'admin.luxury.preview': 'معاينة',
     'admin.luxury.noImage': 'لا صورة',
     'admin.luxury.created': 'أُنشئ العنصر.',
+    'admin.overview.avatars': 'الصور الرمزية المشتراة',
+    'admin.overview.avatarsCatalogue': '{n} صورة رمزية في المتجر',
+    'admin.overview.avatarUse': 'الصور الرمزية المستخدمة / المشتراة',
+    'admin.overview.avatarOwnersInUse': '{inUse} مستخدمة · {owners} مشتراة',
   },
 };

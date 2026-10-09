@@ -141,18 +141,7 @@
   padding-inline-start: 8px;
   border-inline-start: 1px solid var(--border);
 
-  &__avatar {
-    display: none;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--primary-soft);
-    color: var(--primary);
-    font-size: 14px;
-    font-weight: 700;
-    @media (min-width: 768px) { display: grid; }
-  }
+  &__avatar { display: none !important; @media (min-width: 768px) { display: inline-flex !important; } }
 
   &__name {
     display: none;

@@ -47,7 +47,8 @@ public class ProfileService(
             achievements.Count,
             achievements,
             company is null ? [] : StoreService.OwnedBadges(company),
-            company?.FeaturedBadgeId));
+            company?.FeaturedBadgeId,
+            StoreService.Avatar(company?.AvatarId)));
     }
 
     private static ProfileCompanyDto ToDto(Company c, DateTime now) => new(

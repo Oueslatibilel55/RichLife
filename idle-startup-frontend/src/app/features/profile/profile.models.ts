@@ -1,4 +1,4 @@
-import { PrestigeLevel } from '../../core/models/game.models';
+import { AvatarDto, PrestigeLevel } from '../../core/models/game.models';
 import { OwnedLuxury } from '../luxury/luxury.models';
 
 // Wire contract for GET /api/profile — mirrors api-contract.md §6b.
@@ -21,6 +21,8 @@ export interface Profile {
   badges: OwnedBadge[];
   /** Shown next to the name (and on the leaderboard); null for none. */
   featuredBadgeId: string | null;
+  /** The chosen avatar (§6e); null shows the initial. */
+  avatar: AvatarDto | null;
 }
 
 export interface OwnedBadge {

@@ -4,13 +4,7 @@ namespace RichLife.Domain.Store;
 public sealed record BadgeDefinition(string Id, string Icon, string Name, int Price)
 {
     /// <summary>Derived from the price, so the two can never disagree.</summary>
-    public string Rarity => Price switch
-    {
-        >= 250 => "legendary",
-        >= 120 => "epic",
-        >= 50 => "rare",
-        _ => "common",
-    };
+    public string Rarity => StoreRarity.For(Price);
 }
 
 /// <summary>
@@ -52,6 +46,7 @@ public static class DiamondReasons
     public const string DoubleOffline = "double-offline";
     public const string Exchange = "exchange";
     public const string Badge = "badge";
+    public const string Avatar = "avatar";
     public const string Admin = "admin";
     public const string Backfill = "backfill";
 }

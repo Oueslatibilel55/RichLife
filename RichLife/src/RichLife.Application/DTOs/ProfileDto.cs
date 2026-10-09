@@ -15,7 +15,8 @@ public record ProfileDto(
     int AchievementsTotal,
     IReadOnlyList<AchievementDto> Achievements,
     IReadOnlyList<OwnedBadgeDto> Badges,
-    string? FeaturedBadgeId);
+    string? FeaturedBadgeId,
+    AvatarDto? Avatar);
 
 public record ProfileCompanyDto(
     string Name,

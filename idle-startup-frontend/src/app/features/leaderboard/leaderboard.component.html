@@ -32,6 +32,7 @@
       @for (entry of entries(); track entry.username) {
         <li class="row" [class.row--me]="isMe(entry.username)" [class.row--top]="entry.rank <= 3">
           <span class="row__rank num">{{ medal(entry.rank) }}</span>
+          <app-avatar [avatar]="entry.avatar" [name]="entry.username" [size]="36" />
 
           <span class="row__who">
             <span class="row__user">

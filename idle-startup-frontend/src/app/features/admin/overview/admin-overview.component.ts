@@ -38,6 +38,10 @@ export class AdminOverviewComponent implements OnInit {
     Math.max(1, ...(this.stats()?.achievementDistribution.map((a) => a.companies) ?? [0])),
   );
 
+  readonly maxAvatarUse = computed(() =>
+    Math.max(1, ...(this.stats()?.avatarDistribution.map((a) => Math.max(a.owners, a.inUse)) ?? [0])),
+  );
+
   readonly maxPerBadge = computed(() =>
     Math.max(1, ...(this.stats()?.badgeDistribution.map((b) => b.owners) ?? [0])),
   );

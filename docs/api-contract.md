@@ -99,6 +99,7 @@ Sliding window, applied per server (not per user).
   "diamonds": 85,
   "boostUntil": null,
   "boostMultiplier": 2,
+  "avatar": { "id": "fox", "icon": "🦊", "from": "#FED7AA", "to": "#EA580C" },
   "businesses": []
 }
 ```
@@ -106,6 +107,7 @@ Sliding window, applied per server (not per user).
 | Field | Meaning |
 |---|---|
 | `diamonds` | The premium currency balance (§6e). A whole number. |
+| `avatar` | The player's chosen avatar (§6e) — an emoji on a gradient from `from` to `to` (CSS colours) — or `null` for none (clients show the username's initial). Same `AvatarDto` on the profile and the leaderboard. |
 | `boostUntil` | End of the running **income boost** (§6e), `null` if none was ever bought. While `now < boostUntil` every income — online and offline — is × `boostMultiplier`. **`incomePerSecond` and `offlineIncomePerSecond` never include the boost**: the client multiplies its ticker rate itself and drops back when `boostUntil` passes. |
 | `incomePerSecond` | **Online** rate: `(passiveIncomePerSecond + Σ business.netIncomePerSecond) × prestigeMultiplier`. This is the number the client ticker must simulate — the multiplier is **already applied**. |
 | `offlineIncomePerSecond` | Same formula, but counting only businesses whose manager shift is running at response time (`isAutomated: true`). The rate actually paid while away also depends on when each shift ends — see `GET /api/game/state`. |
@@ -482,13 +484,14 @@ Anonymous. Rate limit `game-actions`. Note the **trailing slash**.
     "allTimeEarnings": 1284300.75,
     "prestigeLevel": "Entrepreneur",
     "prestigeCount": 2,
-    "badgeIcon": "🦄"
+    "badgeIcon": "🦄",
+    "avatar": { "id": "fox", "icon": "🦊", "from": "#FED7AA", "to": "#EA580C" }
   }
 ]
 ```
 
 Ranked by **all-time earnings**, not net worth. `badgeIcon` is the player's featured badge (§6e),
-`null` if none. `rank` is 1-based and computed over the
+`null` if none; `avatar` their avatar, `null` if none. `rank` is 1-based and computed over the
 returned page. Players without a company, and admins, are excluded.
 
 ---
@@ -514,6 +517,7 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
   },
   "badges": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "rarity": "epic", "purchasedAt": "…" } ],
   "featuredBadgeId": "unicorn",
+  "avatar": { "id": "fox", "icon": "🦊", "from": "#FED7AA", "to": "#EA580C" },
   "luxury": [ { "id": "rolex-submariner", "name": "Rolex Submariner", "category": "Watch", "price": 150000,
                "imageUrl": "/luxury/rolex-submariner.jpg", "imageCredit": "…", "purchasedAt": "…" } ],
   "achievementsUnlocked": 6, "achievementsTotal": 18,
@@ -530,6 +534,7 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
 - `company` is `null` (and `rank` `null`) until the player creates one.
 - `rank` is the position on the all-time-earnings leaderboard among `rankedPlayers` (players
   with a company; admins excluded).
+- `avatar` is the avatar chosen in the store (§6e), `null` for none (show the initial).
 - `badges` are the badges bought in the store (§6e), newest first; `featuredBadgeId` the one shown
   next to the name (also on the leaderboard), `null` if none.
 - `managersHired` = businesses that have had a manager at least once; `managersOnShift` =
@@ -718,6 +723,7 @@ diamonds**. Everything priced in diamonds below is a rule in code (`GameConstant
 | Double offline earnings | 15 | Pays the last `/state` earnings again (`doubleOffer`), once, within 30 minutes. Counts toward `allTimeEarnings`. |
 | Exchange | n | Adds `n × diamondValue` cash. **Not** earnings (`allTimeEarnings` untouched). |
 | Badge | 20–250 | Owned for good; shown on the profile; one can be featured next to the name. |
+| Avatar | 0–250 | The profile picture: shown in the top bar, on the profile and on the leaderboard. 4 are free; the rest are bought once and kept. |
 
 `diamondValue` (cash per diamond) follows prestige: 250 · 2,000 · 20,000 · 200,000 · 2,500,000 ·
 30,000,000 · 300,000,000 (P1 → P7).
@@ -743,6 +749,11 @@ recorded figure — display only, never adopted (like `GET /api/game/bank`).
       "owned": true, "featured": true }
   ],
   "featuredBadgeId": "unicorn",
+  "avatars": [
+    { "id": "fox", "icon": "🦊", "name": "Fox", "from": "#FED7AA", "to": "#EA580C", "price": 30,
+      "rarity": "common", "owned": true, "selected": true }
+  ],
+  "avatarId": "fox",
   "history": [
     { "amount": -25, "balance": 85, "reason": "boost", "detail": "1", "createdAt": "2026-10-09T14:00:00Z" }
   ]
@@ -751,10 +762,12 @@ recorded figure — display only, never adopted (like `GET /api/game/bank`).
 
 - `badges`: every badge in display order; `rarity` is `common` | `rare` | `epic` | `legendary`.
   `name` is English — clients translate by `id`.
+- `avatars`: every avatar in display order, same `rarity` scale; `price: 0` avatars are free and
+  always `owned`. `avatarId` is the one in use, `null` for none.
 - `history`: the last 20 ledger rows, newest first. `amount` is signed; `balance` is after it;
   `reason` is one of `welcome`, `achievement` (`detail` = achievement code), `prestige`
   (`detail` = new level), `boost` (`detail` = hours), `double-offline`, `exchange`,
-  `badge` (`detail` = badge id), `admin` (`detail` = the admin's note), `backfill`.
+  `badge` (`detail` = badge id), `avatar` (`detail` = avatar id), `admin` (`detail` = the admin's note), `backfill`.
 
 ### `POST /api/game/store/boosts/{hours}` — buy an income boost
 
@@ -781,6 +794,18 @@ the featured one.
 
 `{ "badgeId": "unicorn" }` (or `null` to show none) → `200` `StoreDto` · `400`
 `"Company not found."` | `"You do not own this badge."`
+
+### `POST /api/game/store/avatars/{avatarId}` — buy an avatar
+
+No body → `200` `StoreDto` · `400` `"Company not found."` | `"Avatar not found."` |
+`"You already own this avatar."` (free ones included) | `"Not enough diamonds."`. A bought
+avatar is put on at once.
+
+### `PUT /api/game/store/avatar` — choose the avatar in use
+
+`{ "avatarId": "fox" }` (or `null` for none — the initial) → `200` `StoreDto` · `400`
+`"Company not found."` | `"You do not own this avatar."` (any free avatar is allowed). Moves no
+money, so the client does not sync first and does not adopt the answer's `cash`.
 
 ---
 
@@ -919,7 +944,9 @@ Added 2026-10-08 — see `features/006-admin-panel.md`. Same gate as §7: bearer
   "loansTaken": 19, "activeLoans": 6, "loansOutstanding": 812400.5, "loansMissedPayments": 3,
   "diamondsInCirculation": 2140, "diamondsEarned": 3900, "diamondsSpent": 1760,
   "badgesOwned": 14, "boostsActive": 2,
-  "badgeDistribution": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "price": 120, "owners": 3 } ]
+  "badgeDistribution": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "price": 120, "owners": 3 } ],
+  "avatarsOwned": 9,
+  "avatarDistribution": [ { "id": "fox", "icon": "🦊", "name": "Fox", "price": 30, "owners": 2, "inUse": 1 } ]
 }
 ```
 
@@ -932,6 +959,8 @@ taken. (Added 2026-10-09: the luxury, achievement and loan fields.) Diamonds (§
 `diamondsInCirculation` = player balances; `diamondsEarned` / `diamondsSpent` = positive / negative
 ledger totals (admin grants and removals included); `boostsActive` = boosts running now;
 `badgeDistribution` lists every badge in display order with its owners (zeros included).
+`avatarsOwned` counts bought avatars (free ones are not bought); `avatarDistribution` lists every
+avatar with `owners` (bought) and `inUse` (players showing it), zeros included.
 
 ### `GET /api/admin/players?search=` → `200` `AdminPlayerDto[]`
 

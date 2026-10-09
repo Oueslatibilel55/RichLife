@@ -48,6 +48,8 @@ export interface CompanyDto {
   boostUntil: string | null;
   /** × applied to every income while `now < boostUntil` (2). */
   boostMultiplier: number;
+  /** The chosen avatar (§6e); null shows the initial. */
+  avatar: AvatarDto | null;
   businesses: BusinessDto[];
 }
 
@@ -222,6 +224,7 @@ export interface LeaderboardEntryDto {
   prestigeCount: number;
   /** The player's featured badge (§6e), null if none. */
   badgeIcon: string | null;
+  avatar: AvatarDto | null;
 }
 
 // -- Store and diamonds (contract §6e) ---------------------------------------
@@ -247,7 +250,7 @@ export interface StoreBadgeDto {
 
 export type DiamondReason =
   | 'welcome' | 'achievement' | 'prestige' | 'boost' | 'double-offline'
-  | 'exchange' | 'badge' | 'admin' | 'backfill';
+  | 'exchange' | 'badge' | 'avatar' | 'admin' | 'backfill';
 
 export interface DiamondTransactionDto {
   /** Signed. */
@@ -273,6 +276,27 @@ export interface StoreDto {
   diamondValue: number;
   badges: StoreBadgeDto[];
   featuredBadgeId: string | null;
+  /** Every avatar in display order; free ones (price 0) are always owned. */
+  avatars: StoreAvatarDto[];
+  /** The avatar in use; null for the initial. */
+  avatarId: string | null;
   /** Last 20 ledger lines, newest first. */
   history: DiamondTransactionDto[];
+}
+
+/** A profile picture: an emoji on a gradient (CSS colours). */
+export interface AvatarDto {
+  id: string;
+  icon: string;
+  from: string;
+  to: string;
+}
+
+export interface StoreAvatarDto extends AvatarDto {
+  /** English — display `avatar.<id>` instead. */
+  name: string;
+  price: number;
+  rarity: BadgeRarity;
+  owned: boolean;
+  selected: boolean;
 }

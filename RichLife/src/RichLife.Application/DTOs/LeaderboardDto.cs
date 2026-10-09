@@ -10,5 +10,6 @@ public record LeaderboardEntryDto(
     decimal AllTimeEarnings,
     PrestigeLevel PrestigeLevel,
     int PrestigeCount,
-    string? BadgeIcon
+    string? BadgeIcon,
+    AvatarDto? Avatar
 );

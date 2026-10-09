@@ -9,6 +9,7 @@ import { formatCountdown, formatElapsed } from '../../../core/game/format';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../pipes/money.pipe';
 import { IconComponent, IconName } from '../icon/icon.component';
+import { AvatarComponent } from '../avatar/avatar.component';
 import { LangSwitcherComponent } from '../lang-switcher/lang-switcher.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
@@ -30,7 +31,7 @@ const PROFILE: NavItem = { path: '/profile', label: 'nav.profile', icon: 'contac
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterLink, RouterOutlet, RouterLinkActive, MoneyPipe, RatePipe, IconComponent, LangSwitcherComponent, TranslatePipe],
+  imports: [RouterLink, RouterOutlet, RouterLinkActive, MoneyPipe, RatePipe, IconComponent, AvatarComponent, LangSwitcherComponent, TranslatePipe],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,9 +68,6 @@ export class LayoutComponent implements OnInit {
   /** "More" lights up when the current page is one of its items. */
   readonly moreActive = computed(() => this.moreItems.some((i) => this.url().startsWith(i.path)));
 
-  readonly initial = computed(() =>
-    (this.auth.currentUser()?.username ?? '?').charAt(0).toUpperCase(),
-  );
 
   // Welcome-back "double it" (contract §6e)
   readonly doubling = signal(false);

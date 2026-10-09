@@ -6,6 +6,7 @@ import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 /** "TN" -> 🇹🇳 via regional indicator symbols. Falls back to the raw code. */
@@ -22,7 +23,7 @@ function flagOf(country: string): string {
 @Component({
   selector: 'app-leaderboard',
   standalone: true,
-  imports: [MoneyPipe, IconComponent, TranslatePipe],
+  imports: [MoneyPipe, IconComponent, AvatarComponent, TranslatePipe],
   templateUrl: './leaderboard.component.html',
   styleUrl: './leaderboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

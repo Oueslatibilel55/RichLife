@@ -19,6 +19,7 @@ public record CompanyDto(
     int Diamonds,
     DateTime? BoostUntil,
     decimal BoostMultiplier,
+    AvatarDto? Avatar,
     IReadOnlyList<BusinessDto> Businesses
 );
 

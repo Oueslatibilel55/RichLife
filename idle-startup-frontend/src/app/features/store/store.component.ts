@@ -1,15 +1,18 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
 import { GameService } from '../../core/services/game.service';
-import { DiamondTransactionDto, StoreBadgeDto, StoreDto } from '../../core/models/game.models';
+import { DiamondTransactionDto, StoreAvatarDto, StoreBadgeDto, StoreDto } from '../../core/models/game.models';
+import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { formatCountdown } from '../../core/game/format';
 import { toErrorMessage } from '../../core/http/api-error';
 import { currentLang, t } from '../../core/i18n/i18n';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
-type Tab = 'boosts' | 'badges' | 'exchange' | 'history';
+type Tab = 'boosts' | 'avatars' | 'badges' | 'exchange' | 'history';
+const TABS: readonly Tab[] = ['boosts', 'avatars', 'badges', 'exchange', 'history'];
 
 const TAB_KEY = 'rl_store_tab';
 
@@ -20,15 +23,16 @@ const TAB_KEY = 'rl_store_tab';
 @Component({
   selector: 'app-store',
   standalone: true,
-  imports: [FormsModule, MoneyPipe, TranslatePipe],
+  imports: [FormsModule, MoneyPipe, TranslatePipe, AvatarComponent],
   templateUrl: './store.component.html',
   styleUrl: './store.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StoreComponent implements OnInit {
   readonly game = inject(GameService);
+  private readonly route = inject(ActivatedRoute);
 
-  readonly tabs: readonly Tab[] = ['boosts', 'badges', 'exchange', 'history'];
+  readonly tabs = TABS;
   readonly tab = signal<Tab>(readTab());
   readonly loading = signal(true);
   /** What is being bought right now (`boost-1`, `badge-unicorn`, `exchange`, `feature-…`). */
@@ -53,6 +57,9 @@ export class StoreComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // /store?tab=avatars — the profile's "change avatar" link.
+    const wanted = this.route.snapshot.queryParamMap.get('tab');
+    if (isTab(wanted)) this.tab.set(wanted);
     this.game.loadStore().subscribe({
       next: () => this.loading.set(false),
       error: (err: unknown) => {
@@ -80,6 +87,15 @@ export class StoreComponent implements OnInit {
     this.run(`badge-${b.id}`, this.game.buyBadge(b.id), () => t('store.badgeBought', { name: t('badge.' + b.id) }));
   }
 
+  buyAvatar(a: StoreAvatarDto): void {
+    this.run(`avatar-${a.id}`, this.game.buyAvatar(a.id), () => t('store.avatarBought', { name: t('avatar.' + a.id) }));
+  }
+
+  useAvatar(a: StoreAvatarDto | null): void {
+    this.run(`use-${a?.id ?? 'none'}`, this.game.selectAvatar(a?.id ?? null),
+      () => (a ? t('store.avatarSelected', { name: t('avatar.' + a.id) }) : t('store.avatarCleared')));
+  }
+
   feature(b: StoreBadgeDto | null): void {
     this.run(`feature-${b?.id ?? 'none'}`, this.game.featureBadge(b?.id ?? null),
       () => (b ? t('store.badgeFeatured', { name: t('badge.' + b.id) }) : t('store.badgeHidden')));
@@ -102,6 +118,7 @@ export class StoreComponent implements OnInit {
     switch (h.reason) {
       case 'achievement': return h.detail ? `${base} — ${t('ach.' + h.detail + '.title')}` : base;
       case 'badge': return h.detail ? `${base} — ${t('badge.' + h.detail)}` : base;
+      case 'avatar': return h.detail ? `${base} — ${t('avatar.' + h.detail)}` : base;
       case 'boost': return h.detail ? `${base} — ${t('store.hours', { h: h.detail })}` : base;
       case 'prestige': return h.detail ? `${base} — ${t('prestige.' + h.detail)}` : base;
       case 'admin': return h.detail ? `${base} — ${h.detail}` : base;
@@ -146,14 +163,19 @@ const REASON_ICONS: Readonly<Record<string, string>> = {
   'double-offline': '✨',
   exchange: '💱',
   badge: '🎖️',
+  avatar: '🧑‍🎨',
   admin: '🛡️',
   backfill: '🎁',
 };
 
+function isTab(v: string | null): v is Tab {
+  return (TABS as readonly string[]).includes(v ?? '');
+}
+
 function readTab(): Tab {
   try {
     const v = localStorage.getItem(TAB_KEY);
-    if (v === 'boosts' || v === 'badges' || v === 'exchange' || v === 'history') return v;
+    if (isTab(v)) return v;
   } catch { /* private mode */ }
   return 'boosts';
 }

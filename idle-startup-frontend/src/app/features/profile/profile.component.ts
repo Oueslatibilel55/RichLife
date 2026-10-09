@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { ProfileService } from './profile.service';
 import { OwnedBadge, Profile } from './profile.models';
 import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
@@ -28,7 +29,7 @@ function flagOf(country: string): string {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, MoneyPipe, RatePipe, TranslatePipe, LangSwitcherComponent],
+  imports: [RouterLink, DecimalPipe, MoneyPipe, RatePipe, TranslatePipe, LangSwitcherComponent, AvatarComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,7 +53,6 @@ export class ProfileComponent implements OnInit {
   readonly prestigeLabel = prestigeLabel;
   readonly prestigeColor = prestigeColor;
 
-  readonly initial = computed(() => (this.profile()?.username ?? '?').charAt(0).toUpperCase());
 
   readonly achievements = computed(() => {
     const list = this.profile()?.achievements ?? [];

@@ -69,6 +69,7 @@ features/      auth/{login,register}, dashboard (+ manage-business), businesses,
 shared/
   components/layout  — persistent HUD/nav shell (top bar + mobile tab bar)
   components/icon    — inline SVG icon set
+  components/avatar  — <app-avatar [avatar] [name] [size]>: the player's avatar (emoji on its gradient) or initial
   pipes/money.pipe.ts — `money` (whole dollars) and `rate` (keeps cents)
 ```
 
@@ -109,7 +110,8 @@ returns a `UrlTree` carrying a `returnUrl`, which `LoginComponent` honours.
   `admin.title.luxury` (in `dict/admin.ts`). A forgiven loan shows a "Forgiven" badge in the player's
   bank history (`LoanDto.forgiven`). Diamonds (§7b): Players shows each balance and badge count and a
   💎 action (give/take with a note, `POST /admin/players/{id}/diamonds`); Overview shows diamonds
-  held / earned / spent, badges owned, boosts running and badges bought per badge.
+  held / earned / spent, badges owned, boosts running, badges bought per badge, avatars bought and
+  avatars in use / bought per avatar.
 
 ### GameService — the idle-game loop
 
@@ -181,6 +183,11 @@ the service's methods.
   + `refreshCompany()`. `featureBadge` moves no money: no sync, cash not adopted. The welcome-back
   dialog offers "Double it" from `OfflineEarningsDto.doubleOffer`. Badge names are `badge.<id>` keys
   (`dict/store.ts`), like achievements; history reasons are `store.reason.<reason>`.
+- **Avatars** (`features/012-avatars.md`): `game.avatar()` (from `CompanyDto.avatar`) feeds the top bar
+  and the "More" sheet; the profile and the leaderboard use the `avatar` in their own payloads. Always
+  render with `<app-avatar>` (it falls back to the initial). `buyAvatar` goes through `storeAction`;
+  `selectAvatar` does not sync and patches the company's `avatar` locally. The store opens a tab from
+  `?tab=` (the profile picture links to `/store?tab=avatars`). Names are `avatar.<id>` keys.
 
 Because the service survives navigation, components **must not blindly re-bootstrap it**: call
 `ensureLoaded()`, which reuses live state and only fetches when there is none.
