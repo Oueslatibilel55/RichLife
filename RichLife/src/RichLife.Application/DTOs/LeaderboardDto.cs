@@ -9,5 +9,6 @@ public record LeaderboardEntryDto(
     string CompanyName,
     decimal AllTimeEarnings,
     PrestigeLevel PrestigeLevel,
-    int PrestigeCount
+    int PrestigeCount,
+    string? BadgeIcon
 );

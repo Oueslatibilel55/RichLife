@@ -17,6 +17,7 @@ public class GameDbContext(DbContextOptions<GameDbContext> options) : DbContext(
     public DbSet<ManagerName>   ManagerNames   => Set<ManagerName>();
     public DbSet<LuxuryCatalogueEntry> LuxuryCatalogue => Set<LuxuryCatalogueEntry>();
     public DbSet<Loan>          Loans          => Set<Loan>();
+    public DbSet<DiamondTransaction> DiamondTransactions => Set<DiamondTransaction>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {

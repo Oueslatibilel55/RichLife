@@ -14,6 +14,8 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.Property(x => x.Cash).HasPrecision(20, 4);
         b.Property(x => x.PassiveIncomePerSecond).HasPrecision(20, 6);
         b.Property(x => x.AllTimeEarnings).HasPrecision(20, 4);
+        b.Property(x => x.OfflineBonusAmount).HasPrecision(20, 4);
+        b.Property(x => x.FeaturedBadgeId).HasMaxLength(60);
 
         b.HasIndex(x => x.AllTimeEarnings);   // leaderboard ordering
 
@@ -54,6 +56,26 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             a.Property(x => x.Code).HasMaxLength(60);
         });
         b.Navigation(x => x.Achievements).HasField("_achievements")
+         .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Bought badges: owned like achievements, keyed (CompanyId, BadgeId).
+        b.OwnsMany(x => x.Badges, a =>
+        {
+            a.ToTable("company_badges");
+            a.WithOwner().HasForeignKey("CompanyId");
+            a.HasKey("CompanyId", nameof(CompanyBadge.BadgeId));
+            a.Property(x => x.BadgeId).HasMaxLength(60);
+        });
+        b.Navigation(x => x.Badges).HasField("_badges")
+         .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // The diamond ledger only grows, so it is never loaded with the company: the
+        // collection holds just the lines added in this unit of work, which EF inserts.
+        b.HasMany(x => x.DiamondLedger)
+         .WithOne()
+         .HasForeignKey(t => t.CompanyId)
+         .OnDelete(DeleteBehavior.Cascade);
+        b.Navigation(x => x.DiamondLedger).HasField("_diamondLedger")
          .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

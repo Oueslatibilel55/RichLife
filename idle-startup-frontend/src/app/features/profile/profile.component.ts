@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProfileService } from './profile.service';
-import { Profile } from './profile.models';
+import { OwnedBadge, Profile } from './profile.models';
 import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
 import { toErrorMessage } from '../../core/http/api-error';
 import { currentLang } from '../../core/i18n/i18n';
@@ -79,6 +79,11 @@ export class ProfileComponent implements OnInit {
   }
 
   /** Formats a UTC ISO date in the current UI language (reads the language signal, so it re-renders on a switch). */
+  /** The featured badge, if the player chose one and still has it. */
+  featured(p: Profile): OwnedBadge | null {
+    return p.badges.find((b) => b.id === p.featuredBadgeId) ?? null;
+  }
+
   date(iso: string | null, style: keyof typeof DATE_FORMATS): string {
     if (!iso) return '';
     const d = new Date(iso);

@@ -17,6 +17,18 @@ export interface Profile {
   achievementsUnlocked: number;
   achievementsTotal: number;
   achievements: Achievement[];
+  /** Badges bought in the store (§6e), newest first. */
+  badges: OwnedBadge[];
+  /** Shown next to the name (and on the leaderboard); null for none. */
+  featuredBadgeId: string | null;
+}
+
+export interface OwnedBadge {
+  id: string;
+  icon: string;
+  name: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  purchasedAt: string;
 }
 
 export interface ProfileCompany {
@@ -34,6 +46,7 @@ export interface ProfileCompany {
   managersOnShift: number;
   managersHired: number;
   highestBusinessLevel: number;
+  diamonds: number;
 }
 
 export interface Achievement {

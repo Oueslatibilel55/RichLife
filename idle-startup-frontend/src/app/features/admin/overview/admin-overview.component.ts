@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { AdminService } from '../admin.service';
 import { AdminStats } from '../admin.models';
 import { prestigeColor, prestigeLabel } from '../../../core/game/prestige';
@@ -12,7 +12,7 @@ import { t } from '../../../core/i18n/i18n';
 @Component({
   selector: 'app-admin-overview',
   standalone: true,
-  imports: [MoneyPipe, DatePipe, IconComponent, TranslatePipe],
+  imports: [MoneyPipe, DatePipe, DecimalPipe, IconComponent, TranslatePipe],
   templateUrl: './admin-overview.component.html',
   styleUrl: './admin-overview.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +36,10 @@ export class AdminOverviewComponent implements OnInit {
 
   readonly maxPerAchievement = computed(() =>
     Math.max(1, ...(this.stats()?.achievementDistribution.map((a) => a.companies) ?? [0])),
+  );
+
+  readonly maxPerBadge = computed(() =>
+    Math.max(1, ...(this.stats()?.badgeDistribution.map((b) => b.owners) ?? [0])),
   );
 
   /** Translated title (`ach.<code>.title`); a code the client does not know yet shows the server's English. */

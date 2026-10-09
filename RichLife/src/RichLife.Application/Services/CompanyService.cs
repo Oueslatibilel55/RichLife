@@ -47,6 +47,8 @@ public class CompanyService(
         var earned = company.AccrueOffline(now);
         // Installments that fell due while away are collected after the earnings are in.
         var loanPayment = company.CollectLoanPayments(now);
+        // What was just earned can be paid again for diamonds (contract §6e).
+        company.OfferOfflineDouble(earned, now);
         if (earned > 0m || loanPayment is not null)
         {
             companyRepo.Update(company);
@@ -60,6 +62,7 @@ public class CompanyService(
             CashAfter: company.Cash,
             Capped: elapsed > GameConstants.OfflineCap,
             LoanPayment: BankMapper.ToDto(loanPayment),
+            DoubleOffer: StoreService.DoubleOffer(company, now),
             Company: CompanyMapper.ToDto(company, now)));
     }
 
@@ -114,7 +117,10 @@ public class CompanyService(
         return Result.Ok(new SyncResultDto(
             company.Cash,
             Adjusted: company.Cash != clientCash,
-            NewAchievements: fresh.Select(a => new AchievementUnlockedDto(a.Code, a.Title, a.Icon)).ToList(),
-            LoanPayment: BankMapper.ToDto(loanPayment)));
+            NewAchievements: fresh
+                .Select(a => new AchievementUnlockedDto(a.Code, a.Title, a.Icon, GameConstants.AchievementDiamonds))
+                .ToList(),
+            LoanPayment: BankMapper.ToDto(loanPayment),
+            Diamonds: company.Diamonds));
     }
 }

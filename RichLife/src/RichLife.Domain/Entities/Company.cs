@@ -5,6 +5,7 @@ using RichLife.Domain.Catalogue;
 using RichLife.Domain.Common;
 using RichLife.Domain.Enums;
 using RichLife.Domain.Events;
+using RichLife.Domain.Store;
 
 namespace RichLife.Domain.Entities;
 
@@ -24,6 +25,19 @@ public class Company : AggregateRoot
     public bool CashOverridePending { get; private set; }
     public decimal PassiveIncomePerSecond { get; private set; } = GameConstants.BasePassiveIncomePerSecond;
     public decimal AllTimeEarnings { get; private set; }
+
+    // Diamonds — contract §6e. The balance; every change also writes a ledger line.
+    public int Diamonds { get; private set; }
+
+    /// <summary>Every income is × <see cref="GameConstants.BoostMultiplier"/> until then (online and offline).</summary>
+    public DateTime? BoostUntil { get; private set; }
+
+    /// <summary>The last offline earnings, which can be paid again for diamonds until <see cref="OfflineBonusUntil"/>.</summary>
+    public decimal OfflineBonusAmount { get; private set; }
+    public DateTime? OfflineBonusUntil { get; private set; }
+
+    /// <summary>The bought badge shown next to the name; null for none.</summary>
+    public string? FeaturedBadgeId { get; private set; }
 
     /// <summary>Cash plus the liquidation value of everything owned, minus what is still owed to a bank.</summary>
     public decimal NetWorth =>
@@ -60,12 +74,21 @@ public class Company : AggregateRoot
     private readonly List<LuxuryAsset> _luxuryAssets = [];
     private readonly List<CompanyAchievement> _achievements = [];
     private readonly List<Loan> _loans = [];
+    private readonly List<CompanyBadge> _badges = [];
+    private readonly List<DiamondTransaction> _diamondLedger = [];
 
     public IReadOnlyList<Business> Businesses => _businesses.AsReadOnly();
     public IReadOnlyList<Asset> Assets => _assets.AsReadOnly();
     public IReadOnlyList<LuxuryAsset> LuxuryAssets => _luxuryAssets.AsReadOnly();
     public IReadOnlyList<CompanyAchievement> Achievements => _achievements.AsReadOnly();
     public IReadOnlyList<Loan> Loans => _loans.AsReadOnly();
+    public IReadOnlyList<CompanyBadge> Badges => _badges.AsReadOnly();
+
+    /// <summary>
+    /// Ledger lines added since the company was loaded — the ledger itself is never loaded
+    /// (it only grows). Read history through the repository.
+    /// </summary>
+    public IReadOnlyList<DiamondTransaction> DiamondLedger => _diamondLedger.AsReadOnly();
 
     /// <summary>The loan being repaid, if any — there is never more than one.</summary>
     public Loan? ActiveLoan => _loans.FirstOrDefault(l => l.IsActive);
@@ -75,7 +98,9 @@ public class Company : AggregateRoot
     public static Company Create(Guid playerId, string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return new Company { PlayerId = playerId, Name = name };
+        var company = new Company { PlayerId = playerId, Name = name };
+        company.GrantDiamonds(GameConstants.StartingDiamonds, DiamondReasons.Welcome, null, company.CreatedAt);
+        return company;
     }
 
     // -- Economy ------------------------------------------------------------
@@ -93,8 +118,14 @@ public class Company : AggregateRoot
         var from = LastSyncAt;
         var to = from + effective;
 
-        var baseEarned = PassiveIncomePerSecond * (decimal)effective.TotalSeconds;
-        var managed = _businesses.Sum(b => b.NetIncomePerSecond * b.ManagedSecondsWithin(from, to));
+        // A boost pays the boosted part of the window (BoostMultiplier − 1) more times.
+        var extra = GameConstants.BoostMultiplier - 1m;
+        var boostEnd = BoostUntil is { } until && until > from ? (until < to ? until : to) : (DateTime?)null;
+
+        var baseEarned = PassiveIncomePerSecond
+            * ((decimal)effective.TotalSeconds + extra * BoostedSecondsWithin(from, to));
+        var managed = _businesses.Sum(b => b.NetIncomePerSecond
+            * (b.ManagedSecondsWithin(from, to) + (boostEnd is { } end ? extra * b.ManagedSecondsWithin(from, end) : 0m)));
         var earned = (baseEarned + managed) * PrestigeMultiplier;
 
         AddCash(earned);
@@ -123,6 +154,7 @@ public class Company : AggregateRoot
     {
         var elapsed = nowUtc - LastSyncAt;
         var seconds = elapsed <= TimeSpan.Zero ? 0m : (decimal)elapsed.TotalSeconds;
+        seconds += (GameConstants.BoostMultiplier - 1m) * BoostedSecondsWithin(LastSyncAt, nowUtc);
         return Cash + (IncomePerSecond * seconds * GameConstants.SyncTolerance);
     }
 
@@ -352,6 +384,142 @@ public class Company : AggregateRoot
         return Result.Ok(loan);
     }
 
+    // -- Diamonds and the store (contract §6e) ----------------------------------
+
+    public bool IsBoostedAt(DateTime atUtc) => BoostUntil is { } until && atUtc < until;
+
+    /// <summary>Seconds of [<paramref name="fromUtc"/>, <paramref name="toUtc"/>] a boost covers.</summary>
+    public decimal BoostedSecondsWithin(DateTime fromUtc, DateTime toUtc)
+    {
+        if (BoostUntil is not { } until || until <= fromUtc || toUtc <= fromUtc) return 0m;
+        var end = toUtc < until ? toUtc : until;
+        return (decimal)(end - fromUtc).TotalSeconds;
+    }
+
+    /// <summary>
+    /// Buys <paramref name="hours"/> of × <see cref="GameConstants.BoostMultiplier"/> income.
+    /// While a boost runs, the time is added to it — never multiplied again.
+    /// </summary>
+    public Result BuyBoost(int hours, DateTime nowUtc)
+    {
+        var option = GameConstants.BoostOptions.FirstOrDefault(o => o.Hours == hours);
+        if (option.Hours == 0) return Result.Fail("Unknown boost.");
+
+        var from = IsBoostedAt(nowUtc) ? BoostUntil!.Value : nowUtc;
+        var until = from.AddHours(hours);
+        if (until - nowUtc > GameConstants.MaxBoostAhead)
+            return Result.Fail("A boost can run at most 24 hours ahead.");
+
+        var paid = SpendDiamonds(option.Price, DiamondReasons.Boost, hours.ToString(CultureInfo.InvariantCulture), nowUtc);
+        if (!paid.IsSuccess) return paid;
+
+        BoostUntil = until;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>Called by <c>/state</c> after crediting time away: those earnings can be paid again.</summary>
+    public void OfferOfflineDouble(decimal earned, DateTime nowUtc)
+    {
+        if (earned <= 0m) return;
+        OfflineBonusAmount = earned;
+        OfflineBonusUntil = nowUtc + GameConstants.OfflineDoubleWindow;
+        MarkUpdated();
+    }
+
+    public bool HasOfflineDoubleAt(DateTime nowUtc) =>
+        OfflineBonusAmount > 0m && OfflineBonusUntil is { } until && nowUtc <= until;
+
+    /// <summary>Pays the last offline earnings a second time, once. It is income, so it counts as earnings.</summary>
+    public Result DoubleOfflineEarnings(DateTime nowUtc)
+    {
+        if (!HasOfflineDoubleAt(nowUtc)) return Result.Fail("No offline earnings to double.");
+
+        var paid = SpendDiamonds(GameConstants.OfflineDoublePrice, DiamondReasons.DoubleOffline, null, nowUtc);
+        if (!paid.IsSuccess) return paid;
+
+        AddCash(OfflineBonusAmount);
+        OfflineBonusAmount = 0m;
+        OfflineBonusUntil = null;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Turns diamonds into cash at <see cref="GameConstants.DiamondCashValue"/>. One way only.
+    /// Not income: <see cref="AllTimeEarnings"/> (the leaderboard) is untouched.
+    /// </summary>
+    public Result ExchangeDiamonds(int diamonds, DateTime nowUtc)
+    {
+        if (diamonds < 1) return Result.Fail("Choose at least 1 diamond.");
+
+        var paid = SpendDiamonds(diamonds, DiamondReasons.Exchange, null, nowUtc);
+        if (!paid.IsSuccess) return paid;
+
+        Cash += diamonds * GameConstants.DiamondCashValue(PrestigeLevel);
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>Buys a badge for good. The first one bought becomes the featured badge.</summary>
+    public Result BuyBadge(BadgeDefinition badge, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(badge);
+        if (_badges.Any(b => b.BadgeId == badge.Id)) return Result.Fail("You already own this badge.");
+
+        var paid = SpendDiamonds(badge.Price, DiamondReasons.Badge, badge.Id, nowUtc);
+        if (!paid.IsSuccess) return paid;
+
+        _badges.Add(CompanyBadge.Create(badge.Id, nowUtc));
+        FeaturedBadgeId ??= badge.Id;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>Chooses the badge shown next to the name; null shows none.</summary>
+    public Result FeatureBadge(string? badgeId)
+    {
+        if (badgeId is not null && _badges.All(b => b.BadgeId != badgeId))
+            return Result.Fail("You do not own this badge.");
+
+        FeaturedBadgeId = badgeId;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>Admin: gives (positive) or takes away (negative) diamonds, with a note for the ledger.</summary>
+    public Result AdminAdjustDiamonds(int amount, string? reason, DateTime nowUtc)
+    {
+        if (amount == 0) return Result.Fail("Amount cannot be zero.");
+        if (Diamonds + (long)amount < 0) return Result.Fail("Diamonds cannot go below zero.");
+        var note = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        if (note is { Length: > DiamondTransaction.MaxDetailLength })
+            return Result.Fail("Reason must be at most 200 characters.");
+
+        Record(amount, DiamondReasons.Admin, note, nowUtc);
+        return Result.Ok();
+    }
+
+    private void GrantDiamonds(int amount, string reason, string? detail, DateTime nowUtc)
+    {
+        if (amount > 0) Record(amount, reason, detail, nowUtc);
+    }
+
+    private Result SpendDiamonds(int amount, string reason, string? detail, DateTime nowUtc)
+    {
+        if (amount > Diamonds) return Result.Fail("Not enough diamonds.");
+        Record(-amount, reason, detail, nowUtc);
+        return Result.Ok();
+    }
+
+    /// <summary>The only place the balance changes — always with its ledger line.</summary>
+    private void Record(int amount, string reason, string? detail, DateTime nowUtc)
+    {
+        Diamonds += amount;
+        _diamondLedger.Add(DiamondTransaction.Create(Id, amount, Diamonds, reason, detail, nowUtc));
+        MarkUpdated();
+    }
+
     // -- Achievements -----------------------------------------------------------
 
     /// <summary>The company's current value for an achievement metric.</summary>
@@ -379,7 +547,11 @@ public class Company : AggregateRoot
             .Where(a => !unlocked.Contains(a.Code) && AchievementMetricValue(a.Metric) >= a.Target)
             .ToList();
 
-        foreach (var a in fresh) _achievements.Add(CompanyAchievement.Create(a.Code, nowUtc));
+        foreach (var a in fresh)
+        {
+            _achievements.Add(CompanyAchievement.Create(a.Code, nowUtc));
+            GrantDiamonds(GameConstants.AchievementDiamonds, DiamondReasons.Achievement, a.Code, nowUtc);
+        }
         if (fresh.Count > 0) MarkUpdated();
         return fresh;
     }
@@ -411,6 +583,10 @@ public class Company : AggregateRoot
         PrestigeLevel = PrestigeLevel.TheHustle;
         PrestigeCount = 0;
         PassiveIncomePerSecond = GameConstants.BasePassiveIncomePerSecond;
+        BoostUntil = null;
+        OfflineBonusAmount = 0m;
+        OfflineBonusUntil = null;
+        // Diamonds and badges are kept: they may one day be paid for.
         LastSyncAt = nowUtc;
         CashOverridePending = true;
         MarkUpdated();
@@ -506,6 +682,8 @@ public class Company : AggregateRoot
 
         PassiveIncomePerSecond = GameConstants.BasePassiveIncomePerSecond * PrestigeMultiplier;
         LastSyncAt = nowUtc;
+        GrantDiamonds(GameConstants.PrestigeDiamondsPerLevel * (int)PrestigeLevel, DiamondReasons.Prestige,
+            PrestigeLevel.ToString(), nowUtc);
 
         RaiseDomainEvent(new PrestigeTriggeredEvent(Id, PrestigeLevel, PrestigeMultiplier));
         MarkUpdated();

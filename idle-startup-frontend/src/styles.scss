@@ -536,3 +536,116 @@ input, button, select, textarea { font: inherit; font-size: 16px; }
 [dir='rtl'] .form-select { background-position: left 14px center; }
 // Directional arrows/chevrons point the other way in RTL.
 [dir='rtl'] .rtl-flip { transform: scaleX(-1); }
+
+// ── Game shell: diamonds, boost, "More" sheet, welcome-back double (contract §6e) ──
+// Global for the layout's 4 kB style budget, like the toasts above.
+.gem-chip,
+.boost-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.gem-chip { background: var(--violet-soft); color: var(--violet); }
+.boost-chip {
+  display: none;
+  background: #FEF3C7;
+  color: #B45309;
+  @media (min-width: 600px) { display: inline-flex; }
+}
+
+.more-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  &__who { display: flex; align-items: center; gap: 12px; }
+  &__avatar {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 800;
+  }
+  &__names { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  &__names strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__gems { align-self: flex-start; font-size: 13px; font-weight: 800; color: var(--violet); text-decoration: none; }
+
+  &__links { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: none;
+    & + & { border-top: 1px solid var(--border); }
+    &.active { color: var(--primary); background: var(--primary-soft); }
+  }
+  &__chev { margin-inline-start: auto; color: var(--text-3); font-size: 20px; line-height: 1; }
+  &__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; }
+}
+
+.offline-double { margin-bottom: 8px; }
+.offline-doubled { margin: 0 0 12px; text-align: center; font-weight: 700; color: var(--violet); }
+.offline-hint { margin: -2px 0 10px; text-align: center; font-size: 13px; color: var(--text-3); }
+.offline-hint--error { color: var(--danger); }
+.achievement__gems { margin-inline-start: auto; padding-inline-start: 8px; font-size: 12px; font-weight: 800; color: var(--violet); white-space: nowrap; }
+
+// Store badges on the profile and the leaderboard (§6e).
+.featured-badge { display: inline-block; margin-inline-start: 6px; font-size: 0.85em; vertical-align: middle; }
+.row__badge { font-size: 15px; }
+.badge-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 600;
+    &[data-rarity='rare'] { border-color: #93C5FD; }
+    &[data-rarity='epic'] { border-color: #C4B5FD; }
+    &[data-rarity='legendary'] { border-color: #FCD34D; background: #FFFBEB; }
+    &--featured { box-shadow: 0 0 0 2px var(--violet); }
+  }
+  &__icon { font-size: 18px; }
+}
+
+// Game shell navigation (layout budget): 7 pages on desktop, 5 tabs + "More" on phones.
+.topnav__label { display: none; @media (min-width: 1280px) { display: inline; } }
+.desk-only { display: none !important; @media (min-width: 900px) { display: flex !important; } }
+@media (min-width: 900px) and (max-width: 1279px) { .topbar .brand__name { display: none !important; } }
+.hud__rate--boost { background: #FEF3C7 !important; color: #B45309 !important; }
+button.tabbar__link { border: 0; background: none; font-family: inherit; cursor: pointer; }
+.tabbar__link--store { color: var(--text-2); }
+.tabbar__fab {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -22px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #4F46E5);
+  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
+  border: 3px solid var(--surface);
+}

@@ -96,16 +96,21 @@ Sliding window, applied per server (not per user).
   "prestigeMultiplier": 1.18,
   "nextPrestigeThreshold": 200000,
   "lastSyncAt": "2026-10-01T09:14:22.431Z",
+  "diamonds": 85,
+  "boostUntil": null,
+  "boostMultiplier": 2,
   "businesses": []
 }
 ```
 
 | Field | Meaning |
 |---|---|
+| `diamonds` | The premium currency balance (§6e). A whole number. |
+| `boostUntil` | End of the running **income boost** (§6e), `null` if none was ever bought. While `now < boostUntil` every income — online and offline — is × `boostMultiplier`. **`incomePerSecond` and `offlineIncomePerSecond` never include the boost**: the client multiplies its ticker rate itself and drops back when `boostUntil` passes. |
 | `incomePerSecond` | **Online** rate: `(passiveIncomePerSecond + Σ business.netIncomePerSecond) × prestigeMultiplier`. This is the number the client ticker must simulate — the multiplier is **already applied**. |
 | `offlineIncomePerSecond` | Same formula, but counting only businesses whose manager shift is running at response time (`isAutomated: true`). The rate actually paid while away also depends on when each shift ends — see `GET /api/game/state`. |
 | `netWorth` | `cash` + company assets + Σ `business.totalValue` + Σ luxury items bought (at their price, §6c) **−** what is still owed on an active bank loan (`outstanding`, §6d). |
-| `allTimeEarnings` | Every dollar income has ever produced, cumulative. Never decreases; **survives prestige**; refunds from closing a business do not count. This is what ranks `/api/leaderboard`. ⏳ *Backend shipped 2026-10-01; frontend tile still feature-gated — see `features/001-all-time-earnings-on-company.md`.* |
+| `allTimeEarnings` | Every dollar income has ever produced, cumulative. Never decreases; **survives prestige**; refunds from closing a business do not count. This is what ranks `/api/leaderboard`. Shown on the dashboard — see `features/001-all-time-earnings-on-company.md`. |
 | `prestigeMultiplier` | `1 + 0.18 × prestigeCount`. |
 | `nextPrestigeThreshold` | **Cash price** of the **next** prestige (see §4 `/prestige`). Compare against `cash`, not `netWorth` — business value cannot pay for it. |
 | `lastSyncAt` | Server watermark. Offline accrual and the `/sync` ceiling are both measured from it. |
@@ -273,6 +278,7 @@ Read-only snapshot. **Does not accrue offline income and does not move `lastSync
   "cashAfter": 78929.3,
   "capped": true,
   "loanPayment": null,
+  "doubleOffer": { "amount": 60508.8, "price": 15, "until": "2026-10-01T09:44:22Z" },
   "company": { "id": "6f1f4b4e-...", "cash": 78929.3, "businesses": [] }
 }
 ```
@@ -281,11 +287,14 @@ The only endpoint that credits time spent away. The paid window is `lastSyncAt` 
 `lastSyncAt + min(elapsed, 4 h)` (`capped: true` means `elapsed` exceeded the cap). Within
 it, **base income** is paid for the whole window, and **each business** only for the part
 of the window its manager's shift covers (`lastSyncAt` → `min(window end, managerUntil)`),
-all × `prestigeMultiplier`. Example: hire at 11:00 (shift until 15:00), leave at 12:00, back
+all × `prestigeMultiplier` (and × `boostMultiplier` for the part of the window an income boost covers, §6e). Example: hire at 11:00 (shift until 15:00), leave at 12:00, back
 at 18:00 → window 12:00–16:00: base 4 h, that business 3 h.
 It advances `lastSyncAt` to now, so it cannot double-credit with `/sync`.
 After crediting, it collects every **bank installment** that fell due while away (§6d);
 `loanPayment` sums them (`null` when none was due) and `cashAfter` is net of them.
+`doubleOffer` (`null` when nothing was earned) lets the player pay `price` diamonds to receive
+`amount` again, until `until` — see `POST /api/game/store/double-offline` (§6e). A later
+`/state` that earns something replaces the offer.
 **This is the correct bootstrap call on app start**, not `GET /api/game/company` — and on
 **every return to a visible tab**: the client stops its `/sync` loop while hidden (a
 background sync would move `lastSyncAt` and erase this window) and calls `/state` when it
@@ -303,8 +312,9 @@ comes back. `elapsed` is a .NET `TimeSpan`: past 24 hours it gains a day prefix 
 ```json
 {
   "acceptedCash": 18420, "adjusted": false,
-  "newAchievements": [ { "code": "first-business", "title": "Open for business", "icon": "🏪" } ],
-  "loanPayment": null
+  "newAchievements": [ { "code": "first-business", "title": "Open for business", "icon": "🏪", "diamonds": 10 } ],
+  "loanPayment": null,
+  "diamonds": 95
 }
 ```
 
@@ -319,7 +329,11 @@ collected, `loanPayment` describes it and `acceptedCash` is net of it — so `ad
 than a generic "balance corrected").
 
 Every sync also checks achievements (§6b): `newAchievements` lists the ones unlocked by this
-call — usually `[]` — so the client can announce them. Each is reported exactly once.
+call — usually `[]` — so the client can announce them. Each is reported exactly once, with the
+diamonds it paid (§6e). `diamonds` is the balance after the call.
+
+The sync ceiling includes a running income boost (§6e): seconds of the window before
+`boostUntil` count `boostMultiplier` times.
 
 ### `POST /api/game/sync-beacon`
 
@@ -346,7 +360,7 @@ first, then **cash** is measured against `nextPrestigeThreshold` — the price. 
 the price is deducted from `cash`; the remaining cash and **every business and asset are
 kept**. `prestigeLevel` and `prestigeCount` are incremented (so `prestigeMultiplier` rises)
 and `passiveIncomePerSecond` → `3 × newPrestigeMultiplier`. Spending the price does not
-reduce `allTimeEarnings`. Like any spend, the client syncs first, then adopts the returned
+reduce `allTimeEarnings`. Each prestige also gives **diamonds** (§6e). Like any spend, the client syncs first, then adopts the returned
 `CompanyDto` as its new truth (cash and rate).
 
 | From → to | Price (`nextPrestigeThreshold`) |
@@ -467,12 +481,14 @@ Anonymous. Rate limit `game-actions`. Note the **trailing slash**.
     "companyName": "Oueslati Holdings",
     "allTimeEarnings": 1284300.75,
     "prestigeLevel": "Entrepreneur",
-    "prestigeCount": 2
+    "prestigeCount": 2,
+    "badgeIcon": "🦄"
   }
 ]
 ```
 
-Ranked by **all-time earnings**, not net worth. `rank` is 1-based and computed over the
+Ranked by **all-time earnings**, not net worth. `badgeIcon` is the player's featured badge (§6e),
+`null` if none. `rank` is 1-based and computed over the
 returned page. Players without a company, and admins, are excluded.
 
 ---
@@ -494,8 +510,10 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
     "prestigeLevel": "SmallBusiness", "prestigeCount": 1, "prestigeMultiplier": 1.18,
     "cash": 18420.5, "netWorth": 76420.5, "allTimeEarnings": 128430.75, "incomePerSecond": 37.42,
     "businesses": 4, "assets": 11, "managersOnShift": 2, "managersHired": 3,
-    "highestBusinessLevel": 7
+    "highestBusinessLevel": 7, "diamonds": 85
   },
+  "badges": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "rarity": "epic", "purchasedAt": "…" } ],
+  "featuredBadgeId": "unicorn",
   "luxury": [ { "id": "rolex-submariner", "name": "Rolex Submariner", "category": "Watch", "price": 150000,
                "imageUrl": "/luxury/rolex-submariner.jpg", "imageCredit": "…", "purchasedAt": "…" } ],
   "achievementsUnlocked": 6, "achievementsTotal": 18,
@@ -512,6 +530,8 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
 - `company` is `null` (and `rank` `null`) until the player creates one.
 - `rank` is the position on the all-time-earnings leaderboard among `rankedPlayers` (players
   with a company; admins excluded).
+- `badges` are the badges bought in the store (§6e), newest first; `featuredBadgeId` the one shown
+  next to the name (also on the leaderboard), `null` if none.
 - `managersHired` = businesses that have had a manager at least once; `managersOnShift` =
   shifts running now.
 - **Achievements** are defined in code (rules, like `GameConstants`), in display order.
@@ -674,6 +694,94 @@ No body → `200` `BankDto` (`activeLoan: null`, the loan now first in `history`
 The total collected by that call (it may cover several installments), the penalty added for
 any shortfall, what is still owed afterwards, and whether the loan is now fully repaid.
 
+## 6e. Store and diamonds — `/api/game/store`
+
+Added 2026-10-09 — see `features/011-diamonds-and-store.md`. **Bearer required, from a player**
+(admin → `403`). Rate limit `game-actions`.
+
+**Diamonds** (💎) are a second, whole-number currency. The server is the only source of truth:
+the client never simulates them, and every gain and spend is a row in a ledger.
+
+| Earned from | Diamonds |
+|---|---|
+| Creating a company (welcome gift) | 25 |
+| Each achievement unlocked (§6b) | 10 |
+| Each prestige (§4) | 20 × the new level's number (P2 → 40 … P7 → 140) |
+| An admin (§7b) | any |
+
+Ads will be a source later; diamonds cannot be bought, and **cash cannot be turned into
+diamonds**. Everything priced in diamonds below is a rule in code (`GameConstants`, `BadgeCatalog`).
+
+| Spend | Price | Effect |
+|---|---|---|
+| Income boost 1 h / 3 h / 8 h | 25 / 60 / 140 | Every income × 2 until `boostUntil` — online and offline. Buying while one runs **adds time** (never × 4); at most 24 h ahead. Counts toward `allTimeEarnings` like any income. |
+| Double offline earnings | 15 | Pays the last `/state` earnings again (`doubleOffer`), once, within 30 minutes. Counts toward `allTimeEarnings`. |
+| Exchange | n | Adds `n × diamondValue` cash. **Not** earnings (`allTimeEarnings` untouched). |
+| Badge | 20–250 | Owned for good; shown on the profile; one can be featured next to the name. |
+
+`diamondValue` (cash per diamond) follows prestige: 250 · 2,000 · 20,000 · 200,000 · 2,500,000 ·
+30,000,000 · 300,000,000 (P1 → P7).
+
+Like every spend, the client **syncs first**; each POST answers a fresh `StoreDto` whose `cash`,
+`diamonds` and `boostUntil` the client adopts. The `cash` in `GET /api/game/store` is the last
+recorded figure — display only, never adopted (like `GET /api/game/bank`).
+
+### `GET /api/game/store` → `200` `StoreDto` · `400` `"Company not found."` · `401` · `403`
+
+```json
+{
+  "diamonds": 85,
+  "cash": 18420.5,
+  "boostUntil": "2026-10-09T15:00:00Z",
+  "boostMultiplier": 2,
+  "maxBoostHours": 24,
+  "boosts": [ { "hours": 1, "price": 25 }, { "hours": 3, "price": 60 }, { "hours": 8, "price": 140 } ],
+  "doubleOffer": null,
+  "diamondValue": 2000,
+  "badges": [
+    { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "price": 120, "rarity": "epic",
+      "owned": true, "featured": true }
+  ],
+  "featuredBadgeId": "unicorn",
+  "history": [
+    { "amount": -25, "balance": 85, "reason": "boost", "detail": "1", "createdAt": "2026-10-09T14:00:00Z" }
+  ]
+}
+```
+
+- `badges`: every badge in display order; `rarity` is `common` | `rare` | `epic` | `legendary`.
+  `name` is English — clients translate by `id`.
+- `history`: the last 20 ledger rows, newest first. `amount` is signed; `balance` is after it;
+  `reason` is one of `welcome`, `achievement` (`detail` = achievement code), `prestige`
+  (`detail` = new level), `boost` (`detail` = hours), `double-offline`, `exchange`,
+  `badge` (`detail` = badge id), `admin` (`detail` = the admin's note), `backfill`.
+
+### `POST /api/game/store/boosts/{hours}` — buy an income boost
+
+No body → `200` `StoreDto` · `400` `"Company not found."` | `"Unknown boost."` |
+`"A boost can run at most 24 hours ahead."` | `"Not enough diamonds."`
+
+### `POST /api/game/store/double-offline` — double the last offline earnings
+
+No body → `200` `StoreDto` (cash includes the bonus) · `400` `"Company not found."` |
+`"No offline earnings to double."` (none, already used, or expired) | `"Not enough diamonds."`
+
+### `POST /api/game/store/exchange` — diamonds → cash
+
+`{ "diamonds": 10 }` → `200` `StoreDto` · `400` `"Company not found."` |
+`"Choose at least 1 diamond."` | `"Not enough diamonds."`
+
+### `POST /api/game/store/badges/{badgeId}` — buy a badge
+
+No body → `200` `StoreDto` · `400` `"Company not found."` | `"Badge not found."` |
+`"You already own this badge."` | `"Not enough diamonds."`. The first badge bought becomes
+the featured one.
+
+### `PUT /api/game/store/featured-badge` — choose the badge shown next to the name
+
+`{ "badgeId": "unicorn" }` (or `null` to show none) → `200` `StoreDto` · `400`
+`"Company not found."` | `"You do not own this badge."`
+
 ---
 
 ## 7. Admin — catalogue editor — `/api/admin/catalogue`
@@ -808,7 +916,10 @@ Added 2026-10-08 — see `features/006-admin-panel.md`. Same gate as §7: bearer
   "luxuryOwned": 23, "luxuryCatalogue": 76, "luxuryCatalogueActive": 76,
   "achievementsUnlocked": 214,
   "achievementDistribution": [ { "code": "earn-1k", "title": "First thousand", "icon": "💵", "companies": 38 } ],
-  "loansTaken": 19, "activeLoans": 6, "loansOutstanding": 812400.5, "loansMissedPayments": 3
+  "loansTaken": 19, "activeLoans": 6, "loansOutstanding": 812400.5, "loansMissedPayments": 3,
+  "diamondsInCirculation": 2140, "diamondsEarned": 3900, "diamondsSpent": 1760,
+  "badgesOwned": 14, "boostsActive": 2,
+  "badgeDistribution": [ { "id": "unicorn", "icon": "🦄", "name": "Unicorn", "price": 120, "owners": 3 } ]
 }
 ```
 
@@ -817,7 +928,10 @@ lists all 7 levels in order (zeros included). `topBusinesses` = the 5 most-owned
 entries. `achievementDistribution` lists every achievement in display order with how many
 player companies unlocked it (zeros included). `activeLoans` / `loansOutstanding` /
 `loansMissedPayments` cover loans still being repaid; `loansTaken` counts every loan ever
-taken. (Added 2026-10-09: the luxury, achievement and loan fields.)
+taken. (Added 2026-10-09: the luxury, achievement and loan fields.) Diamonds (§6e, added 2026-10-09):
+`diamondsInCirculation` = player balances; `diamondsEarned` / `diamondsSpent` = positive / negative
+ledger totals (admin grants and removals included); `boostsActive` = boosts running now;
+`badgeDistribution` lists every badge in display order with its owners (zeros included).
 
 ### `GET /api/admin/players?search=` → `200` `AdminPlayerDto[]`
 
@@ -831,14 +945,14 @@ taken. (Added 2026-10-09: the luxury, achievement and loan fields.)
   "prestigeCount": 0, "allTimeEarnings": 9000, "businesses": 2,
   "lastSeenAt": "2026-10-08T11:58:00Z",
   "highestBusinessLevel": 7, "luxuryOwned": 2, "achievementsUnlocked": 6,
-  "loanOutstanding": 17280
+  "loanOutstanding": 17280, "diamonds": 85, "badges": 2
 }
 ```
 
 The company fields are `null` for a player who has not created a company yet.
 `loanOutstanding` is what the player still owes on an active loan, `null` without one.
-(`highestBusinessLevel`, `luxuryOwned`, `achievementsUnlocked` and `loanOutstanding` added
-2026-10-09.)
+(`highestBusinessLevel`, `luxuryOwned`, `achievementsUnlocked`, `loanOutstanding`, `diamonds` and
+`badges` added 2026-10-09.)
 
 ### `PUT /api/admin/players/{id}/role`
 
@@ -858,7 +972,8 @@ touch `allTimeEarnings`.
 
 No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has no company."`.
 Fresh start: cash 0, every business removed, `TheHustle`, multiplier ×1, base income 3/s,
-`allTimeEarnings` 0, achievements cleared, bank loans deleted. Account and company name are kept.
+`allTimeEarnings` 0, achievements cleared, bank loans deleted, a running boost and the double
+offer cancelled. Account, company name, **diamonds and badges** are kept.
 
 **Online players:** a cash change or reset marks the company *overridden*; the player's
 next `POST /api/game/sync` ignores the client figure, answers `adjusted: true` with the
@@ -875,6 +990,14 @@ No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has
 `"Player has no active loan."`. Cancels what is still owed: the loan is closed as **forgiven**
 (`LoanDto.forgiven: true`, §6d) and the player can take a new one. Cash is not touched.
 Added 2026-10-09.
+
+### `POST /api/admin/players/{id}/diamonds`
+
+`{ "amount": 50, "reason": "Compensation for the outage" }` → `200` `AdminPlayerDto` · `400`
+`"Player not found."` | `"Player has no company."` | `"Amount cannot be zero."` |
+`"Diamonds cannot go below zero."` | `"Reason must be at most 200 characters."`. A positive
+`amount` gives, a negative one takes away; the reason is written to the player's ledger
+(`reason: "admin"`). Added 2026-10-09.
 
 ### Manager names — `/api/admin/manager-names`
 
@@ -985,7 +1108,7 @@ validation message.
 
 ## 9. Frontend conformance
 
-Status as of 2026-10-01, checked against `idle-startup-frontend/src/app/core/` and the
+Status as of 2026-10-09, checked against `idle-startup-frontend/src/app/core/` and the
 feature components.
 
 ### Resolved
@@ -1023,6 +1146,8 @@ None.
   `"Insufficient funds."`. `isOwned` and `isUnlocked` are used verbatim.
 - **Bank (§6d).** Take and repay sync first and adopt the response `cash`; a `/sync` carrying
   `loanPayment` adopts `acceptedCash` and shows a bank toast instead of "balance corrected".
+- **Store (§6e).** Every store POST syncs first and adopts `cash`, `diamonds` and `boostUntil` from
+  the `StoreDto`. The ticker rate is `incomePerSecond × boostMultiplier` while `now < boostUntil`.
 - **`GET /api/game/company` is never used to overwrite cash** — it does not accrue, so
   its cash figure is stale by design. It refreshes the structural parts only
   (businesses, net worth, rates).

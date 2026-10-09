@@ -16,6 +16,9 @@ public record CompanyDto(
     decimal PrestigeMultiplier,
     decimal NextPrestigeThreshold,
     DateTime LastSyncAt,
+    int Diamonds,
+    DateTime? BoostUntil,
+    decimal BoostMultiplier,
     IReadOnlyList<BusinessDto> Businesses
 );
 
@@ -48,6 +51,7 @@ public record OfflineEarningsDto(
     decimal CashAfter,
     bool Capped,
     LoanPaymentDto? LoanPayment,
+    OfflineDoubleOfferDto? DoubleOffer,
     CompanyDto Company
 );
 
@@ -55,5 +59,6 @@ public record SyncResultDto(
     decimal AcceptedCash,
     bool Adjusted,
     IReadOnlyList<AchievementUnlockedDto> NewAchievements,
-    LoanPaymentDto? LoanPayment
+    LoanPaymentDto? LoanPayment,
+    int Diamonds
 );

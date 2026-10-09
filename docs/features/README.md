@@ -37,7 +37,7 @@ still in the contract, the next person cannot tell what is real.
 
 | # | Spec | Status |
 |---|---|---|
-| 001 | [All-time earnings on CompanyDto](001-all-time-earnings-on-company.md) | Pending frontend |
+| 001 | [All-time earnings on CompanyDto](001-all-time-earnings-on-company.md) | Done |
 | 002 | [Business catalogue in the database, admin editor](002-catalogue-in-database.md) | Done (editor shipped with 006) |
 | 003 | [Prestige is a purchase, not a reset](003-prestige-is-a-purchase.md) | Done |
 | 004 | [Hire managers (business automation)](004-business-managers.md) | Done |
@@ -47,3 +47,4 @@ still in the contract, the next person cannot tell what is real.
 | 008 | [Luxury collection](008-luxury-collection.md) | Done |
 | 009 | [Bank and loans](009-bank-loans.md) | Done |
 | 010 | [Admin catch-up: luxury, bank, achievements, levels](010-admin-catch-up.md) | Done |
+| 011 | [Diamonds and the store](011-diamonds-and-store.md) | Done |

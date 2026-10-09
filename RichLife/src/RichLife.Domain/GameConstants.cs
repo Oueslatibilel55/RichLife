@@ -58,10 +58,41 @@ public static class GameConstants
     /// </summary>
     public const decimal SyncTolerance = 1.05m;
 
-    // Ad boost
-    public const decimal AdIncomeMultiplier = 5m;
-    public static readonly TimeSpan AdBoostDuration = TimeSpan.FromMinutes(30);
-    public const int MaxAdBoostsPerDay = 10;
+    // Diamonds and the store (features/011-diamonds-and-store.md)
+
+    /// <summary>Every new company starts with this many diamonds.</summary>
+    public const int StartingDiamonds = 25;
+
+    /// <summary>Paid for each achievement unlocked.</summary>
+    public const int AchievementDiamonds = 10;
+
+    /// <summary>A prestige pays this many diamonds × the new level's number (P2 → 40, P7 → 140).</summary>
+    public const int PrestigeDiamondsPerLevel = 20;
+
+    /// <summary>Every income is multiplied by this while a boost runs.</summary>
+    public const decimal BoostMultiplier = 2m;
+
+    /// <summary>Boosts on sale: (hours, price in diamonds).</summary>
+    public static readonly (int Hours, int Price)[] BoostOptions = [(1, 25), (3, 60), (8, 140)];
+
+    /// <summary>Stacked boosts may not end further ahead than this.</summary>
+    public static readonly TimeSpan MaxBoostAhead = TimeSpan.FromHours(24);
+
+    /// <summary>Price of paying the last offline earnings a second time, and how long the offer lasts.</summary>
+    public const int OfflineDoublePrice = 15;
+    public static readonly TimeSpan OfflineDoubleWindow = TimeSpan.FromMinutes(30);
+
+    /// <summary>Cash one diamond exchanges for — scales with prestige (1 % of the next prestige price).</summary>
+    public static decimal DiamondCashValue(Enums.PrestigeLevel level) => level switch
+    {
+        Enums.PrestigeLevel.TheHustle     => 250m,
+        Enums.PrestigeLevel.SmallBusiness => 2_000m,
+        Enums.PrestigeLevel.Entrepreneur  => 20_000m,
+        Enums.PrestigeLevel.BusinessMogul => 200_000m,
+        Enums.PrestigeLevel.Tycoon        => 2_500_000m,
+        Enums.PrestigeLevel.Billionaire   => 30_000_000m,
+        _                                 => 300_000_000m,
+    };
 
     // Bank loans (features/009-bank-loans.md)
 

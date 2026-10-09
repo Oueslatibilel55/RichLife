@@ -63,7 +63,7 @@ core/
   guards/      authGuard, guestGuard, admin.guard (adminMatchGuard, adminChildGuard, playerGuard)
   interceptors/auth.interceptor.ts
   services/    auth.service.ts, game.service.ts
-features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury, bank, leaderboard, profile,
+features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury, bank, store, leaderboard, profile,
                admin/ (admin-layout, overview, players, catalogue (+ editor), managers, loans, luxury (+ editor);
                        admin.service, admin.models)
 shared/
@@ -100,14 +100,16 @@ returns a `UrlTree` carrying a `returnUrl`, which `LoginComponent` honours.
   `ach.<code>.title`, server English as fallback — and loan totals); **Players** (cash, reset, role, delete,
   and **Forgive loan** when `loanOutstanding` is not null — `POST /admin/players/{id}/forgive-loan`, same
   in-page confirmation modal, the returned row replaces the old one); **Catalogue** (business editor in a
-  modal); **Managers**; **Loans** (`/admin/loans`: Active/All toggle over `GET /admin/loans?active=`, a Forgive
+  modal); **Managers**; **Loans** (`/admin/loans`: Active/All toggle over `GET /admin/loans?active=`, one card per loan on phones and a table from 900 px, a Forgive
   action per active loan — the API returns the player row, so the page closes the loan locally — and the
   20 banks read-only from `GET /admin/banks`: bank rules live in code); **Luxury** (`/admin/luxury` list reusing
   the catalogue list styles, and a routed editor at `/admin/luxury/new` and `/admin/luxury/:id` — `id` bound
   as a component input — with client-side checks that return the server's exact validation messages, so
   they translate through `dict/server.ts`, and a live photo preview). The luxury routes use the title key
   `admin.title.luxury` (in `dict/admin.ts`). A forgiven loan shows a "Forgiven" badge in the player's
-  bank history (`LoanDto.forgiven`).
+  bank history (`LoanDto.forgiven`). Diamonds (§7b): Players shows each balance and badge count and a
+  💎 action (give/take with a note, `POST /admin/players/{id}/diamonds`); Overview shows diamonds
+  held / earned / spent, badges owned, boosts running and badges bought per badge.
 
 ### GameService — the idle-game loop
 
@@ -127,7 +129,8 @@ the service's methods.
   local `cash` signal — **elapsed-time based, never a fixed `/20` step**: browsers throttle timers, a fixed step
   under-counted, and the server accepts a too-low figure (it only clamps high ones). `cashRate` is the
   server's `incomePerSecond` **verbatim** — the prestige multiplier is already baked into it, so never
-  re-derive it from `passiveIncomePerSecond` plus the businesses.
+  re-derive it from `passiveIncomePerSecond` plus the businesses — times `boostMultiplier` while an income
+  boost runs (`now < boostUntil`, on the 1-second `now` clock); the server's rates never include the boost.
 - **Sync**: `POST /game/sync` every 5 s. When the response says `adjusted`, the client **must** adopt
   `acceptedCash`; it does, and raises `syncAdjusted` so the UI can say so — an info toast that closes itself after 4 s.
 - **Spending syncs first.** `Company.DeductCash` on the server compares the price against its *last recorded*
@@ -170,6 +173,15 @@ the service's methods.
   data is reloaded if the page was opened. Bank names/icons are server content (not translated); toast
   styles (`.bank-toast`, `.offline-loan`) live in `styles.scss` for the layout's budget.
 
+- **Diamonds and the store** (contract §6e, `features/store/`, `features/011-diamonds-and-store.md`):
+  `diamonds` is server truth — adopted from the company, every `/sync` (`diamonds`) and every store
+  answer, never simulated. `boosted` / `boostMsLeft` drive the top-bar chip and `cashRate`.
+  `loadStore()` does not adopt cash (stale GET); `buyBoost`, `doubleOffline`, `exchangeDiamonds`
+  and `buyBadge` go through `storeAction` = `afterSync` + adopt the answer's cash, diamonds and boost
+  + `refreshCompany()`. `featureBadge` moves no money: no sync, cash not adopted. The welcome-back
+  dialog offers "Double it" from `OfflineEarningsDto.doubleOffer`. Badge names are `badge.<id>` keys
+  (`dict/store.ts`), like achievements; history reasons are `store.reason.<reason>`.
+
 Because the service survives navigation, components **must not blindly re-bootstrap it**: call
 `ensureLoaded()`, which reuses live state and only fetches when there is none.
 
@@ -203,7 +215,15 @@ list dialogs). Modals are a **bottom sheet below 640 px** and centred above. Tho
 because dialogs are raised from more than one component — component SCSS is scoped and would not reach them.
 Component SCSS should consume these tokens rather than redeclaring colours.
 
-Breakpoints in use: 480 / 640 / 768 / 900 / 1024 px. `LayoutComponent` shows the top nav at ≥ 900 px and a
+**Game navigation** (`LayoutComponent`): the desktop top nav lists all 7 pages — labels from 1280 px,
+icons with a tooltip between 900 and 1279 px. The phone tab bar is Home · Businesses · **Store**
+(raised, centre) · Bank · **More**; "More" opens a bottom sheet (global `.modal`) with Luxury,
+Leaderboard, Profile, the language picker and log out, so on phones the top bar keeps only the
+money (cash, rate, 💎 chip). Language and account are `.desk-only` in the top bar. The layout's
+SCSS is at its 4 kB budget: new shell styles go in `styles.scss` (as the toasts do).
+
+Breakpoints in use: 480 / 640 / 768 / 900 / 1024 / 1280 px. A list with more than ~4 columns is **cards below 900 px**
+(Players, Loans, Banks) and a table only above — a table scrolling sideways inside a card is unusable on a phone. `LayoutComponent` shows the top nav at ≥ 900 px and a
 fixed bottom tab bar below it (content gets `padding-bottom` for it). Icons are inline SVG via
 `shared/components/icon` (`<app-icon name="…" />`) — add a `@case` there for a new one. Login and register
 share `features/auth/auth.scss`.

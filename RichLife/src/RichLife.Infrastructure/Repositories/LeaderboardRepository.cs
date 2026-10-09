@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RichLife.Application.DTOs;
 using RichLife.Application.Interfaces;
+using RichLife.Domain.Store;
 using RichLife.Infrastructure.Persistence;
 
 namespace RichLife.Infrastructure.Repositories;
@@ -30,7 +31,8 @@ public class LeaderboardRepository(GameDbContext db) : ILeaderboardRepository
                 CompanyName = p.Company!.Name,
                 p.Company.AllTimeEarnings,
                 p.Company.PrestigeLevel,
-                p.Company.PrestigeCount
+                p.Company.PrestigeCount,
+                p.Company.FeaturedBadgeId
             })
             .ToListAsync(ct);
 
@@ -42,7 +44,8 @@ public class LeaderboardRepository(GameDbContext db) : ILeaderboardRepository
                 CompanyName: r.CompanyName,
                 AllTimeEarnings: r.AllTimeEarnings,
                 PrestigeLevel: r.PrestigeLevel,
-                PrestigeCount: r.PrestigeCount))
+                PrestigeCount: r.PrestigeCount,
+                BadgeIcon: BadgeCatalog.Find(r.FeaturedBadgeId)?.Icon))
             .ToList();
     }
 }

@@ -8,7 +8,10 @@
     <section class="card hero">
       <span class="hero__avatar" aria-hidden="true">{{ initial() }}</span>
       <div class="hero__who">
-        <h1>{{ p.username }}</h1>
+        <h1>
+          {{ p.username }}
+          @if (featured(p); as b) { <span class="featured-badge" [title]="'badge.' + b.id | t">{{ b.icon }}</span> }
+        </h1>
         <p class="hero__meta">
           @if (flagOf(p.country)) { <span aria-hidden="true">{{ flagOf(p.country) }}</span> }
           {{ p.country }} · {{ 'profile.memberSince' | t: { date: date(p.memberSince, 'monthYear') } }}
@@ -49,6 +52,7 @@
           <div class="stat"><span class="stat__label">{{ 'profile.businesses' | t }}</span><span class="stat__value num">{{ c.businesses }}</span></div>
           <div class="stat"><span class="stat__label">{{ 'profile.assets' | t }}</span><span class="stat__value num">{{ c.assets }}</span></div>
           <div class="stat"><span class="stat__label">{{ 'profile.managers' | t }}</span><span class="stat__value num">{{ 'profile.managersValue' | t: { onShift: c.managersOnShift, hired: c.managersHired } }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.diamonds' | t }}</span><span class="stat__value num">💎 {{ c.diamonds }}</span></div>
           <div class="stat"><span class="stat__label">{{ 'profile.bestBusiness' | t }}</span><span class="stat__value num">{{ c.businesses ? ('profile.level' | t: { n: c.highestBusinessLevel }) : '—' }}</span></div>
         </div>
       </section>
@@ -57,6 +61,28 @@
         <div class="empty-state__icon" aria-hidden="true">🚀</div>
         <p class="empty-state__text">{{ 'profile.noCompany' | t }}</p>
         <p class="empty-state__sub"><a routerLink="/dashboard">{{ 'profile.startEmpire' | t }}</a> {{ 'profile.startEmpireSuffix' | t }}</p>
+      </section>
+    }
+
+    <!-- Badges (store, §6e) -->
+    @if (p.company) {
+      <section class="section">
+        <div class="section__head">
+          <h2>{{ 'profile.badges' | t }} <span class="num muted">{{ p.badges.length }}</span></h2>
+          <a routerLink="/store" class="btn btn--soft btn--sm">🛍️ {{ 'profile.badgeStore' | t }}</a>
+        </div>
+        @if (p.badges.length === 0) {
+          <p class="muted">{{ 'profile.badgesEmpty' | t }}</p>
+        } @else {
+          <ul class="badge-strip">
+            @for (b of p.badges; track b.id) {
+              <li class="badge-strip__item" [class.badge-strip__item--featured]="b.id === p.featuredBadgeId" [attr.data-rarity]="b.rarity">
+                <span class="badge-strip__icon" aria-hidden="true">{{ b.icon }}</span>
+                <span class="badge-strip__name">{{ 'badge.' + b.id | t }}</span>
+              </li>
+            }
+          </ul>
+        }
       </section>
     }
 

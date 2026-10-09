@@ -8,4 +8,7 @@ public interface ICompanyRepository
     Task<Company?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task AddAsync(Company company, CancellationToken ct = default);
     void Update(Company company);
+
+    /// <summary>The newest diamond ledger lines of a company (contract §6e).</summary>
+    Task<IReadOnlyList<DiamondTransaction>> GetDiamondHistoryAsync(Guid companyId, int take, CancellationToken ct = default);
 }

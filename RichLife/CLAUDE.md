@@ -33,23 +33,29 @@ src/
   RichLife.Domain/          # No project references. No EF, no ASP.NET, no DI.
     Common/                 #   AggregateRoot, BaseEntity, IDomainEvent, Result
     Entities/               #   Company (aggregate root), Business, Asset, BusinessAsset,
-                            #   LuxuryAsset, Loan, Player
-    Banking/                #   BankCatalog (20 banks), LoanOffers (offer generator) — rules, in code
-    Catalogue/              #   BusinessCatalogueEntry (aggregate) + AssetCatalogueEntry —
-                            #   game content, stored in the database, edited by admins
-    Enums/                  #   PrestigeLevel (1-7), BusinessSector
+                            #   LuxuryAsset, Loan, CompanyAchievement, CompanyBadge,
+                            #   DiamondTransaction, Player
+    Achievements/           #   Achievements — the list and its checks, rules in code
+    Banking/                #   BankCatalog (20 banks), LoanOffers (offer generator),
+                            #   LoanCollection — rules, in code
+    Store/                  #   BadgeCatalog (16 badges), DiamondReasons — rules, in code
+    Catalogue/              #   BusinessCatalogueEntry (aggregate) + AssetCatalogueEntry,
+                            #   LuxuryCatalogueEntry, ManagerName — game content, stored in
+                            #   the database, edited by admins
+    Enums/                  #   PrestigeLevel (1-7), BusinessSector, LuxuryCategory
     Events/                 #   BusinessOpenedEvent, PrestigeTriggeredEvent
     GameConstants.cs        #   Tuning values (income tiers, offline cap, fee rates)
 
   RichLife.Application/     # -> Domain
     Services/               #   AuthService, CompanyService, BusinessService,
                             #   LeaderboardService, CatalogueAdminService, AdminService,
-                            #   ProfileService, LuxuryService, BankService, LuxuryAdminService
+                            #   ProfileService, LuxuryService, BankService, LuxuryAdminService,
+                            #   StoreService
     Interfaces/             #   ICompanyRepository, IPlayerRepository, ILeaderboardRepository,
-                            #   ICatalogueRepository, IManagerNameRepository,
-                            #   IAdminReadRepository, IUnitOfWork, IDomainEventDispatcher,
+                            #   ICatalogueRepository, ILuxuryCatalogueRepository,
+                            #   IManagerNameRepository, IAdminReadRepository, IUnitOfWork, IDomainEventDispatcher,
                             #   IDomainEventHandler<T>
-    Mapping/                #   CompanyMapper, CatalogueMapper — entity -> DTO translation
+    Mapping/                #   CompanyMapper, CatalogueMapper, BankMapper — entity -> DTO translation
     DTOs/                   #   Request/response records
     Extensions/             #   AddApplication()
 
@@ -57,8 +63,9 @@ src/
     Persistence/            #   GameDbContext, Configurations/, UnitOfWork,
                             #   CatalogueCacheInvalidator
     Repositories/           #   CompanyRepository, PlayerRepository, LeaderboardRepository,
-                            #   CatalogueRepository (cached), ManagerNameRepository,
-                            #   AdminReadRepository (admin stats / player list projections)
+                            #   CatalogueRepository (cached), LuxuryCatalogueRepository,
+                            #   ManagerNameRepository,
+                            #   AdminReadRepository (admin stats / players / loans projections)
     Events/                 #   DomainEventDispatcher
     Migrations/             #   EF Core migrations
     Extensions/             #   AddInfrastructure(IConfiguration)
@@ -66,7 +73,7 @@ src/
   RichLife.Api/             # -> Application, Infrastructure, ServiceDefaults
     Endpoints/              #   AuthEndpoints, GameEndpoints, BusinessEndpoints,
                             #   LeaderboardEndpoints, ProfileEndpoints, LuxuryEndpoints,
-                            #   BankEndpoints, AdminCatalogueEndpoints, AdminEndpoints,
+                            #   BankEndpoints, StoreEndpoints, AdminCatalogueEndpoints, AdminEndpoints,
                             #   AdminLuxuryEndpoints,
                             #   RateLimitPolicies, AuthPolicies, ClaimsPrincipalExtensions
     Program.cs
@@ -169,7 +176,8 @@ runtime failure that no domain test can catch.
   becomes `BasePassiveIncomePerSecond * PrestigeMultiplier`. Spending the price does not
   touch `AllTimeEarnings`.
 - `NetWorth` is cash plus company assets plus each business's `TotalValue`
-  (opening cost + its assets).
+  (opening cost + its assets) plus luxury items at their price, **minus** what is still owed
+  on an active bank loan. Diamonds are not part of it.
 - **Managers** (2026-10-08): `Company.AutomateBusiness(id, manager, nowUtc)` charges
   `Business.ManagerCost = OpeningCost × GameConstants.ManagerCostMultiplier` (2×) for a
   **4-hour shift** (`GameConstants.ManagerShift`) from the hire, stored as
@@ -213,6 +221,18 @@ runtime failure that no domain test can catch.
   `/players/{id}/forgive-loan`; stats and the player list cover luxury, achievements, levels
   and loans. In SQL projections, spell loan `Outstanding` out
   (`TotalRepay + Penalties - Paid - ForgivenAmount`) — the property is computed, not mapped.
+- **Diamonds and the store** (2026-10-09, `features/011-diamonds-and-store.md`): `Company.Diamonds`
+  is a whole number that changes **only** through the private `Company.Record`, which also adds a
+  `DiamondTransaction` ledger line. The ledger is **never loaded** with the company (it only
+  grows): `Company.DiamondLedger` holds the lines added in this unit of work and EF inserts them;
+  history is read with `CompanyRepository.GetDiamondHistoryAsync`. Grants: 25 in `Create`, 10 per
+  achievement in `UnlockAchievements`, 20 × level in `Prestige`. Spends: `BuyBoost` (× 2 income
+  until `BoostUntil`, online **and** offline — `ApplyOfflineProgress` and `MaxPlausibleCash` both
+  count boosted seconds; `IncomePerSecond` itself never includes it), `DoubleOfflineEarnings`
+  (offer set by `/state` via `OfferOfflineDouble`, 30 min, once), `ExchangeDiamonds` (cash, not
+  earnings), `BuyBadge` / `FeatureBadge` (badges owned in `company_badges`; **badge ids are
+  persisted, never rename or reuse one**). Prices and amounts in `GameConstants`. `AdminReset`
+  keeps diamonds and badges.
 - **Achievements** (2026-10-08, `features/007-player-profile.md`): defined in code in
   `Domain/Achievements/Achievements.cs` — **codes are persisted, never rename or reuse one**.
   `Company.UnlockAchievements(now)` records newly met ones (owned `company_achievements`,
@@ -391,7 +411,7 @@ This has caused confusion twice. Both are usually running at the same time:
 
 | Container | Started by | Reachable at | Volume | Contents |
 |---|---|---|---|---|
-| `richlife-postgres-aspire` | Aspire | `localhost:62749` | `richlife-pgdata` (hyphen) | **the real data** — 7 tables, all migrations |
+| `richlife-postgres-aspire` | Aspire | `localhost:62749` | `richlife-pgdata` (hyphen) | **the real data** — all migrations applied |
 | `richlife-postgres` | `docker-compose.yml` | `localhost:5432` | `richlife_pgdata` (underscore) | **empty** — no migrations ever applied |
 
 The volume names differ by a single character, which is how Compose derives
@@ -520,9 +540,11 @@ before it can be built.
 
 ### Verified how far?
 
-Last checked 2026-10-02, against the Aspire dev database.
+Last checked 2026-10-09, against the Aspire dev database (newest first).
 
-**Green.** `dotnet build RichLife.slnx` (0 warnings) and the 72 domain unit tests.
+**Green.** `dotnet build RichLife.slnx` (0 warnings).
+2026-10-09: **167** tests green after diamonds and the store (`StoreTests`, 21 cases); migration
+`DiamondsAndStore` (with its backfill) applied and every store and admin-diamonds route checked over HTTP.
 2026-10-09: **146** tests green after the admin catch-up (forgive-loan, luxury editor
 validation); migration `LoanForgiveness` applied and every new admin route checked over HTTP.
 2026-10-09: **133** tests green after the bank (`BankTests`, 22 cases); migration
@@ -530,6 +552,7 @@ validation); migration `LoanForgiveness` applied and every new admin route check
 `docs/features/009-bank-loans.md`).
 2026-10-08: **73** domain tests green after the prestige-as-purchase change (run with the
 API up, so via `--project tests/…` — a full solution build is blocked by the DLL lock).
+2026-10-02: 72 domain tests.
 
 **Catalogue in the database (2026-10-02).** `20261002161442_MoveCatalogueToDatabase`
 applied: 17 businesses and 40 assets seeded, the `RESTRICT` FK validated every existing

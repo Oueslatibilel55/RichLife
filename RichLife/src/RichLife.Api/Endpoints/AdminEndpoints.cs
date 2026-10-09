@@ -68,7 +68,14 @@ public static class AdminEndpoints
         .WithName("AdminDeletePlayer")
         .WithSummary("Delete a player and everything they own");
 
-        // -- Manager names ------------------------------------------------------
+        group.MapPost("/players/{id:guid}/diamonds", async Task<Results<Ok<AdminPlayerDto>, BadRequest<string>>> (
+            Guid id, AdjustDiamondsRequest req, AdminService svc, CancellationToken ct) =>
+        {
+            var result = await svc.AdjustDiamondsAsync(id, req.Amount, req.Reason, ct);
+            return result.IsSuccess ? TypedResults.Ok(result.Value) : TypedResults.BadRequest(result.Error!);
+        })
+        .WithName("AdminAdjustDiamonds")
+        .WithSummary("Give or take away diamonds, with a note for the player's ledger");
 
         group.MapPost("/players/{id:guid}/forgive-loan", async Task<Results<Ok<AdminPlayerDto>, BadRequest<string>>> (
             Guid id, AdminService svc, CancellationToken ct) =>

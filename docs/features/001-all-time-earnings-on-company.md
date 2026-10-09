@@ -1,8 +1,8 @@
 # 001 — Expose `allTimeEarnings` on `CompanyDto`
 
-**Status:** Pending frontend
+**Status:** Done (2026-10-09 — backend 2026-10-01, frontend follow-up below completed)
 **Raised:** 2026-10-01
-**Touches:** backend (2 lines), frontend (already done, rendering is feature-gated)
+**Touches:** backend (2 lines), frontend (dashboard tile)
 
 ---
 
@@ -134,7 +134,7 @@ backend.
   While the field is absent the tile simply does not render; the moment the backend ships
   it, it appears with no frontend deploy.
 
-### Follow-up once the backend has shipped
+### Follow-up once the backend has shipped — done 2026-10-09
 
 1. Make the field **required** in `game.models.ts` (drop the `?`).
 2. Drop the `@if` guard in the dashboard template.

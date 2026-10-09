@@ -37,6 +37,7 @@
             <span class="row__user">
               <span aria-hidden="true">{{ flagOf(entry.country) }}</span>
               {{ entry.username }}
+              @if (entry.badgeIcon) { <span class="row__badge" aria-hidden="true">{{ entry.badgeIcon }}</span> }
               @if (isMe(entry.username)) { <span class="badge badge--primary">{{ 'leaderboard.you' | t }}</span> }
             </span>
             <span class="row__company">

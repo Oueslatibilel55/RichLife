@@ -25,6 +25,7 @@ import {
   LeaderboardEntryDto,
   LoanPaymentDto,
   OfflineEarningsDto,
+  StoreDto,
   SyncResultDto,
 } from '../models/game.models';
 
@@ -86,6 +87,12 @@ export class GameService {
   /** Installment collected by /sync (or /state without the welcome-back dialog) — a 6 s toast. */
   private readonly _bankToast = signal<LoanPaymentDto | null>(null);
   private bankToastTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Diamond balance (§6e) — server truth, from the company, /sync and every store answer. */
+  private readonly _diamonds = signal(0);
+  /** End of the running income boost, epoch ms; 0 for none. */
+  private readonly _boostUntil = signal(0);
+  /** The store page's data — null until `loadStore()`. */
+  private readonly _store = signal<StoreDto | null>(null);
 
   readonly company = this._company.asReadonly();
   readonly cash = this._cash.asReadonly();
@@ -99,11 +106,24 @@ export class GameService {
   readonly achievementToasts = this._achievementToasts.asReadonly();
   readonly bank = this._bank.asReadonly();
   readonly bankToast = this._bankToast.asReadonly();
+  readonly diamonds = this._diamonds.asReadonly();
+  readonly store = this._store.asReadonly();
 
   // -- Derived --------------------------------------------------------------
 
-  /** Online rate with the prestige multiplier already applied (contract section 2). */
-  readonly cashRate = computed(() => this._company()?.incomePerSecond ?? 0);
+  /** Milliseconds of income boost left (0 when none) — on the 1-second clock. */
+  readonly boostMsLeft = computed(() => Math.max(0, this._boostUntil() - this._now()));
+  readonly boosted = computed(() => this.boostMsLeft() > 0);
+
+  /**
+   * Online rate with the prestige multiplier already applied (contract section 2), × the
+   * boost while one runs (§6e) — the server's rates never include the boost.
+   */
+  readonly cashRate = computed(() => {
+    const c = this._company();
+    if (!c) return 0;
+    return c.incomePerSecond * (this.boosted() ? c.boostMultiplier : 1);
+  });
   readonly offlineRate = computed(() => this._company()?.offlineIncomePerSecond ?? 0);
 
   /** Live net worth: server net worth with the simulated cash swapped in for its stale cash. */
@@ -257,7 +277,10 @@ export class GameService {
   refreshCompany(): Observable<CompanyDto> {
     return this.http
       .get<CompanyDto>(`${this.api}/game/company`)
-      .pipe(tap((c) => this._company.set(c)));
+      .pipe(tap((c) => {
+        this._company.set(c);
+        this.adoptDiamonds(c.diamonds, c.boostUntil);
+      }));
   }
 
   // -- Sync -----------------------------------------------------------------
@@ -286,6 +309,7 @@ export class GameService {
             this.refreshCompany().subscribe({ error: () => void 0 });
           }
           if (res.newAchievements?.length) this.announce(res.newAchievements);
+          if (typeof res.diamonds === 'number') this._diamonds.set(res.diamonds);
         }),
       );
   }
@@ -430,6 +454,68 @@ export class GameService {
     if (this._bank()) this.loadBank().subscribe({ error: () => void 0 });
   }
 
+  // -- Store and diamonds (contract §6e) ------------------------------------
+
+  /** Diamonds, boosts, badges, history. Its `cash` is stale (a plain GET) — not adopted. */
+  loadStore(): Observable<StoreDto> {
+    return this.http.get<StoreDto>(`${this.api}/game/store`).pipe(
+      tap((s) => {
+        this._store.set(s);
+        this.adoptDiamonds(s.diamonds, s.boostUntil);
+      }),
+    );
+  }
+
+  /** Hours of × 2 income. Syncs first (the server's ceiling changes at the purchase). */
+  buyBoost(hours: number): Observable<StoreDto> {
+    return this.storeAction(() => this.http.post<StoreDto>(`${this.api}/game/store/boosts/${hours}`, null));
+  }
+
+  /** Pays the last offline earnings again. The answer's cash includes them. */
+  doubleOffline(): Observable<StoreDto> {
+    return this.storeAction(() => this.http.post<StoreDto>(`${this.api}/game/store/double-offline`, null));
+  }
+
+  /** Diamonds → cash, one way. */
+  exchangeDiamonds(diamonds: number): Observable<StoreDto> {
+    return this.storeAction(() => this.http.post<StoreDto>(`${this.api}/game/store/exchange`, { diamonds }));
+  }
+
+  buyBadge(badgeId: string): Observable<StoreDto> {
+    return this.storeAction(() =>
+      this.http.post<StoreDto>(`${this.api}/game/store/badges/${encodeURIComponent(badgeId)}`, null),
+    );
+  }
+
+  /** No money moves, so no sync — and the answer's (stale) cash is not adopted. */
+  featureBadge(badgeId: string | null): Observable<StoreDto> {
+    return this.http.put<StoreDto>(`${this.api}/game/store/featured-badge`, { badgeId }).pipe(
+      tap((s) => {
+        this._store.set(s);
+        this.adoptDiamonds(s.diamonds, s.boostUntil);
+      }),
+    );
+  }
+
+  /** Every paid store action: sync, act, then adopt the fresh answer — cash included. */
+  private storeAction(op: () => Observable<StoreDto>): Observable<StoreDto> {
+    return this.afterSync(() =>
+      op().pipe(
+        tap((s) => {
+          this._store.set(s);
+          this._cash.set(s.cash);
+          this.adoptDiamonds(s.diamonds, s.boostUntil);
+          this.refreshCompany().subscribe({ error: () => void 0 });
+        }),
+      ),
+    );
+  }
+
+  private adoptDiamonds(diamonds: number | undefined, boostUntil: string | null | undefined): void {
+    if (typeof diamonds === 'number') this._diamonds.set(diamonds);
+    if (boostUntil !== undefined) this._boostUntil.set(boostUntil ? Date.parse(boostUntil) : 0);
+  }
+
   // -- Leaderboard ----------------------------------------------------------
 
   /** Note the trailing slash — the route is registered as `/api/leaderboard/`. */
@@ -443,6 +529,7 @@ export class GameService {
   private applyCompany(c: CompanyDto): void {
     this._company.set(c);
     this._cash.set(c.cash);
+    this.adoptDiamonds(c.diamonds, c.boostUntil);
     this.startLoops();
   }
 
@@ -516,6 +603,9 @@ export class GameService {
     this._offlineEarnings.set(null);
     this._achievementToasts.set([]);
     this._bank.set(null);
+    this._store.set(null);
+    this._diamonds.set(0);
+    this._boostUntil.set(0);
     this.dismissBankToast();
     this.dismissSyncWarning();
     this._loaded.set(false);

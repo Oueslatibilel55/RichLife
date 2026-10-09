@@ -51,6 +51,10 @@
             <div class="stat"><span class="stat__label">{{ 'admin.players.highestLevel' | t }}</span><span class="stat__value num">{{ p.highestBusinessLevel ?? '—' }}</span></div>
             <div class="stat"><span class="stat__label">{{ 'admin.players.luxury' | t }}</span><span class="stat__value num">{{ p.luxuryOwned ?? 0 }}</span></div>
             <div class="stat"><span class="stat__label">{{ 'admin.players.achievements' | t }}</span><span class="stat__value num">{{ p.achievementsUnlocked ?? 0 }}</span></div>
+            <div class="stat">
+              <span class="stat__label">{{ 'admin.players.diamonds' | t }}</span>
+              <span class="stat__value num">{{ p.diamonds ?? 0 }} 💎 · {{ 'admin.players.badgeCount' | t: { n: p.badges ?? 0 } }}</span>
+            </div>
             <div class="stat" [class.stat--loan]="p.loanOutstanding !== null">
               <span class="stat__label">{{ 'admin.players.loan' | t }}</span>
               @if (p.loanOutstanding !== null) {
@@ -67,6 +71,7 @@
         <div class="row__actions">
           @if (p.companyName && !p.isAdmin) {
             <button type="button" class="btn btn--soft btn--sm" [disabled]="busyId() === p.id" (click)="ask('cash', p)">💵 {{ 'admin.players.setCash' | t }}</button>
+            <button type="button" class="btn btn--soft btn--sm" [disabled]="busyId() === p.id" (click)="ask('diamonds', p)">💎 {{ 'admin.players.diamonds' | t }}</button>
             <button type="button" class="btn btn--outline btn--sm" [disabled]="busyId() === p.id" (click)="ask('reset', p)">↺ {{ 'admin.players.reset' | t }}</button>
             @if (p.loanOutstanding !== null) {
               <button type="button" class="btn btn--outline btn--sm" [disabled]="busyId() === p.id" (click)="ask('forgive', p)">🏦 {{ 'admin.players.forgiveLoan' | t }}</button>
@@ -118,6 +123,30 @@
             (keyup.enter)="confirm()"
           />
         }
+        @case ('diamonds') {
+          <div class="modal__icon" aria-hidden="true">💎</div>
+          <h2 class="modal__title" id="confirm-title">{{ 'admin.players.diamondsTitle' | t: { name: action.player.username } }}</h2>
+          <p class="modal__sub">{{ 'admin.players.diamondsSub' | t: { n: action.player.diamonds ?? 0 } }}</p>
+          <input
+            class="form-input modal__input num"
+            type="number"
+            step="1"
+            [placeholder]="'admin.players.diamondsAmountHint' | t"
+            [attr.aria-label]="'admin.players.diamondsAmount' | t"
+            [ngModel]="diamondsInput()"
+            (ngModelChange)="diamondsInput.set($event)"
+          />
+          <input
+            class="form-input modal__input"
+            type="text"
+            maxlength="200"
+            [placeholder]="'admin.players.diamondsReason' | t"
+            [attr.aria-label]="'admin.players.diamondsReason' | t"
+            [ngModel]="reasonInput()"
+            (ngModelChange)="reasonInput.set($event)"
+            (keyup.enter)="confirm()"
+          />
+        }
         @case ('reset') {
           <div class="modal__icon" aria-hidden="true">↺</div>
           <h2 class="modal__title" id="confirm-title">{{ 'admin.players.resetTitle' | t: { name: action.player.username } }}</h2>
@@ -139,8 +168,8 @@
         <button
           type="button"
           class="btn btn--lg"
-          [class.btn--primary]="action.kind === 'cash'"
-          [class.btn--danger]="action.kind !== 'cash'"
+          [class.btn--primary]="action.kind === 'cash' || action.kind === 'diamonds'"
+          [class.btn--danger]="action.kind !== 'cash' && action.kind !== 'diamonds'"
           (click)="confirm()"
         >
           {{ confirmLabel(action.kind) | t }}

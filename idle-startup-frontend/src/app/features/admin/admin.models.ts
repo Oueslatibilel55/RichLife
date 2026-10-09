@@ -34,6 +34,15 @@ export interface AdminStats {
   activeLoans: number;
   loansOutstanding: number;
   loansMissedPayments: number;
+  /** Diamonds (§6e): player balances, ledger gains / spends (admin moves included). */
+  diamondsInCirculation: number;
+  diamondsEarned: number;
+  diamondsSpent: number;
+  badgesOwned: number;
+  /** Income boosts running now. */
+  boostsActive: number;
+  /** Every badge in display order, zeros included. `name` is English — show `badge.<id>`. */
+  badgeDistribution: { id: string; icon: string; name: string; price: number; owners: number }[];
 }
 
 export interface AdminPlayer {
@@ -56,6 +65,8 @@ export interface AdminPlayer {
   achievementsUnlocked: number | null;
   /** Still owed on an active loan; null without one. */
   loanOutstanding: number | null;
+  diamonds: number | null;
+  badges: number | null;
 }
 
 export interface ManagerNameRow {

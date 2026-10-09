@@ -33,17 +33,21 @@ export interface CompanyDto {
   netWorth: number;
   /**
    * Cumulative lifetime income — what `/api/leaderboard` ranks on. Never decreases
-   * and survives prestige.
-   *
-   * OPTIONAL until the backend maps it: see docs/features/001-all-time-earnings-on-company.md.
+   * and survives prestige. See docs/features/001-all-time-earnings-on-company.md.
    */
-  allTimeEarnings?: number;
+  allTimeEarnings: number;
   prestigeLevel: PrestigeLevel;
   prestigeCount: number;
   prestigeMultiplier: number;
-  /** Net worth required for the NEXT prestige. decimal.MaxValue at GlobalEmpire. */
+  /** Cash price of the NEXT prestige (compare with cash). decimal.MaxValue at GlobalEmpire. */
   nextPrestigeThreshold: number;
   lastSyncAt: string;
+  /** Premium currency balance (§6e). Server-only — never simulated. */
+  diamonds: number;
+  /** End of the running income boost (UTC ISO), null if none. The rates above never include it. */
+  boostUntil: string | null;
+  /** × applied to every income while `now < boostUntil` (2). */
+  boostMultiplier: number;
   businesses: BusinessDto[];
 }
 
@@ -119,6 +123,8 @@ export interface OfflineEarningsDto {
   capped: boolean;
   /** Bank installments collected while away (§6d); `cashAfter` is net of them. null when none fell due. */
   loanPayment: LoanPaymentDto | null;
+  /** Pay `price` diamonds to receive `amount` again (§6e); null when nothing was earned. */
+  doubleOffer: OfflineDoubleOfferDto | null;
   company: CompanyDto;
 }
 
@@ -130,6 +136,8 @@ export interface SyncResultDto {
   newAchievements: AchievementUnlocked[];
   /** Installment collected by this sync (§6d); `acceptedCash` is net of it and `adjusted` is true. */
   loanPayment: LoanPaymentDto | null;
+  /** Diamond balance after the call (achievements pay diamonds). */
+  diamonds: number;
 }
 
 // -- Bank (contract §6d) ------------------------------------------------------
@@ -200,6 +208,8 @@ export interface AchievementUnlocked {
   code: string;
   title: string;
   icon: string;
+  /** Diamonds it paid. */
+  diamonds: number;
 }
 
 export interface LeaderboardEntryDto {
@@ -210,4 +220,59 @@ export interface LeaderboardEntryDto {
   allTimeEarnings: number;
   prestigeLevel: PrestigeLevel;
   prestigeCount: number;
+  /** The player's featured badge (§6e), null if none. */
+  badgeIcon: string | null;
+}
+
+// -- Store and diamonds (contract §6e) ---------------------------------------
+
+export interface OfflineDoubleOfferDto {
+  amount: number;
+  price: number;
+  until: string;
+}
+
+export type BadgeRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export interface StoreBadgeDto {
+  id: string;
+  icon: string;
+  /** English — display `badge.<id>` instead. */
+  name: string;
+  price: number;
+  rarity: BadgeRarity;
+  owned: boolean;
+  featured: boolean;
+}
+
+export type DiamondReason =
+  | 'welcome' | 'achievement' | 'prestige' | 'boost' | 'double-offline'
+  | 'exchange' | 'badge' | 'admin' | 'backfill';
+
+export interface DiamondTransactionDto {
+  /** Signed. */
+  amount: number;
+  /** Balance after it. */
+  balance: number;
+  reason: DiamondReason;
+  detail: string | null;
+  createdAt: string;
+}
+
+/** GET /api/game/store, and the answer to every store action. */
+export interface StoreDto {
+  diamonds: number;
+  /** Server cash — adopted only after an action (which syncs first). */
+  cash: number;
+  boostUntil: string | null;
+  boostMultiplier: number;
+  maxBoostHours: number;
+  boosts: { hours: number; price: number }[];
+  doubleOffer: OfflineDoubleOfferDto | null;
+  /** Cash one diamond exchanges for, at the player's prestige. */
+  diamondValue: number;
+  badges: StoreBadgeDto[];
+  featuredBadgeId: string | null;
+  /** Last 20 ledger lines, newest first. */
+  history: DiamondTransactionDto[];
 }

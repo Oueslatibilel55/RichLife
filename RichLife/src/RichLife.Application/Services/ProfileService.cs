@@ -45,7 +45,9 @@ public class ProfileService(
             company is null ? [] : company.LuxuryAssets.OrderByDescending(l => l.CreatedAt).Select(LuxuryService.ToDto).ToList(),
             achievements.Count(a => a.Unlocked),
             achievements.Count,
-            achievements));
+            achievements,
+            company is null ? [] : StoreService.OwnedBadges(company),
+            company?.FeaturedBadgeId));
     }
 
     private static ProfileCompanyDto ToDto(Company c, DateTime now) => new(
@@ -62,7 +64,8 @@ public class ProfileService(
         (int)c.AchievementMetricValue(AchievementMetric.AssetsOwned),
         c.Businesses.Count(b => b.HasManagerAt(now)),
         (int)c.AchievementMetricValue(AchievementMetric.ManagersHired),
-        (int)c.AchievementMetricValue(AchievementMetric.HighestBusinessLevel));
+        (int)c.AchievementMetricValue(AchievementMetric.HighestBusinessLevel),
+        c.Diamonds);
 
     private static AchievementDto ToDto(AchievementDefinition a, Company? c)
     {

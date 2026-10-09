@@ -3,6 +3,7 @@ using RichLife.Application.DTOs;
 using RichLife.Application.Interfaces;
 using RichLife.Domain.Achievements;
 using RichLife.Domain.Enums;
+using RichLife.Domain.Store;
 using RichLife.Infrastructure.Persistence;
 
 namespace RichLife.Infrastructure.Repositories;
@@ -80,6 +81,21 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             .SumAsync(l => (decimal?)(l.TotalRepay + l.Penalties - l.Paid - l.ForgivenAmount), ct) ?? 0m;
         var missed = await activeLoansQ.SumAsync(l => (int?)l.MissedPayments, ct) ?? 0;
 
+        var diamonds = await companiesQ.SumAsync(c => (int?)c.Diamonds, ct) ?? 0;
+        var ledgerQ = db.DiamondTransactions.Where(t => companyIds.Contains(t.CompanyId));
+        var earned = await ledgerQ.Where(t => t.Amount > 0).SumAsync(t => (int?)t.Amount, ct) ?? 0;
+        var spent = -(await ledgerQ.Where(t => t.Amount < 0).SumAsync(t => (int?)t.Amount, ct) ?? 0);
+        var boosts = await companiesQ.CountAsync(c => c.BoostUntil > nowUtc, ct);
+        var badgeOwners = await companiesQ
+            .SelectMany(c => c.Badges)
+            .GroupBy(b => b.BadgeId)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var badgeDistribution = BadgeCatalog.All
+            .Select(b => new BadgeCountDto(b.Id, b.Icon, b.Name, b.Price,
+                badgeOwners.FirstOrDefault(o => o.Id == b.Id)?.Count ?? 0))
+            .ToList();
+
         return new AdminStatsDto(
             nowUtc, players, admins, new24h, new7d, active24h,
             companies, totalCash, totalEarnings,
@@ -89,7 +105,8 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             catalogue, catalogueActive, catalogueAssets, names,
             luxuryOwned, luxuryCatalogue, luxuryActive,
             unlocks.Sum(u => u.Count), achievementDistribution,
-            loansTaken, activeLoans, outstanding, missed);
+            loansTaken, activeLoans, outstanding, missed,
+            diamonds, earned, spent, badgeOwners.Sum(o => o.Count), boosts, badgeDistribution);
     }
 
     public async Task<IReadOnlyList<AdminPlayerDto>> GetPlayersAsync(
@@ -156,7 +173,8 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
         Guid Id, string Username, string Email, string Country, bool IsAdmin, DateTime CreatedAt,
         string? CompanyName, decimal? Cash, PrestigeLevel? PrestigeLevel, int? PrestigeCount,
         decimal? AllTimeEarnings, int? Businesses, DateTime? LastSeenAt,
-        int? HighestBusinessLevel, int? LuxuryOwned, int? AchievementsUnlocked, decimal? LoanOutstanding);
+        int? HighestBusinessLevel, int? LuxuryOwned, int? AchievementsUnlocked, decimal? LoanOutstanding,
+        int? Diamonds, int? Badges);
 
     private static IQueryable<PlayerRow> Project(IQueryable<Domain.Entities.Player> players) =>
         players.Select(p => new PlayerRow(
@@ -174,11 +192,14 @@ public class AdminReadRepository(GameDbContext db) : IAdminReadRepository
             p.Company == null ? null : p.Company.Loans
                 .Where(l => l.RepaidAt == null)
                 .Select(l => (decimal?)(l.TotalRepay + l.Penalties - l.Paid - l.ForgivenAmount))
-                .FirstOrDefault()));
+                .FirstOrDefault(),
+            p.Company == null ? null : p.Company.Diamonds,
+            p.Company == null ? null : p.Company.Badges.Count));
 
     private static AdminPlayerDto ToDto(PlayerRow r) => new(
         r.Id, r.Username, r.Email, r.Country, r.IsAdmin, r.CreatedAt,
         r.CompanyName, r.Cash, r.PrestigeLevel?.ToString(), r.PrestigeCount,
         r.AllTimeEarnings, r.Businesses, r.LastSeenAt,
-        r.HighestBusinessLevel, r.LuxuryOwned, r.AchievementsUnlocked, r.LoanOutstanding);
+        r.HighestBusinessLevel, r.LuxuryOwned, r.AchievementsUnlocked, r.LoanOutstanding,
+        r.Diamonds, r.Badges);
 }

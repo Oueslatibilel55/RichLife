@@ -29,7 +29,15 @@ public record AdminStatsDto(
     int LoansTaken,
     int ActiveLoans,
     decimal LoansOutstanding,
-    int LoansMissedPayments);
+    int LoansMissedPayments,
+    int DiamondsInCirculation,
+    int DiamondsEarned,
+    int DiamondsSpent,
+    int BadgesOwned,
+    int BoostsActive,
+    IReadOnlyList<BadgeCountDto> BadgeDistribution);
+
+public record BadgeCountDto(string Id, string Icon, string Name, int Price, int Owners);
 
 public record AchievementCountDto(string Code, string Title, string Icon, int Companies);
 
@@ -54,11 +62,15 @@ public record AdminPlayerDto(
     int? HighestBusinessLevel,
     int? LuxuryOwned,
     int? AchievementsUnlocked,
-    decimal? LoanOutstanding);
+    decimal? LoanOutstanding,
+    int? Diamonds,
+    int? Badges);
 
 public record SetAdminRoleRequest(bool IsAdmin);
 
 public record SetCashRequest(decimal Cash);
+
+public record AdjustDiamondsRequest(int Amount, string? Reason);
 
 public record ManagerNameDto(int Id, string Name, int InUse);
 

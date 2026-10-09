@@ -108,6 +108,24 @@ public class AdminService(
         return await ReloadAsync(playerId, ct);
     }
 
+    public async Task<Result<AdminPlayerDto>> AdjustDiamondsAsync(
+        Guid playerId, int amount, string? reason, CancellationToken ct = default)
+    {
+        if (await playerRepo.GetByIdAsync(playerId, ct) is null)
+            return Result.Fail<AdminPlayerDto>("Player not found.");
+
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<AdminPlayerDto>("Player has no company.");
+
+        var result = company.AdminAdjustDiamonds(amount, reason, UtcNow);
+        if (!result.IsSuccess) return Result.Fail<AdminPlayerDto>(result.Error!);
+
+        companyRepo.Update(company);
+        await uow.CommitAsync(ct);
+
+        return await ReloadAsync(playerId, ct);
+    }
+
     // -- Bank -------------------------------------------------------------------
 
     public Task<IReadOnlyList<AdminLoanDto>> GetLoansAsync(bool activeOnly, CancellationToken ct = default)

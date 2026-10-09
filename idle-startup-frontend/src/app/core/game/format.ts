@@ -46,3 +46,14 @@ export function formatElapsed(timeSpan: string): string {
   if (m > 0) return t('time.m', { m });
   return t('time.lessThanMinute');
 }
+
+/** 3_909_000 ms -> "1:05:09" · 2_530_000 -> "42:10". For live countdowns (boosts). */
+export function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(h > 0 ? 2 : 1, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}

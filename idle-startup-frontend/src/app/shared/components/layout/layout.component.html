@@ -6,11 +6,12 @@
         <span class="brand__name">Rich Life</span>
       </a>
 
+      <!-- Desktop: every page. Labels from 1280 px; icons only (with a tooltip) below. -->
       <nav class="topnav" [attr.aria-label]="'layout.navMain' | t">
         @for (item of nav; track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="active" class="topnav__link">
+          <a [routerLink]="item.path" routerLinkActive="active" class="topnav__link" [title]="item.label | t" [attr.aria-label]="item.label | t">
             <app-icon [name]="item.icon" [size]="18" />
-            {{ item.label | t }}
+            <span class="topnav__label">{{ item.label | t }}</span>
           </a>
         }
       </nav>
@@ -20,7 +21,17 @@
           <span class="hud__label">{{ 'layout.cash' | t }}</span>
           <span class="hud__value num">{{ game.cash() | money }}</span>
         </div>
-        <span class="hud__rate num">+{{ game.cashRate() | rate }}{{ 'layout.perSecond' | t }}</span>
+        <span class="hud__rate num" [class.hud__rate--boost]="game.boosted()">
+          @if (game.boosted()) { <span aria-hidden="true">⚡</span> }+{{ game.cashRate() | rate }}{{ 'layout.perSecond' | t }}
+        </span>
+        @if (game.boosted()) {
+          <a routerLink="/store" class="boost-chip num" [title]="'layout.boostActive' | t">
+            ×2 · {{ formatCountdown(game.boostMsLeft()) }}
+          </a>
+        }
+        <a routerLink="/store" class="gem-chip num" [title]="'layout.diamonds' | t" [attr.aria-label]="'layout.diamondsAria' | t: { n: game.diamonds() }">
+          <span aria-hidden="true">💎</span>{{ game.diamonds() }}
+        </a>
         @if (game.company(); as company) {
           <span
             class="hud__prestige"
@@ -32,9 +43,9 @@
         }
       </div>
 
-      <app-lang-switcher />
+      <app-lang-switcher class="desk-only" />
 
-      <div class="user">
+      <div class="user desk-only">
         <a routerLink="/profile" class="user__link" [title]="'layout.yourProfile' | t">
           <span class="user__avatar" aria-hidden="true">{{ initial() }}</span>
           <span class="user__name">{{ auth.currentUser()?.username }}</span>
@@ -50,15 +61,64 @@
     <router-outlet />
   </main>
 
+  <!-- Phones: Home · Businesses · [Store] · Bank · More -->
   <nav class="tabbar" [attr.aria-label]="'layout.navMobile' | t">
-    @for (item of nav; track item.path) {
+    @for (item of tabs; track item.path) {
       <a [routerLink]="item.path" routerLinkActive="active" class="tabbar__link">
         <app-icon [name]="item.icon" [size]="22" />
         <span>{{ item.label | t }}</span>
       </a>
     }
+    <a routerLink="/store" routerLinkActive="active" class="tabbar__link tabbar__link--store">
+      <span class="tabbar__fab"><app-icon name="store" [size]="22" /></span>
+      <span>{{ 'nav.store' | t }}</span>
+    </a>
+    @for (item of tabsAfterStore; track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="active" class="tabbar__link">
+        <app-icon [name]="item.icon" [size]="22" />
+        <span>{{ item.label | t }}</span>
+      </a>
+    }
+    <button type="button" class="tabbar__link" [class.active]="moreActive() || moreOpen()" [attr.aria-expanded]="moreOpen()" (click)="moreOpen.set(true)">
+      <app-icon name="more" [size]="22" />
+      <span>{{ 'nav.more' | t }}</span>
+    </button>
   </nav>
 </div>
+
+<!-- "More" sheet (phones): the other pages, the language and logging out -->
+@if (moreOpen()) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="more-title" (click)="moreOpen.set(false)">
+    <div class="modal more-sheet" (click)="$event.stopPropagation()">
+      <div class="more-sheet__who">
+        <span class="more-sheet__avatar" aria-hidden="true">{{ initial() }}</span>
+        <div class="more-sheet__names">
+          <strong id="more-title">{{ auth.currentUser()?.username }}</strong>
+          <a routerLink="/store" class="more-sheet__gems num" (click)="moreOpen.set(false)">💎 {{ game.diamonds() }}</a>
+        </div>
+        <button type="button" class="icon-btn" [attr.aria-label]="'layout.dismiss' | t" (click)="moreOpen.set(false)">
+          <app-icon name="close" />
+        </button>
+      </div>
+      <nav class="more-sheet__links" [attr.aria-label]="'nav.more' | t">
+        @for (item of moreItems; track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="active" class="more-sheet__link" (click)="moreOpen.set(false)">
+            <app-icon [name]="item.icon" [size]="20" />
+            <span>{{ item.label | t }}</span>
+            <span class="more-sheet__chev rtl-flip" aria-hidden="true">›</span>
+          </a>
+        }
+      </nav>
+      <div class="more-sheet__row">
+        <span>🌐 {{ 'lang.label' | t }}</span>
+        <app-lang-switcher />
+      </div>
+      <button type="button" class="btn btn--outline btn--full" (click)="logout()">
+        <app-icon name="logout" [size]="18" /> {{ 'layout.logout' | t }}
+      </button>
+    </div>
+  </div>
+}
 
 <!-- Offline earnings — credited by GET /game/state on bootstrap -->
 @if (game.offlineEarnings(); as offline) {
@@ -67,16 +127,16 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="offline-title"
-    (click)="game.dismissOfflineEarnings()"
+    (click)="closeOffline()"
   >
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal__icon" aria-hidden="true">💤</div>
+      <div class="modal__icon" aria-hidden="true">{{ doubled() ? '✨' : '💤' }}</div>
       <h2 class="modal__title" id="offline-title">{{ 'layout.welcomeBack' | t }}</h2>
       <p class="modal__sub">
         {{ 'layout.offlineRan' | t: { elapsed: formatElapsed(offline.elapsed) } }}
       </p>
 
-      <div class="offline-earned">+{{ offline.earned | money }}</div>
+      <div class="offline-earned">+{{ (doubled() ? offline.earned * 2 : offline.earned) | money }}</div>
 
       @if (offline.capped) {
         <p class="offline-capped">
@@ -97,10 +157,32 @@
         </p>
       }
 
+      <!-- Pay diamonds to receive the same earnings again (§6e) -->
+      @if (offline.doubleOffer; as offer) {
+        @if (doubled()) {
+          <p class="offline-doubled">{{ 'layout.doubled' | t: { amount: (offer.amount | money) } }}</p>
+        } @else {
+          <button
+            type="button"
+            class="btn btn--soft btn--full btn--lg offline-double"
+            [disabled]="doubling() || game.diamonds() < offer.price"
+            (click)="doubleOffline()"
+          >
+            ✨ {{ 'layout.doubleIt' | t: { price: offer.price } }}
+          </button>
+          @if (game.diamonds() < offer.price) {
+            <p class="offline-hint">{{ 'layout.doubleNeed' | t: { price: offer.price, n: game.diamonds() } }}</p>
+          }
+          @if (doubleError()) {
+            <p class="offline-hint offline-hint--error" role="alert">{{ doubleError() }}</p>
+          }
+        }
+      }
+
       <button
         type="button"
         class="btn btn--primary btn--full btn--lg"
-        (click)="game.dismissOfflineEarnings()"
+        (click)="closeOffline()"
       >
         {{ 'layout.collect' | t }}
       </button>
@@ -147,6 +229,7 @@
           <small>{{ 'layout.achievementUnlocked' | t }}</small>
           <strong>{{ ('ach.' + a.code + '.title') | t }}</strong>
         </span>
+        @if (a.diamonds) { <span class="achievement__gems num">+{{ a.diamonds }} 💎</span> }
       </a>
     }
   </div>

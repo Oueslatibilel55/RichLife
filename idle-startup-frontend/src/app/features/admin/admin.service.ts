@@ -54,6 +54,11 @@ export class AdminService {
     return this.http.post<AdminPlayer>(`${this.api}/players/${playerId}/forgive-loan`, null);
   }
 
+  /** Gives (positive) or takes away (negative) diamonds; the reason goes to the player's ledger. */
+  adjustDiamonds(playerId: string, amount: number, reason: string | null): Observable<AdminPlayer> {
+    return this.http.post<AdminPlayer>(`${this.api}/players/${playerId}/diamonds`, { amount, reason });
+  }
+
   // -- Bank (contract §7c) ------------------------------------------------------------
 
   /** active = true: loans still being repaid; false: every loan. Newest first, max 200. */

@@ -128,6 +128,12 @@ export const routes: Routes = [
           import('./features/bank/bank.component').then((m) => m.BankComponent),
       },
       {
+        path: 'store',
+        title: 'title.store',
+        loadComponent: () =>
+          import('./features/store/store.component').then((m) => m.StoreComponent),
+      },
+      {
         path: 'profile',
         title: 'title.profile',
         loadComponent: () =>

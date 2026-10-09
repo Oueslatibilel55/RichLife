@@ -2,6 +2,8 @@
 
 **Status:** Done (2026-10-09 — contract §7b, §7c, §7d, backend and frontend)
 
+> Diamonds and badges in the admin panel (players: give/take diamonds; overview: diamond, badge and boost figures) came with [011](011-diamonds-and-store.md).
+
 ## Why
 
 Between 2026-10-08 and 2026-10-09 the game gained managers, business levels, achievements,

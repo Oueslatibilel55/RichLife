@@ -160,6 +160,7 @@ app.MapLeaderboardEndpoints();
 app.MapProfileEndpoints();
 app.MapLuxuryEndpoints();
 app.MapBankEndpoints();
+app.MapStoreEndpoints();
 app.MapAdminCatalogueEndpoints();
 app.MapAdminEndpoints();
 app.MapAdminLuxuryEndpoints();

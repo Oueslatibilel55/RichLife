@@ -67,6 +67,24 @@
         {{ 'admin.overview.missed' | t: { n: s.loansMissedPayments } }}
       </span>
     </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">💎</span>
+      <span class="stat__label">{{ 'admin.overview.diamonds' | t }}</span>
+      <span class="tile__value num">{{ s.diamondsInCirculation | number }}</span>
+      <span class="tile__sub num">{{ 'admin.overview.diamondsFlow' | t: { earned: (s.diamondsEarned | number) ?? '0', spent: (s.diamondsSpent | number) ?? '0' } }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">🏅</span>
+      <span class="stat__label">{{ 'admin.overview.badges' | t }}</span>
+      <span class="tile__value num">{{ s.badgesOwned }}</span>
+      <span class="tile__sub num">{{ 'admin.overview.badgesCatalogue' | t: { n: s.badgeDistribution.length } }}</span>
+    </div>
+    <div class="card tile">
+      <span class="tile__icon" aria-hidden="true">⚡</span>
+      <span class="stat__label">{{ 'admin.overview.boosts' | t }}</span>
+      <span class="tile__value num">{{ s.boostsActive }}</span>
+      <span class="tile__sub">{{ 'admin.overview.boostsSub' | t }}</span>
+    </div>
   </section>
 
   <div class="panels">
@@ -118,6 +136,21 @@
               <span class="bars__fill bars__fill--violet" [style.width.%]="(a.companies / maxPerAchievement()) * 100"></span>
             </span>
             <span class="bars__value num">{{ a.companies }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="card panel panel--wide">
+      <h2>{{ 'admin.overview.badgeOwners' | t: { n: s.badgesOwned } }}</h2>
+      <ul class="bars bars--cols">
+        @for (b of s.badgeDistribution; track b.id) {
+          <li class="bars__row">
+            <span class="bars__label" [title]="('badge.' + b.id) | t">{{ b.icon }} {{ ('badge.' + b.id) | t }} · <span class="num">{{ b.price }} 💎</span></span>
+            <span class="bars__track">
+              <span class="bars__fill bars__fill--violet" [style.width.%]="(b.owners / maxPerBadge()) * 100"></span>
+            </span>
+            <span class="bars__value num">{{ b.owners }}</span>
           </li>
         }
       </ul>

@@ -10,7 +10,7 @@ To start a local development server, run:
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files (not when started with `--live-reload=false --hmr=false`, as it is for testers on a tunnel — see `../CLAUDE.md`). The UI is in English, French and Arabic (`src/app/core/i18n/`).
 
 The app calls same-origin `/api`; `ng serve` forwards it to the backend on `http://localhost:5187` (`proxy.conf.json`), so start the API first (see `../CLAUDE.md` → *Running it*). Requires Node ≥ 18.19 — see `CLAUDE.md` for the workaround on this machine's Node 18.18, and for sharing the dev app with a phone or a colleague through a tunnel on port 4200.
 

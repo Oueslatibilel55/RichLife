@@ -15,7 +15,8 @@ type PendingAction =
   | { kind: 'cash'; player: AdminPlayer }
   | { kind: 'reset'; player: AdminPlayer }
   | { kind: 'delete'; player: AdminPlayer }
-  | { kind: 'forgive'; player: AdminPlayer };
+  | { kind: 'forgive'; player: AdminPlayer }
+  | { kind: 'diamonds'; player: AdminPlayer };
 
 @Component({
   selector: 'app-admin-players',
@@ -38,6 +39,8 @@ export class AdminPlayersComponent implements OnInit {
 
   readonly pending = signal<PendingAction | null>(null);
   readonly cashInput = signal<number | null>(null);
+  readonly diamondsInput = signal<number | null>(null);
+  readonly reasonInput = signal('');
 
   readonly prestigeShort = prestigeShort;
   readonly prestigeColor = prestigeColor;
@@ -80,6 +83,8 @@ export class AdminPlayersComponent implements OnInit {
 
   ask(kind: PendingAction['kind'], player: AdminPlayer): void {
     this.cashInput.set(kind === 'cash' ? Math.floor(player.cash ?? 0) : null);
+    this.diamondsInput.set(null);
+    this.reasonInput.set('');
     this.pending.set({ kind, player });
   }
 
@@ -105,6 +110,24 @@ export class AdminPlayersComponent implements OnInit {
       case 'forgive':
         this.run(p, this.admin.forgiveLoan(p.id), t('admin.players.loanForgiven', { name: p.username }));
         break;
+      case 'diamonds': {
+        const amount = Number(this.diamondsInput());
+        if (!Number.isInteger(amount) || amount === 0) {
+          this.error.set(t('admin.players.diamondsInvalid'));
+          return;
+        }
+        const reason = this.reasonInput().trim().slice(0, 200) || null;
+        this.busyId.set(p.id);
+        this.error.set('');
+        this.admin.adjustDiamonds(p.id, amount, reason).subscribe({
+          next: (updated) => {
+            this.players.update((rows) => rows.map((r) => (r.id === updated.id ? updated : r)));
+            this.done(t('admin.players.diamondsSet', { name: p.username, n: updated.diamonds ?? 0 }));
+          },
+          error: (err: unknown) => this.fail(err),
+        });
+        break;
+      }
       case 'delete':
         this.busyId.set(p.id);
         this.admin.deletePlayer(p.id).subscribe({
@@ -124,6 +147,7 @@ export class AdminPlayersComponent implements OnInit {
       case 'cash': return 'admin.save';
       case 'reset': return 'admin.players.reset';
       case 'forgive': return 'admin.players.forgiveLoan';
+      case 'diamonds': return 'admin.save';
       case 'delete': return 'admin.players.delete';
     }
   }

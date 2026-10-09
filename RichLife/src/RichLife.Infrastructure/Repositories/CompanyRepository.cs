@@ -25,6 +25,14 @@ public class CompanyRepository(GameDbContext db) : ICompanyRepository
              .AsSplitQuery()
              .FirstOrDefaultAsync(c => c.Id == id, ct);
 
+    public async Task<IReadOnlyList<DiamondTransaction>> GetDiamondHistoryAsync(
+        Guid companyId, int take, CancellationToken ct = default)
+        => await db.DiamondTransactions.AsNoTracking()
+             .Where(t => t.CompanyId == companyId)
+             .OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Balance)
+             .Take(take)
+             .ToListAsync(ct);
+
     public async Task AddAsync(Company company, CancellationToken ct = default)
         => await db.Companies.AddAsync(company, ct);
 

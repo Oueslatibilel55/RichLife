@@ -1,0 +1,131 @@
+<div class="page">
+  <header class="page-header">
+    <h1>{{ 'store.title' | t }}</h1>
+    <p>{{ 'store.subtitle' | t }}</p>
+  </header>
+
+  <!-- Balance -->
+  <section class="balance">
+    <div class="balance__main">
+      <span class="balance__gem" aria-hidden="true">💎</span>
+      <div>
+        <span class="balance__label">{{ 'store.yourDiamonds' | t }}</span>
+        <span class="balance__value num">{{ game.diamonds() }}</span>
+      </div>
+    </div>
+    @if (game.boosted()) {
+      <span class="balance__boost num">⚡ {{ 'store.boostRunning' | t: { left: formatCountdown(game.boostMsLeft()) } }}</span>
+    }
+    <p class="balance__earn">{{ 'store.howToEarn' | t }}</p>
+  </section>
+
+  @if (error()) {
+    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  }
+  @if (notice()) {
+    <div class="alert alert--success" role="status">{{ notice() }}</div>
+  }
+
+  <div class="tabs" role="tablist" [attr.aria-label]="'store.title' | t">
+    @for (x of tabs; track x) {
+      <button type="button" role="tab" class="chip" [class.chip--active]="tab() === x" [attr.aria-selected]="tab() === x" (click)="select(x)">
+        {{ 'store.tab.' + x | t }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'store.loading' | t }}</p></div>
+  } @else {
+  @if (store(); as s) {
+    @switch (tab()) {
+      <!-- Boosts -->
+      @case ('boosts') {
+        <p class="note">{{ 'store.boostNote' | t: { max: s.maxBoostHours } }}</p>
+        <ul class="grid grid--3">
+          @for (b of s.boosts; track b.hours) {
+            <li class="card offer">
+              <span class="offer__icon" aria-hidden="true">⚡</span>
+              <strong class="offer__title">{{ 'store.boostTitle' | t: { h: b.hours } }}</strong>
+              <span class="offer__sub">{{ 'store.boostSub' | t }}</span>
+              <span class="offer__gain num">≈ +{{ boostGain(b.hours) | money }}</span>
+              <button type="button" class="btn btn--primary btn--full" [disabled]="busy() !== null || game.diamonds() < b.price" (click)="buyBoost(b.hours)">
+                {{ busy() === 'boost-' + b.hours ? ('store.buying' | t) : ('store.buyFor' | t: { price: b.price }) }}
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <!-- Badges -->
+      @case ('badges') {
+        <p class="note">{{ 'store.badgeNote' | t }}</p>
+        <ul class="grid grid--badges">
+          @for (b of s.badges; track b.id) {
+            <li class="card badge-card" [class.badge-card--owned]="b.owned" [attr.data-rarity]="b.rarity">
+              <span class="badge-card__icon" aria-hidden="true">{{ b.icon }}</span>
+              <strong class="badge-card__name">{{ 'badge.' + b.id | t }}</strong>
+              <span class="rarity" [attr.data-rarity]="b.rarity">{{ 'store.rarity.' + b.rarity | t }}</span>
+              @if (b.owned) {
+                @if (b.featured) {
+                  <button type="button" class="btn btn--soft btn--sm btn--full" [disabled]="busy() !== null" (click)="feature(null)">✓ {{ 'store.shown' | t }}</button>
+                } @else {
+                  <button type="button" class="btn btn--outline btn--sm btn--full" [disabled]="busy() !== null" (click)="feature(b)">{{ 'store.show' | t }}</button>
+                }
+              } @else {
+                <button type="button" class="btn btn--primary btn--sm btn--full" [disabled]="busy() !== null || game.diamonds() < b.price" (click)="buyBadge(b)">
+                  {{ busy() === 'badge-' + b.id ? ('store.buying' | t) : (b.price + ' 💎') }}
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      <!-- Exchange: diamonds → cash, one way -->
+      @case ('exchange') {
+        <section class="card exchange">
+          <p class="exchange__rate num">{{ 'store.rate' | t: { cash: (s.diamondValue | money) } }}</p>
+          <div class="exchange__quick">
+            @for (n of [10, 25, 50]; track n) {
+              <button type="button" class="chip" [disabled]="game.diamonds() < 1" (click)="setExchange(n)">{{ n }} 💎</button>
+            }
+            <button type="button" class="chip" [disabled]="game.diamonds() < 1" (click)="setExchange(game.diamonds())">{{ 'store.all' | t }}</button>
+          </div>
+          <label class="form-group">
+            <span class="exchange__label">{{ 'store.amount' | t }}</span>
+            <input class="form-input num" type="number" min="1" step="1" [max]="game.diamonds()"
+                   [ngModel]="exchangeAmount()" (ngModelChange)="exchangeAmount.set($event)" />
+          </label>
+          <p class="exchange__preview num">{{ 'store.youGet' | t: { cash: (exchangePreview() | money) } }}</p>
+          <button type="button" class="btn btn--primary btn--full btn--lg" [disabled]="!exchangeValid() || busy() !== null" (click)="exchange()">
+            {{ busy() === 'exchange' ? ('store.buying' | t) : ('store.exchange' | t) }}
+          </button>
+          <p class="note">{{ 'store.exchangeNote' | t }}</p>
+        </section>
+      }
+
+      <!-- History -->
+      @case ('history') {
+        @if (s.history.length === 0) {
+          <div class="empty-state"><div class="empty-state__icon" aria-hidden="true">💎</div><p class="empty-state__text">{{ 'store.noHistory' | t }}</p></div>
+        } @else {
+          <ul class="card history">
+            @for (h of s.history; track $index) {
+              <li class="history__row">
+                <span class="history__icon" aria-hidden="true">{{ reasonIcon(h) }}</span>
+                <div class="history__what">
+                  <span>{{ reasonLabel(h) }}</span>
+                  <small>{{ date(h.createdAt) }}</small>
+                </div>
+                <span class="history__amount num" [class.history__amount--plus]="h.amount > 0">{{ h.amount > 0 ? '+' : '' }}{{ h.amount }} 💎</span>
+              </li>
+            }
+          </ul>
+          <p class="note">{{ 'store.historyNote' | t }}</p>
+        }
+      }
+    }
+  }
+  }
+</div>

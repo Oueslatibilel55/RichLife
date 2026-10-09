@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-export type IconName = 'dashboard' | 'briefcase' | 'trophy' | 'logout' | 'close' | 'trend' | 'refresh' | 'shield' | 'users' | 'contact' | 'gem' | 'bank';
+export type IconName = 'dashboard' | 'briefcase' | 'trophy' | 'logout' | 'close' | 'trend' | 'refresh' | 'shield' | 'users' | 'contact' | 'gem' | 'bank' | 'store' | 'more' | 'zap';
 
 /** Inline stroke icons (Lucide paths) — no icon font, no extra request. */
 @Component({
@@ -81,6 +81,20 @@ export type IconName = 'dashboard' | 'briefcase' | 'trophy' | 'logout' | 'close'
           <path d="M14 18v-7" />
           <path d="M18 18v-7" />
           <path d="M12 2 20 7H4z" />
+        }
+        @case ('store') {
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+          <path d="M3 6h18" />
+          <path d="M16 10a4 4 0 0 1-8 0" />
+        }
+        @case ('more') {
+          <rect width="7" height="7" x="3" y="3" rx="1" />
+          <rect width="7" height="7" x="14" y="3" rx="1" />
+          <rect width="7" height="7" x="14" y="14" rx="1" />
+          <rect width="7" height="7" x="3" y="14" rx="1" />
+        }
+        @case ('zap') {
+          <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
         }
         @case ('refresh') {
           <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />

@@ -59,13 +59,11 @@
           <span class="stat__label">{{ 'dashboard.income' | t }}</span>
           <span class="stat__value stat__value--success">{{ game.cashRate() | rate }}{{ 'dashboard.perSecond' | t }}</span>
         </div>
-        <!-- Ranks the leaderboard. Hidden until the backend maps it — feature 001. -->
-        @if (company.allTimeEarnings !== undefined) {
-          <div class="stat">
-            <span class="stat__label">{{ 'dashboard.allTimeEarned' | t }}</span>
-            <span class="stat__value stat__value--money">{{ company.allTimeEarnings | money }}</span>
-          </div>
-        }
+        <!-- Ranks the leaderboard — feature 001. -->
+        <div class="stat">
+          <span class="stat__label">{{ 'dashboard.allTimeEarned' | t }}</span>
+          <span class="stat__value stat__value--money">{{ company.allTimeEarnings | money }}</span>
+        </div>
         <div class="stat">
           <span class="stat__label">{{ 'dashboard.offlineRate' | t }}</span>
           <span class="stat__value">{{ game.offlineRate() | rate }}{{ 'dashboard.perSecond' | t }}</span>

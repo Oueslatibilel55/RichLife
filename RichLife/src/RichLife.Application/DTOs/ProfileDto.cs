@@ -13,7 +13,9 @@ public record ProfileDto(
     IReadOnlyList<OwnedLuxuryDto> Luxury,
     int AchievementsUnlocked,
     int AchievementsTotal,
-    IReadOnlyList<AchievementDto> Achievements);
+    IReadOnlyList<AchievementDto> Achievements,
+    IReadOnlyList<OwnedBadgeDto> Badges,
+    string? FeaturedBadgeId);
 
 public record ProfileCompanyDto(
     string Name,
@@ -29,7 +31,8 @@ public record ProfileCompanyDto(
     int Assets,
     int ManagersOnShift,
     int ManagersHired,
-    int HighestBusinessLevel);
+    int HighestBusinessLevel,
+    int Diamonds);
 
 public record AchievementDto(
     string Code,
@@ -43,4 +46,4 @@ public record AchievementDto(
     string Unit);
 
 /// <summary>Announced once, in the sync response that unlocked it.</summary>
-public record AchievementUnlockedDto(string Code, string Title, string Icon);
+public record AchievementUnlockedDto(string Code, string Title, string Icon, int Diamonds);

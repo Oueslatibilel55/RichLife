@@ -45,5 +45,8 @@ public static class CompanyMapper
         c.PrestigeMultiplier,
         c.GetPrestigeThreshold(),
         c.LastSyncAt,
+        c.Diamonds,
+        c.BoostUntil,
+        Domain.GameConstants.BoostMultiplier,
         c.Businesses.Select(b => ToDto(b, nowUtc)).ToList());
 }
