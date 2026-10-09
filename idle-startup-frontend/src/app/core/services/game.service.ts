@@ -50,6 +50,7 @@ export class GameService {
   /** False until /game/state has answered once — distinguishes "loading" from "no company". */
   private readonly _loaded = signal(false);
   private readonly _syncAdjusted = signal(false);
+  private syncWarningTimer: ReturnType<typeof setTimeout> | null = null;
   /** Wall clock, refreshed once a second by the ticker — drives countdowns (manager shifts). */
   private readonly _now = signal(Date.now());
   /** Achievements announced by /sync, shown as toasts until dismissed or timed out. */
@@ -151,7 +152,16 @@ export class GameService {
   }
 
   dismissSyncWarning(): void {
+    if (this.syncWarningTimer) clearTimeout(this.syncWarningTimer);
+    this.syncWarningTimer = null;
     this._syncAdjusted.set(false);
+  }
+
+  /** Informational only: shows the "balance corrected" toast for 4 s, restarting on a repeat. */
+  private flashSyncWarning(): void {
+    if (this.syncWarningTimer) clearTimeout(this.syncWarningTimer);
+    this._syncAdjusted.set(true);
+    this.syncWarningTimer = setTimeout(() => this.dismissSyncWarning(), 4000);
   }
 
   dismissAchievement(code: string): void {
@@ -197,7 +207,7 @@ export class GameService {
         tap((res) => {
           if (res.adjusted) {
             this._cash.set(res.acceptedCash);
-            this._syncAdjusted.set(true);
+            this.flashSyncWarning();
             // An admin may have changed or reset the company — refresh its structure too.
             this.refreshCompany().subscribe({ error: () => void 0 });
           }
@@ -390,7 +400,7 @@ export class GameService {
     this._catalogue.set([]);
     this._offlineEarnings.set(null);
     this._achievementToasts.set([]);
-    this._syncAdjusted.set(false);
+    this.dismissSyncWarning();
     this._loaded.set(false);
   }
 
