@@ -25,7 +25,41 @@
     <p class="empty-state__text">{{ (activeOnly() ? 'admin.loans.emptyActive' : 'admin.loans.empty') | t }}</p>
   </div>
 } @else {
-  <div class="card scroll">
+  <!-- Phones: one card per loan. -->
+  <ul class="loan-list">
+    @for (l of loans(); track l.id) {
+      <li class="card loan" [class.busy]="busyId() === l.id">
+        <div class="loan__head">
+          <div class="loan__who">
+            <strong>{{ l.username }}</strong>
+            <small>{{ l.companyName }}</small>
+          </div>
+          @switch (status(l)) {
+            @case ('active') { <span class="badge badge--primary">{{ 'admin.loans.statusActive' | t }}</span> }
+            @case ('repaid') { <span class="badge badge--success">{{ 'admin.loans.statusRepaid' | t }}</span> }
+            @case ('forgiven') { <span class="badge badge--violet">{{ 'admin.loans.statusForgiven' | t }}</span> }
+          }
+        </div>
+        <p class="loan__bank"><span aria-hidden="true">{{ l.bankIcon }}</span> {{ l.bankName }} · <span class="num">{{ percent(l.interestRate) }}%</span></p>
+        <dl class="loan__stats">
+          <div><dt>{{ 'admin.loans.colPrincipal' | t }}</dt><dd class="num">{{ l.principal | money }}</dd></div>
+          <div><dt>{{ 'admin.loans.colOutstanding' | t }}</dt><dd class="num strong" [class.danger]="l.outstanding > 0">{{ l.outstanding | money }}</dd></div>
+          <div><dt>{{ 'admin.loans.colPaid' | t }}</dt><dd class="num">{{ l.paid | money }}</dd></div>
+          <div><dt>{{ 'admin.loans.colPenalties' | t }}</dt><dd class="num" [class.danger]="l.penalties > 0">{{ l.penalties | money }}</dd></div>
+          <div><dt>{{ 'admin.loans.colMissed' | t }}</dt><dd class="num" [class.danger]="l.missedPayments > 0">{{ l.missedPayments }}</dd></div>
+          <div><dt>{{ 'admin.loans.colNext' | t }}</dt><dd class="num">{{ l.nextPaymentAt ? (l.nextPaymentAt | date: 'dd MMM, HH:mm') : '—' }}</dd></div>
+        </dl>
+        @if (status(l) === 'active') {
+          <button type="button" class="btn btn--outline btn--sm loan__action" [disabled]="busyId() === l.id" (click)="pending.set(l)">
+            {{ 'admin.loans.forgive' | t }}
+          </button>
+        }
+      </li>
+    }
+  </ul>
+
+  <!-- Wider screens: the full table. -->
+  <div class="card scroll wide">
     <table class="table">
       <thead>
         <tr>
@@ -80,7 +114,23 @@
   <h2>{{ 'admin.loans.banksTitle' | t }}</h2>
   <p class="muted">{{ 'admin.loans.banksNote' | t }}</p>
   @if (banks().length) {
-    <div class="card scroll">
+    <ul class="loan-list">
+      @for (b of banks(); track b.id) {
+        <li class="card loan">
+          <div class="loan__head">
+            <strong><span aria-hidden="true">{{ b.icon }}</span> {{ b.name }}</strong>
+            <span class="num strong">{{ b.totalLent | money }}</span>
+          </div>
+          <dl class="loan__stats">
+            <div><dt>{{ 'admin.loans.colRate' | t }}</dt><dd class="num">{{ percent(b.minRate) }}–{{ percent(b.maxRate) }}%</dd></div>
+            <div><dt>{{ 'admin.loans.colInstallments' | t }}</dt><dd class="num">{{ b.minInstallments }}–{{ b.maxInstallments }}</dd></div>
+            <div><dt>{{ 'admin.loans.colTaken' | t }}</dt><dd class="num">{{ b.loansTaken }}</dd></div>
+            <div><dt>{{ 'admin.loans.colActive' | t }}</dt><dd class="num">{{ b.activeLoans }}</dd></div>
+          </dl>
+        </li>
+      }
+    </ul>
+    <div class="card scroll wide">
       <table class="table">
         <thead>
           <tr>

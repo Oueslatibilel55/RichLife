@@ -1,6 +1,6 @@
-:host { display: flex; flex-direction: column; gap: 14px; }
+:host { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .muted { font-size: 13px; color: var(--text-3); }
 
 .chips { display: flex; gap: 6px; }
@@ -17,8 +17,47 @@
   &--active { background: var(--text); border-color: var(--text); color: #fff; }
 }
 
-// Wide tables scroll inside their card on phones — never the page.
-.scroll { padding: 0; overflow-x: auto; }
+// Phones get cards; the tables only appear where they fit (and still scroll inside their
+// card rather than widening the page).
+.scroll { padding: 0; overflow-x: auto; max-width: 100%; }
+.wide { display: none; @media (min-width: 900px) { display: block; } }
+
+.loan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  @media (min-width: 900px) { display: none; }
+}
+
+.loan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  min-width: 0;
+  &.busy { opacity: 0.5; pointer-events: none; }
+
+  &__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  &__who { display: flex; flex-direction: column; min-width: 0; }
+  &__who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  small { font-size: 12px; color: var(--text-3); }
+  &__bank { font-size: 13px; color: var(--text-2); }
+  &__action { align-self: stretch; }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    margin: 0;
+    dt { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+    dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+  }
+  .strong { font-weight: 700; }
+  .danger { color: var(--danger); font-weight: 700; }
+}
 
 .table {
   width: 100%;
