@@ -1,8 +1,8 @@
 <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editor-title" (click)="closed.emit()">
   <div class="modal modal--panel editor" (click)="$event.stopPropagation()">
     <div class="modal__header">
-      <h2 id="editor-title">{{ isNew ? 'New business' : form.name }}</h2>
-      <button type="button" class="icon-btn" aria-label="Close" (click)="closed.emit()">
+      <h2 id="editor-title">{{ isNew ? ('admin.catalogue.newBusiness' | t) : form.name }}</h2>
+      <button type="button" class="icon-btn" [attr.aria-label]="'admin.close' | t" (click)="closed.emit()">
         <app-icon name="close" />
       </button>
     </div>
@@ -13,98 +13,98 @@
 
       <form class="grid" (ngSubmit)="saveEntry()">
         <div class="form-group">
-          <label for="e-id">Id (slug)</label>
+          <label for="e-id">{{ 'admin.editor.id' | t }}</label>
           <input id="e-id" class="form-input" name="id" [(ngModel)]="form.id" [readonly]="!isNew"
                  placeholder="lemonade-stand" maxlength="60" />
         </div>
         <div class="form-group">
-          <label for="e-name">Name</label>
+          <label for="e-name">{{ 'admin.editor.name' | t }}</label>
           <input id="e-name" class="form-input" name="name" [(ngModel)]="form.name" maxlength="80" />
         </div>
         <div class="form-group">
-          <label for="e-sector">Sector</label>
+          <label for="e-sector">{{ 'admin.editor.sector' | t }}</label>
           <select id="e-sector" class="form-input form-select" name="sector" [(ngModel)]="form.sector">
-            @for (s of sectors; track s) { <option [value]="s">{{ sectorIcons[s] }} {{ s }}</option> }
+            @for (s of sectors; track s) { <option [value]="s">{{ sectorIcons[s] }} {{ 'sector.' + s | t }}</option> }
           </select>
         </div>
         <div class="form-group">
-          <label for="e-level">Required prestige</label>
+          <label for="e-level">{{ 'admin.editor.requiredPrestige' | t }}</label>
           <select id="e-level" class="form-input form-select" name="level" [(ngModel)]="form.requiredPrestige">
             @for (l of levels; track l) { <option [value]="l">{{ prestigeLabel(l) }}</option> }
           </select>
         </div>
         <div class="form-group">
-          <label for="e-cost">Opening cost ($)</label>
+          <label for="e-cost">{{ 'admin.editor.openingCost' | t }}</label>
           <input id="e-cost" class="form-input num" type="number" min="0" name="cost" [(ngModel)]="form.openingCost" />
         </div>
         <div class="form-group">
-          <label for="e-inc">Base income ($/s)</label>
+          <label for="e-inc">{{ 'admin.editor.baseIncome' | t }}</label>
           <input id="e-inc" class="form-input num" type="number" min="0" step="0.01" name="inc" [(ngModel)]="form.baseIncomePerSecond" />
         </div>
         <div class="form-group">
-          <label for="e-sal">Salary ($/month)</label>
+          <label for="e-sal">{{ 'admin.editor.salary' | t }}</label>
           <input id="e-sal" class="form-input num" type="number" min="0" name="sal" [(ngModel)]="form.monthlySalaryCost" />
         </div>
         <div class="form-group">
-          <label for="e-emp">Employees</label>
+          <label for="e-emp">{{ 'admin.editor.employees' | t }}</label>
           <input id="e-emp" class="form-input num" type="number" min="0" name="emp" [(ngModel)]="form.baseEmployeeCount" />
         </div>
         <div class="form-group">
-          <label for="e-order">Display order</label>
+          <label for="e-order">{{ 'admin.editor.displayOrder' | t }}</label>
           <input id="e-order" class="form-input num" type="number" name="order" [(ngModel)]="form.displayOrder" />
         </div>
         @if (!isNew) {
           <label class="check">
             <input type="checkbox" name="active" [(ngModel)]="form.isActive" />
-            Active (uncheck to retire — owners keep it)
+            {{ 'admin.editor.active' | t }}
           </label>
         }
         <div class="form-group grid__wide">
-          <label for="e-desc">Description</label>
+          <label for="e-desc">{{ 'admin.editor.description' | t }}</label>
           <textarea id="e-desc" class="form-input" name="desc" rows="2" maxlength="500" [(ngModel)]="form.description"></textarea>
         </div>
         <button type="submit" class="btn btn--primary grid__wide" [disabled]="saving()">
-          {{ saving() ? 'Saving…' : isNew ? 'Create business' : 'Save business' }}
+          {{ (saving() ? 'admin.editor.saving' : isNew ? 'admin.editor.create' : 'admin.editor.saveBusiness') | t }}
         </button>
       </form>
 
       <section class="assets">
-        <h3>Assets</h3>
+        <h3>{{ 'admin.editor.assets' | t }}</h3>
         @if (isNew) {
-          <p class="muted">Create the business first, then add its assets here.</p>
+          <p class="muted">{{ 'admin.editor.createFirst' | t }}</p>
         } @else {
-          <p class="muted">Leave “Fixed $/s” empty to derive income from the price. Removing takes an asset off sale; bought copies stay.</p>
+          <p class="muted">{{ 'admin.editor.assetsHelp' | t }}</p>
           <div class="asset asset--head" aria-hidden="true">
-            <span>Id</span><span>Name</span><span>Price $</span><span>Unlock at</span><span>Fixed $/s</span><span>Order</span><span>Income</span><span></span>
+            <span>{{ 'admin.editor.colId' | t }}</span><span>{{ 'admin.editor.name' | t }}</span><span>{{ 'admin.editor.colPrice' | t }}</span><span>{{ 'admin.editor.colUnlock' | t }}</span><span>{{ 'admin.editor.colFixed' | t }}</span><span>{{ 'admin.editor.colOrder' | t }}</span><span>{{ 'admin.editor.colIncome' | t }}</span><span></span>
           </div>
           @for (a of assets(); track a.id) {
             <div class="asset" [class.asset--busy]="busyAsset() === a.id">
               <span class="asset__id">{{ a.id }}</span>
-              <input class="form-input" aria-label="Name" [(ngModel)]="a.name" [ngModelOptions]="{ standalone: true }" />
-              <label class="field"><span class="field__cap">Price $</span><input class="form-input num" type="number" aria-label="Price" [(ngModel)]="a.price" [ngModelOptions]="{ standalone: true }" /></label>
-              <label class="field"><span class="field__cap">Unlock at</span><input class="form-input num" type="number" aria-label="Unlock at asset count" [(ngModel)]="a.unlockAtAssetCount" [ngModelOptions]="{ standalone: true }" /></label>
-              <label class="field"><span class="field__cap">Fixed $/s</span><input class="form-input num" type="number" aria-label="Fixed income per second" placeholder="auto" [(ngModel)]="a.fixed" [ngModelOptions]="{ standalone: true }" /></label>
-              <label class="field"><span class="field__cap">Order</span><input class="form-input num" type="number" aria-label="Display order" [(ngModel)]="a.displayOrder" [ngModelOptions]="{ standalone: true }" /></label>
-              <span class="asset__income num">{{ a.incomePerSecond ?? 0 | rate }}/s</span>
+              <input class="form-input" [attr.aria-label]="'admin.editor.name' | t" [(ngModel)]="a.name" [ngModelOptions]="{ standalone: true }" />
+              <label class="field"><span class="field__cap">{{ 'admin.editor.colPrice' | t }}</span><input class="form-input num" type="number" [attr.aria-label]="'admin.editor.price' | t" [(ngModel)]="a.price" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">{{ 'admin.editor.colUnlock' | t }}</span><input class="form-input num" type="number" [attr.aria-label]="'admin.editor.unlockAria' | t" [(ngModel)]="a.unlockAtAssetCount" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">{{ 'admin.editor.colFixed' | t }}</span><input class="form-input num" type="number" [attr.aria-label]="'admin.editor.fixedAria' | t" [placeholder]="'admin.editor.auto' | t" [(ngModel)]="a.fixed" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">{{ 'admin.editor.colOrder' | t }}</span><input class="form-input num" type="number" [attr.aria-label]="'admin.editor.displayOrder' | t" [(ngModel)]="a.displayOrder" [ngModelOptions]="{ standalone: true }" /></label>
+              <span class="asset__income num">{{ a.incomePerSecond ?? 0 | rate }}{{ 'admin.perSecond' | t }}</span>
               <div class="asset__actions">
-                <button type="button" class="btn btn--soft btn--sm" (click)="saveAsset(a)">Save</button>
-                <button type="button" class="btn btn--danger btn--sm" (click)="removeAsset(a)">Remove</button>
+                <button type="button" class="btn btn--soft btn--sm" (click)="saveAsset(a)">{{ 'admin.save' | t }}</button>
+                <button type="button" class="btn btn--danger btn--sm" (click)="removeAsset(a)">{{ 'admin.editor.remove' | t }}</button>
               </div>
             </div>
           } @empty {
-            <p class="muted">No assets yet.</p>
+            <p class="muted">{{ 'admin.editor.noAssets' | t }}</p>
           }
 
           <div class="asset asset--new" [class.asset--busy]="busyAsset() === '__new'">
-            <input class="form-input" aria-label="New asset id" placeholder="id-slug" [(ngModel)]="newAsset.id" [ngModelOptions]="{ standalone: true }" />
-            <input class="form-input" aria-label="New asset name" placeholder="Name" [(ngModel)]="newAsset.name" [ngModelOptions]="{ standalone: true }" />
-            <input class="form-input num" type="number" aria-label="New asset price" placeholder="Price" [(ngModel)]="newAsset.price" [ngModelOptions]="{ standalone: true }" />
-            <input class="form-input num" type="number" aria-label="New asset unlock count" placeholder="Unlock at" [(ngModel)]="newAsset.unlockAtAssetCount" [ngModelOptions]="{ standalone: true }" />
-            <input class="form-input num" type="number" aria-label="New asset fixed income" placeholder="auto" [(ngModel)]="newAsset.fixed" [ngModelOptions]="{ standalone: true }" />
-            <input class="form-input num" type="number" aria-label="New asset display order" [(ngModel)]="newAsset.displayOrder" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input" [attr.aria-label]="'admin.editor.newId' | t" placeholder="id-slug" [(ngModel)]="newAsset.id" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input" [attr.aria-label]="'admin.editor.newName' | t" [placeholder]="'admin.editor.name' | t" [(ngModel)]="newAsset.name" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" [attr.aria-label]="'admin.editor.newPrice' | t" [placeholder]="'admin.editor.price' | t" [(ngModel)]="newAsset.price" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" [attr.aria-label]="'admin.editor.newUnlock' | t" [placeholder]="'admin.editor.colUnlock' | t" [(ngModel)]="newAsset.unlockAtAssetCount" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" [attr.aria-label]="'admin.editor.newFixed' | t" [placeholder]="'admin.editor.auto' | t" [(ngModel)]="newAsset.fixed" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" [attr.aria-label]="'admin.editor.newOrder' | t" [(ngModel)]="newAsset.displayOrder" [ngModelOptions]="{ standalone: true }" />
             <span></span>
             <div class="asset__actions">
-              <button type="button" class="btn btn--primary btn--sm" [disabled]="!newAsset.id.trim() || !newAsset.name.trim()" (click)="addAsset()">+ Add asset</button>
+              <button type="button" class="btn btn--primary btn--sm" [disabled]="!newAsset.id.trim() || !newAsset.name.trim()" (click)="addAsset()">+ {{ 'admin.editor.addAsset' | t }}</button>
             </div>
           </div>
         }

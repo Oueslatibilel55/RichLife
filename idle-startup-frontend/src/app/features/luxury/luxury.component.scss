@@ -78,15 +78,15 @@
     font-weight: 700;
     backdrop-filter: blur(6px);
   }
-  &__cat { left: 10px; background: rgba(15, 23, 42, 0.6); color: #fff; }
-  &__owned { right: 10px; background: #FCD34D; color: #78350F; }
-  &__lock { right: 10px; background: rgba(15, 23, 42, 0.6); }
+  &__cat { inset-inline-start: 10px; background: rgba(15, 23, 42, 0.6); color: #fff; }
+  &__owned { inset-inline-end: 10px; background: #FCD34D; color: #78350F; }
+  &__lock { inset-inline-end: 10px; background: rgba(15, 23, 42, 0.6); }
 
   &__body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; flex: 1; h3 { font-size: 17px; } }
   &__desc { font-size: 13px; color: var(--text-2); flex: 1; }
   &__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
   &__price { font-size: 18px; font-weight: 800; color: var(--money); }
-  &__req { font-size: 12px; font-weight: 700; text-align: right; }
+  &__req { font-size: 12px; font-weight: 700; text-align: end; }
   &__short { font-size: 12px; font-weight: 700; color: var(--danger); }
 }
 

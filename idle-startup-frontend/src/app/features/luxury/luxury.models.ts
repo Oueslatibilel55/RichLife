@@ -1,4 +1,5 @@
 import { PrestigeLevel } from '../../core/models/game.models';
+import { t } from '../../core/i18n/i18n';
 
 // Wire contracts for /api/game/luxury — mirror api-contract.md §6c.
 
@@ -53,22 +54,28 @@ export const LUXURY_CATEGORY_ICONS: Readonly<Record<LuxuryCategory, string>> = {
   Collectible: '🏺',
 };
 
-/** Display names — the wire values are enum names ("SportsTeam"). */
+/** Display-name translation keys — the wire values are enum names ("SportsTeam"). */
 export const LUXURY_CATEGORY_LABELS: Readonly<Record<LuxuryCategory, string>> = {
-  Watch: 'Watches',
-  Motorbike: 'Motorbikes',
-  Car: 'Cars',
-  Property: 'Property',
-  Island: 'Islands',
-  Yacht: 'Yachts',
-  Aircraft: 'Aircraft',
-  Jewelry: 'Jewelry',
-  Fashion: 'Fashion',
-  Wine: 'Wine & spirits',
-  Instrument: 'Instruments',
-  Art: 'Art',
-  Horse: 'Horses',
-  SportsTeam: 'Sports teams',
-  Experience: 'Experiences',
-  Collectible: 'Collectibles',
+  Watch: 'luxury.cat.Watch',
+  Motorbike: 'luxury.cat.Motorbike',
+  Car: 'luxury.cat.Car',
+  Property: 'luxury.cat.Property',
+  Island: 'luxury.cat.Island',
+  Yacht: 'luxury.cat.Yacht',
+  Aircraft: 'luxury.cat.Aircraft',
+  Jewelry: 'luxury.cat.Jewelry',
+  Fashion: 'luxury.cat.Fashion',
+  Wine: 'luxury.cat.Wine',
+  Instrument: 'luxury.cat.Instrument',
+  Art: 'luxury.cat.Art',
+  Horse: 'luxury.cat.Horse',
+  SportsTeam: 'luxury.cat.SportsTeam',
+  Experience: 'luxury.cat.Experience',
+  Collectible: 'luxury.cat.Collectible',
 };
+
+/** Translated category name; an unknown (newly added) category shows its raw enum name. */
+export function luxuryCategoryLabel(category: string): string {
+  const key = LUXURY_CATEGORY_LABELS[category as LuxuryCategory];
+  return key ? t(key) : category;
+}

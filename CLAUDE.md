@@ -34,7 +34,9 @@ A backend change that lands without a contract update is incomplete.
 - **Money** — `decimal` server-side, JSON number on the wire. Never `double`/`float`.
 - **Errors** — no ProblemDetails envelope. A business failure is a `400` whose body is a
   bare JSON string, which Angular surfaces as `err.error`. `401` and `429` have empty
-  bodies.
+  bodies. The game UI is in English, French and Arabic, but the server keeps answering in
+  English: a new or reworded message also needs its fr/ar line in
+  `idle-startup-frontend/src/app/core/i18n/dict/server.ts`, or players see it in English.
 - **Pagination** — none. Lists are bare JSON arrays. The only limiter is
   `/api/leaderboard?take=` (1..100, default 50).
 - **Auth** — `Authorization: Bearer <accessToken>`; access token 1 h, refresh token 7 days

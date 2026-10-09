@@ -114,8 +114,8 @@
   }
 
   &__name   { grid-row: span 2; align-self: center; font-size: 14px; font-weight: 600; }
-  &__income { font-size: 13px; font-weight: 600; color: var(--success); text-align: right; }
-  &__price  { font-size: 13px; color: var(--money); font-weight: 600; text-align: right; }
+  &__income { font-size: 13px; font-weight: 600; color: var(--success); text-align: end; }
+  &__price  { font-size: 13px; color: var(--money); font-weight: 600; text-align: end; }
 }
 
 .preview__unlock { display: block; font-size: 12px; font-weight: 500; color: var(--text-3); }

@@ -1,20 +1,20 @@
 <div class="page">
   <header class="head">
     <div class="page-header">
-      <h1>Luxury</h1>
-      <p>Status, not income. Everything you buy shows on your profile and counts toward net worth.</p>
+      <h1>{{ 'luxury.title' | t }}</h1>
+      <p>{{ 'luxury.subtitle' | t }}</p>
     </div>
-    <a routerLink="/profile" class="collection num" title="Your collection">
+    <a routerLink="/profile" class="collection num" [title]="'luxury.collectionTitle' | t">
       <span>{{ ownedCount() }} / {{ items().length }}</span>
-      <small>{{ collectionValue() | money }} collected</small>
+      <small>{{ 'luxury.collected' | t: { amount: (collectionValue() | money) } }}</small>
     </a>
   </header>
 
-  <div class="filters" role="group" aria-label="Filter by category">
+  <div class="filters" role="group" [attr.aria-label]="'luxury.filterAria' | t">
     @for (c of categories(); track c) {
       <button type="button" class="chip" [class.chip--active]="category() === c" [attr.aria-pressed]="category() === c"
               (click)="category.set(c)">
-        {{ c === all ? 'All' : categoryIcon(c) + ' ' + categoryLabel(c) }}
+        {{ c === all ? ('luxury.all' | t) : categoryIcon(c) + ' ' + categoryLabel(c) }}
       </button>
     }
   </div>
@@ -22,7 +22,7 @@
   @if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
 
   @if (loading()) {
-    <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>Opening the showroom…</p></div>
+    <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'luxury.loading' | t }}</p></div>
   } @else {
     <ul class="grid">
       @for (item of visible(); track item.id) {
@@ -31,12 +31,12 @@
             <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" decoding="async" />
             <span class="lux__cat">{{ categoryIcon(item.category) }} {{ categoryLabel(item.category) }}</span>
             @if (item.isOwned) {
-              <span class="lux__owned">✓ Yours</span>
+              <span class="lux__owned">✓ {{ 'luxury.yours' | t }}</span>
             } @else if (!item.isUnlocked) {
-              <span class="lux__lock">🔒</span>
+              <span class="lux__lock" [attr.aria-label]="'luxury.locked' | t">🔒</span>
             }
             <figcaption class="photo-credit">
-              Photo: <a [href]="item.imageSourceUrl" target="_blank" rel="noopener noreferrer">{{ item.imageCredit }}</a>
+              {{ 'luxury.photo' | t }} <a [href]="item.imageSourceUrl" target="_blank" rel="noopener noreferrer">{{ item.imageCredit }}</a>
             </figcaption>
           </figure>
 
@@ -47,18 +47,18 @@
               <span class="lux__price num">{{ item.price | money }}</span>
               @if (item.isOwned) {
                 @if (justBought() === item.id) {
-                  <span class="badge badge--success">🎉 Bought!</span>
+                  <span class="badge badge--success">🎉 {{ 'luxury.bought' | t }}</span>
                 } @else {
-                  <span class="badge badge--success">✓ Owned</span>
+                  <span class="badge badge--success">✓ {{ 'luxury.owned' | t }}</span>
                 }
               } @else if (!item.isUnlocked) {
                 <span class="lux__req" [style.color]="prestigeColor(item.requiredPrestige)">
-                  Requires {{ prestigeLabel(item.requiredPrestige) }}
+                  {{ 'luxury.requires' | t: { level: prestigeLabel(item.requiredPrestige) } }}
                 </span>
               } @else if (!affordable(item)) {
-                <span class="lux__short num">Need {{ item.price - game.cash() | money }}</span>
+                <span class="lux__short num">{{ 'luxury.need' | t: { amount: (item.price - game.cash() | money) } }}</span>
               } @else {
-                <button type="button" class="btn btn--primary btn--sm" (click)="confirming.set(item)">Buy</button>
+                <button type="button" class="btn btn--primary btn--sm" (click)="confirming.set(item)">{{ 'luxury.buy' | t }}</button>
               }
             </div>
           </div>
@@ -72,16 +72,16 @@
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="lux-confirm" (click)="confirming.set(null)">
     <div class="modal confirm" (click)="$event.stopPropagation()">
       <img class="confirm__photo" [src]="item.imageUrl" [alt]="item.name" />
-      <h2 class="modal__title" id="lux-confirm">Buy the {{ item.name }}?</h2>
+      <h2 class="modal__title" id="lux-confirm">{{ 'luxury.confirmTitle' | t: { name: item.name } }}</h2>
       <p class="modal__sub">
-        <strong class="num">{{ item.price | money }}</strong> will be deducted from your cash.
-        It earns nothing — but everyone will see it on your profile.
+        {{ 'luxury.confirmDeducted' | t: { amount: (item.price | money) } }}
+        {{ 'luxury.confirmNote' | t }}
       </p>
-      <p class="modal__sub num">Cash after: <strong>{{ game.cash() - item.price | money }}</strong></p>
+      <p class="modal__sub num">{{ 'luxury.cashAfter' | t }} <strong>{{ game.cash() - item.price | money }}</strong></p>
       <div class="confirm__actions">
-        <button type="button" class="btn btn--outline btn--lg" (click)="confirming.set(null)">Cancel</button>
+        <button type="button" class="btn btn--outline btn--lg" (click)="confirming.set(null)">{{ 'luxury.cancel' | t }}</button>
         <button type="button" class="btn btn--primary btn--lg" [disabled]="buying() || !affordable(item)" (click)="buy()">
-          {{ buying() ? 'Buying…' : 'Buy it' }}
+          {{ (buying() ? 'luxury.buying' : 'luxury.buyIt') | t }}
         </button>
       </div>
     </div>

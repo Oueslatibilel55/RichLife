@@ -5,11 +5,14 @@ import { AuthService } from '../../../core/services/auth.service';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { COUNTRIES } from '../../../core/game/countries';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { LangSwitcherComponent } from '../../../shared/components/lang-switcher/lang-switcher.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { t } from '../../../core/i18n/i18n';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent],
+  imports: [FormsModule, RouterLink, IconComponent, LangSwitcherComponent, TranslatePipe],
   templateUrl: './register.component.html',
   styleUrl: '../auth.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,12 +40,12 @@ export class RegisterComponent {
     const username = this.username.trim();
     const email = this.email.trim();
 
-    if (!username || !email || !this.password) return 'Please fill in all fields.';
-    if (username.length > 30) return 'Username must be 30 characters or fewer.';
-    if (email.length > 254) return 'That email address is too long.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
-    if (this.password.length < 6) return 'Password must be at least 6 characters.';
-    if (!/^[A-Za-z]{2}$/.test(this.country)) return 'Pick a country.';
+    if (!username || !email || !this.password) return t('auth.fillAll');
+    if (username.length > 30) return t('auth.register.usernameTooLong');
+    if (email.length > 254) return t('auth.register.emailTooLong');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return t('auth.register.emailInvalid');
+    if (this.password.length < 6) return t('auth.register.passwordTooShort');
+    if (!/^[A-Za-z]{2}$/.test(this.country)) return t('auth.register.countryRequired');
     return null;
   }
 
@@ -68,7 +71,7 @@ export class RegisterComponent {
       .subscribe({
         next: () => void this.router.navigate(['/dashboard']),
         error: (err: unknown) => {
-          this.error.set(toErrorMessage(err, 'Registration failed.'));
+          this.error.set(toErrorMessage(err, 'auth.register.failed'));
           this.loading.set(false);
         },
       });

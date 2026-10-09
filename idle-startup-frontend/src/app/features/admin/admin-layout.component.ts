@@ -4,9 +4,12 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, Ro
 import { filter, map } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { IconComponent, IconName } from '../../shared/components/icon/icon.component';
+import { LangSwitcherComponent } from '../../shared/components/lang-switcher/lang-switcher.component';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 interface Section {
   path: string;
+  /** Translation key. */
   label: string;
   icon: IconName;
   exact: boolean;
@@ -20,7 +23,7 @@ interface Section {
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, IconComponent],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, IconComponent, LangSwitcherComponent, TranslatePipe],
   templateUrl: './admin-layout.component.html',
   styleUrls: ['../../shared/components/layout/layout.component.scss', './admin-layout.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,15 +34,15 @@ export class AdminLayoutComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly sections: readonly Section[] = [
-    { path: '/admin', label: 'Overview', icon: 'dashboard', exact: true },
-    { path: '/admin/players', label: 'Players', icon: 'users', exact: false },
-    { path: '/admin/catalogue', label: 'Catalogue', icon: 'briefcase', exact: false },
-    { path: '/admin/managers', label: 'Managers', icon: 'contact', exact: false },
+    { path: '/admin', label: 'admin.section.overview', icon: 'dashboard', exact: true },
+    { path: '/admin/players', label: 'admin.section.players', icon: 'users', exact: false },
+    { path: '/admin/catalogue', label: 'admin.section.catalogue', icon: 'briefcase', exact: false },
+    { path: '/admin/managers', label: 'admin.section.managers', icon: 'contact', exact: false },
   ];
 
   readonly initial = computed(() => (this.auth.currentUser()?.username ?? '?').charAt(0).toUpperCase());
 
-  /** Heading + blurb of the current section, from the child route's `data`. */
+  /** Heading + blurb of the current section: translation keys from the child route's `data`. */
   private readonly page = toSignal(
     this.router.events.pipe(
       filter((e) => e instanceof NavigationEnd),
@@ -47,7 +50,7 @@ export class AdminLayoutComponent {
     ),
     { initialValue: this.childData() },
   );
-  readonly heading = computed(() => this.page()['heading'] ?? 'Admin');
+  readonly heading = computed(() => this.page()['heading'] ?? 'admin.badge');
   readonly blurb = computed(() => this.page()['blurb'] ?? '');
 
   logout(): void {

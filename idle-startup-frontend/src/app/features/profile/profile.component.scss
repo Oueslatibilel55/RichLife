@@ -160,3 +160,13 @@
   &__name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   &__meta { font-size: 11px; color: var(--money); font-weight: 600; }
 }
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 12px;
+  &__label { font-size: 15px; font-weight: 700; }
+}

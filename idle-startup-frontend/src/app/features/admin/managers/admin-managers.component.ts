@@ -4,31 +4,32 @@ import { AdminService } from '../admin.service';
 import { ManagerNameRow } from '../admin.models';
 import { managerAvatar } from '../../../core/game/managers';
 import { toErrorMessage } from '../../../core/http/api-error';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-admin-managers',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card add">
       <div>
-        <h2>Manager names</h2>
-        <p class="muted">Hiring picks one at random. {{ names().length }} in the pool · {{ usedCount() }} used.</p>
+        <h2>{{ 'admin.section.managerNames' | t }}</h2>
+        <p class="muted">{{ 'admin.managers.summary' | t: { n: names().length, used: usedCount() } }}</p>
       </div>
       <form class="add__form" (ngSubmit)="add()">
-        <input class="form-input" name="name" maxlength="40" placeholder="New name, e.g. Biscotte"
-               aria-label="New manager name" [ngModel]="newName()" (ngModelChange)="newName.set($event)" />
-        <button type="submit" class="btn btn--primary" [disabled]="!newName().trim() || saving()">Add</button>
+        <input class="form-input" name="name" maxlength="40" [placeholder]="'admin.managers.newPlaceholder' | t"
+               [attr.aria-label]="'admin.managers.newAria' | t" [ngModel]="newName()" (ngModelChange)="newName.set($event)" />
+        <button type="submit" class="btn btn--primary" [disabled]="!newName().trim() || saving()">{{ 'admin.managers.add' | t }}</button>
       </form>
       @if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
     </section>
 
-    <input class="form-input filter" type="search" placeholder="Filter…" aria-label="Filter names"
+    <input class="form-input filter" type="search" [placeholder]="'admin.managers.filterPlaceholder' | t" [attr.aria-label]="'admin.managers.filterAria' | t"
            [ngModel]="filter()" (ngModelChange)="filter.set($event)" />
 
     @if (loading()) {
-      <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>Loading names…</p></div>
+      <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'admin.managers.loading' | t }}</p></div>
     } @else {
       <ul class="chips">
         @for (n of filtered(); track n.id) {
@@ -36,14 +37,14 @@ import { toErrorMessage } from '../../../core/http/api-error';
             <span aria-hidden="true">{{ avatar(n.name) }}</span>
             <span class="chip__name">{{ n.name }}</span>
             @if (n.inUse > 0) {
-              <span class="chip__count num" title="Businesses using this name">{{ n.inUse }}</span>
+              <span class="chip__count num" [title]="'admin.managers.inUseTitle' | t">{{ n.inUse }}</span>
             } @else {
-              <button type="button" class="chip__remove" [attr.aria-label]="'Delete ' + n.name"
+              <button type="button" class="chip__remove" [attr.aria-label]="'admin.managers.deleteAria' | t: { name: n.name }"
                       [disabled]="deletingId() === n.id" (click)="remove(n)">✕</button>
             }
           </li>
         } @empty {
-          <li class="muted">No names match.</li>
+          <li class="muted">{{ 'admin.managers.empty' | t }}</li>
         }
       </ul>
     }
@@ -57,10 +58,10 @@ import { toErrorMessage } from '../../../core/http/api-error';
     .chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
     .chip {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 6px 6px 10px; border-radius: 999px;
+      padding-block: 6px; padding-inline: 10px 6px; border-radius: 999px;
       background: var(--surface); border: 1px solid var(--border-strong);
       font-size: 14px; font-weight: 600;
-      &--used { background: var(--success-soft); border-color: #A7F3D0; padding-right: 8px; }
+      &--used { background: var(--success-soft); border-color: #A7F3D0; padding-inline-end: 8px; }
       &__count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--success); color: #fff; font-size: 11px; text-align: center; }
       &__remove {
         width: 24px; height: 24px; border: none; border-radius: 50%;
@@ -95,7 +96,7 @@ export class AdminManagersComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load names.'));
+        this.error.set(toErrorMessage(err, 'admin.error.loadNames'));
         this.loading.set(false);
       },
     });
@@ -113,7 +114,7 @@ export class AdminManagersComponent implements OnInit {
         this.saving.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not add that name.'));
+        this.error.set(toErrorMessage(err, 'admin.error.addName'));
         this.saving.set(false);
       },
     });
@@ -128,7 +129,7 @@ export class AdminManagersComponent implements OnInit {
         this.deletingId.set(null);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not delete that name.'));
+        this.error.set(toErrorMessage(err, 'admin.error.deleteName'));
         this.deletingId.set(null);
       },
     });

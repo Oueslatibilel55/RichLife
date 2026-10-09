@@ -1,10 +1,10 @@
 <div class="page">
   <header class="page-header">
-    <h1>Businesses</h1>
-    <p>Open businesses to grow your income per second.</p>
+    <h1>{{ 'businesses.title' | t }}</h1>
+    <p>{{ 'businesses.subtitle' | t }}</p>
   </header>
 
-  <div class="filters" role="group" aria-label="Filter by sector">
+  <div class="filters" role="group" [attr.aria-label]="'businesses.filterAria' | t">
     @for (sector of sectors(); track sector) {
       <button
         type="button"
@@ -13,7 +13,7 @@
         [attr.aria-pressed]="selectedSector() === sector"
         (click)="selectedSector.set(sector)"
       >
-        {{ sector === all ? 'All' : sectorIcon(sector) + ' ' + sector }}
+        {{ sector === all ? ('businesses.all' | t) : sectorIcon(sector) + ' ' + ('sector.' + sector | t) }}
       </button>
     }
   </div>
@@ -25,7 +25,7 @@
   @if (loading()) {
     <div class="loading-screen">
       <span class="spinner" aria-hidden="true"></span>
-      <p>Loading catalogue…</p>
+      <p>{{ 'businesses.loading' | t }}</p>
     </div>
   } @else {
     <div class="catalogue">
@@ -47,7 +47,7 @@
               </span>
             </div>
             @if (biz.isOwned) {
-              <span class="badge badge--success">✓ Owned</span>
+              <span class="badge badge--success">✓ {{ 'businesses.owned' | t }}</span>
             }
           </div>
 
@@ -55,29 +55,29 @@
 
           <div class="biz__stats">
             <div class="stat">
-              <span class="stat__label">Open cost</span>
+              <span class="stat__label">{{ 'businesses.openCost' | t }}</span>
               <span class="stat__value stat__value--money">{{ biz.openingCost | money }}</span>
             </div>
             @if (biz.baseIncomePerSecond > 0) {
               <div class="stat">
-                <span class="stat__label">Base income</span>
-                <span class="stat__value stat__value--success">{{ biz.baseIncomePerSecond | rate }}/s</span>
+                <span class="stat__label">{{ 'businesses.baseIncome' | t }}</span>
+                <span class="stat__value stat__value--success">{{ biz.baseIncomePerSecond | rate }}{{ 'businesses.perSecond' | t }}</span>
               </div>
             } @else {
               <div class="stat">
-                <span class="stat__label">Income from</span>
-                <span class="stat__value stat__value--success">Assets</span>
+                <span class="stat__label">{{ 'businesses.incomeFrom' | t }}</span>
+                <span class="stat__value stat__value--success">{{ 'businesses.assets' | t }}</span>
               </div>
             }
             @if (biz.monthlySalaryCost > 0) {
               <div class="stat">
-                <span class="stat__label">Salary / mo</span>
+                <span class="stat__label">{{ 'businesses.salary' | t }}</span>
                 <span class="stat__value stat__value--danger">−{{ biz.monthlySalaryCost | money }}</span>
               </div>
             }
             @if (biz.baseEmployeeCount > 0) {
               <div class="stat">
-                <span class="stat__label">Employees</span>
+                <span class="stat__label">{{ 'businesses.employees' | t }}</span>
                 <span class="stat__value">{{ biz.baseEmployeeCount }}</span>
               </div>
             }
@@ -86,15 +86,14 @@
           <div class="biz__footer">
             @if (biz.availableAssets.length > 0) {
               <button type="button" class="link-btn" (click)="toggleExpand(biz.id)">
-                View {{ biz.availableAssets.length }}
-                {{ biz.availableAssets.length === 1 ? 'asset' : 'assets' }}
+                {{ (biz.availableAssets.length === 1 ? 'businesses.viewAssets.one' : 'businesses.viewAssets.other') | t: { n: biz.availableAssets.length } }}
               </button>
             }
 
             @if (biz.isOwned) {
               <!-- nothing to buy — the badge above says it all -->
             } @else if (successId() === biz.id) {
-              <div class="biz__opened">🎉 Opened!</div>
+              <div class="biz__opened">🎉 {{ 'businesses.opened' | t }}</div>
             } @else {
               <button
                 type="button"
@@ -105,11 +104,11 @@
                 (click)="openBusiness(biz.id)"
               >
                 @if (openingId() === biz.id) {
-                  Opening…
+                  {{ 'businesses.opening' | t }}
                 } @else if (!affordable(biz.openingCost, biz.canAfford)) {
-                  Need {{ biz.openingCost - game.cash() | money }} more
+                  {{ 'businesses.needMore' | t: { amount: (biz.openingCost - game.cash() | money) } }}
                 } @else {
-                  Open for {{ biz.openingCost | money }}
+                  {{ 'businesses.openFor' | t: { amount: (biz.openingCost | money) } }}
                 }
               </button>
             }
@@ -118,8 +117,8 @@
       } @empty {
         <div class="empty-state">
           <div class="empty-state__icon" aria-hidden="true">🔍</div>
-          <p class="empty-state__text">Nothing here yet</p>
-          <p class="empty-state__sub">Prestige up to unlock more sectors.</p>
+          <p class="empty-state__text">{{ 'businesses.emptyTitle' | t }}</p>
+          <p class="empty-state__sub">{{ 'businesses.emptySub' | t }}</p>
         </div>
       }
     </div>
@@ -137,8 +136,8 @@
   >
     <div class="modal modal--panel" (click)="$event.stopPropagation()">
       <div class="modal__header">
-        <h3 id="assets-title">{{ biz.name }} · Assets</h3>
-        <button type="button" class="icon-btn" aria-label="Close" (click)="expandedId.set(null)">
+        <h3 id="assets-title">{{ biz.name }} · {{ 'businesses.assets' | t }}</h3>
+        <button type="button" class="icon-btn" [attr.aria-label]="'businesses.close' | t" (click)="expandedId.set(null)">
           <app-icon name="close" />
         </button>
       </div>
@@ -146,13 +145,13 @@
         @for (asset of biz.availableAssets; track asset.id) {
           <li class="preview__item" [class.preview__item--locked]="!asset.isUnlocked">
             <span class="preview__name">
-              @if (!asset.isUnlocked) { <span aria-label="Locked">🔒</span> }
+              @if (!asset.isUnlocked) { <span [attr.aria-label]="'businesses.locked' | t">🔒</span> }
               {{ asset.name }}
               @if (!asset.isUnlocked) {
-                <small class="preview__unlock num">unlocks at {{ asset.unlockAtAssetCount }} assets</small>
+                <small class="preview__unlock num">{{ (asset.unlockAtAssetCount === 1 ? 'businesses.unlocksAt.one' : 'businesses.unlocksAt.other') | t: { n: asset.unlockAtAssetCount } }}</small>
               }
             </span>
-            <span class="preview__income num">+{{ asset.incomePerSecond | rate }}/s</span>
+            <span class="preview__income num">+{{ asset.incomePerSecond | rate }}{{ 'businesses.perSecond' | t }}</span>
             <span class="preview__price num">{{ asset.price | money }}</span>
           </li>
         }

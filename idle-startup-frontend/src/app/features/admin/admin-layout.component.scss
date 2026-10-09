@@ -13,8 +13,8 @@
   text-transform: uppercase;
 }
 
-// No cash HUD here, so the user block takes the right edge itself.
-.staff-user { margin-left: auto; }
+// No cash HUD here, so the language switcher + user block take the end edge themselves.
+.staff-lang { margin-inline-start: auto; }
 
 .topnav__link.active { background: var(--text); color: #fff; }
 .tabbar__link.active { color: var(--text); }

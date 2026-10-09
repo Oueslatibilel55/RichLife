@@ -14,6 +14,7 @@ import { formatShiftLeft, managerAvatar, shiftMsLeft } from '../../core/game/man
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../shared/pipes/money.pipe';
 import { ManageBusinessComponent } from './manage-business/manage-business.component';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 interface PrestigeGroup {
   level: PrestigeLevel;
@@ -25,7 +26,7 @@ interface PrestigeGroup {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, RouterLink, MoneyPipe, RatePipe, ManageBusinessComponent],
+  imports: [FormsModule, RouterLink, MoneyPipe, RatePipe, ManageBusinessComponent, TranslatePipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -110,7 +111,7 @@ export class DashboardComponent implements OnInit {
         this.game.loadCatalogue().subscribe({ error: () => void 0 });
       },
       error: (err: unknown) => {
-        this.createError.set(toErrorMessage(err, 'Could not create that company.'));
+        this.createError.set(toErrorMessage(err, 'dashboard.error.create'));
         this.creating.set(false);
       },
     });
@@ -135,7 +136,7 @@ export class DashboardComponent implements OnInit {
         setTimeout(() => this.prestigeSuccess.set(false), 3000);
       },
       error: (err: unknown) => {
-        this.prestigeError.set(toErrorMessage(err, 'Prestige failed.'));
+        this.prestigeError.set(toErrorMessage(err, 'dashboard.error.prestige'));
         this.prestigeLoading.set(false);
       },
     });

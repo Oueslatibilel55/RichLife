@@ -6,14 +6,14 @@ import { adminChildGuard, adminMatchGuard, playerGuard } from './core/guards/adm
 export const routes: Routes = [
   {
     path: 'login',
-    title: 'Sign in — Rich Life',
+    title: 'title.login',
     canActivate: [guestGuard],
     loadComponent: () =>
       import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
   {
     path: 'register',
-    title: 'Create account — Rich Life',
+    title: 'title.register',
     canActivate: [guestGuard],
     loadComponent: () =>
       import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
@@ -30,29 +30,29 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        title: 'Overview — Rich Life admin',
-        data: { heading: 'Overview', blurb: 'How the game is doing right now.' },
+        title: 'title.adminOverview',
+        data: { heading: 'admin.section.overview', blurb: 'admin.blurb.overview' },
         loadComponent: () =>
           import('./features/admin/overview/admin-overview.component').then((m) => m.AdminOverviewComponent),
       },
       {
         path: 'players',
-        title: 'Players — Rich Life admin',
-        data: { heading: 'Players', blurb: 'Search accounts; set cash, reset, promote or delete.' },
+        title: 'title.adminPlayers',
+        data: { heading: 'admin.section.players', blurb: 'admin.blurb.players' },
         loadComponent: () =>
           import('./features/admin/players/admin-players.component').then((m) => m.AdminPlayersComponent),
       },
       {
         path: 'catalogue',
-        title: 'Catalogue — Rich Life admin',
-        data: { heading: 'Catalogue', blurb: 'Businesses and assets players can buy.' },
+        title: 'title.adminCatalogue',
+        data: { heading: 'admin.section.catalogue', blurb: 'admin.blurb.catalogue' },
         loadComponent: () =>
           import('./features/admin/catalogue/admin-catalogue.component').then((m) => m.AdminCatalogueComponent),
       },
       {
         path: 'managers',
-        title: 'Manager names — Rich Life admin',
-        data: { heading: 'Manager names', blurb: 'The pool hired managers get their random names from.' },
+        title: 'title.adminManagers',
+        data: { heading: 'admin.section.managerNames', blurb: 'admin.blurb.managers' },
         loadComponent: () =>
           import('./features/admin/managers/admin-managers.component').then((m) => m.AdminManagersComponent),
       },
@@ -68,19 +68,19 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        title: 'Dashboard — Rich Life',
+        title: 'title.dashboard',
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'businesses',
-        title: 'Businesses — Rich Life',
+        title: 'title.businesses',
         loadComponent: () =>
           import('./features/businesses/businesses.component').then((m) => m.BusinessesComponent),
       },
       {
         path: 'leaderboard',
-        title: 'Leaderboard — Rich Life',
+        title: 'title.leaderboard',
         loadComponent: () =>
           import('./features/leaderboard/leaderboard.component').then(
             (m) => m.LeaderboardComponent,
@@ -88,13 +88,13 @@ export const routes: Routes = [
       },
       {
         path: 'luxury',
-        title: 'Luxury — Rich Life',
+        title: 'title.luxury',
         loadComponent: () =>
           import('./features/luxury/luxury.component').then((m) => m.LuxuryComponent),
       },
       {
         path: 'profile',
-        title: 'Your profile — Rich Life',
+        title: 'title.profile',
         loadComponent: () =>
           import('./features/profile/profile.component').then((m) => m.ProfileComponent),
       },

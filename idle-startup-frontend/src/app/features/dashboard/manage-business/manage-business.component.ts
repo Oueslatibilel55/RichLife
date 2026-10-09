@@ -4,6 +4,7 @@ import { toErrorMessage } from '../../../core/http/api-error';
 import { formatShiftLeft, managerAvatar, shiftMsLeft } from '../../../core/game/managers';
 import { MoneyPipe, RatePipe } from '../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 /**
  * Asset management for one owned business. Split out of DashboardComponent so the
@@ -16,7 +17,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 @Component({
   selector: 'app-manage-business',
   standalone: true,
-  imports: [MoneyPipe, RatePipe, IconComponent],
+  imports: [MoneyPipe, RatePipe, IconComponent, TranslatePipe],
   templateUrl: './manage-business.component.html',
   styleUrl: './manage-business.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -64,7 +65,7 @@ export class ManageBusinessComponent {
         });
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not level up this business.'));
+        this.error.set(toErrorMessage(err, 'manage.error.levelUp'));
         this.levelling.set(false);
       },
     });
@@ -95,6 +96,11 @@ export class ManageBusinessComponent {
       null,
     );
   });
+
+  /** `key.one` / `key.other` — the dictionary holds both forms for every counted string. */
+  plural(key: string, n: number): string {
+    return n === 1 ? `${key}.one` : `${key}.other`;
+  }
 
   /** Assets still to buy before `unlockAt` — never negative. */
   toGo(unlockAt: number): number {
@@ -133,7 +139,7 @@ export class ManageBusinessComponent {
         this.hiring.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not hire a manager.'));
+        this.error.set(toErrorMessage(err, 'manage.error.hire'));
         this.hiring.set(false);
       },
     });
@@ -154,7 +160,7 @@ export class ManageBusinessComponent {
         this.busyAssetId.set(null);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not buy that asset.'));
+        this.error.set(toErrorMessage(err, 'manage.error.buyAsset'));
         this.busyAssetId.set(null);
       },
     });
@@ -175,7 +181,7 @@ export class ManageBusinessComponent {
         this.closed.emit();
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not close that business.'));
+        this.error.set(toErrorMessage(err, 'manage.error.close'));
         this.closing.set(false);
       },
     });

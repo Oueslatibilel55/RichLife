@@ -9,6 +9,8 @@ import { SECTOR_ICONS } from '../../../core/game/sectors';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { RatePipe } from '../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { t } from '../../../core/i18n/i18n';
 
 interface EntryForm extends CatalogueEntryFields {
   id: string;
@@ -31,7 +33,7 @@ const blankAsset = (): AssetForm => ({
 @Component({
   selector: 'app-catalogue-editor',
   standalone: true,
-  imports: [FormsModule, RatePipe, IconComponent],
+  imports: [FormsModule, RatePipe, IconComponent, TranslatePipe],
   templateUrl: './catalogue-editor.component.html',
   styleUrl: './catalogue-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -82,20 +84,20 @@ export class CatalogueEditorComponent implements OnChanges {
     const call = this.isNew
       ? this.admin.createEntry(id.trim(), fields)
       : this.admin.updateEntry(id, { ...fields, isActive });
-    this.submit(call, this.isNew ? 'Business created — add its assets below.' : 'Saved.');
+    this.submit(call, this.isNew ? t('admin.editor.created') : t('admin.editor.saved'));
   }
 
   saveAsset(row: AssetForm): void {
-    this.assetCall(row.id, this.admin.updateAsset(this.form.id, this.toWire(row)), `${row.name} saved.`);
+    this.assetCall(row.id, this.admin.updateAsset(this.form.id, this.toWire(row)), t('admin.editor.assetSaved', { name: row.name }));
   }
 
   removeAsset(row: AssetForm): void {
-    this.assetCall(row.id, this.admin.removeAsset(this.form.id, row.id), `${row.name} removed from sale.`);
+    this.assetCall(row.id, this.admin.removeAsset(this.form.id, row.id), t('admin.editor.assetRemoved', { name: row.name }));
   }
 
   addAsset(): void {
     const row = { ...this.newAsset, id: this.newAsset.id.trim() };
-    this.assetCall('__new', this.admin.addAsset(this.form.id, this.toWire(row)), `${row.name} added.`, () => {
+    this.assetCall('__new', this.admin.addAsset(this.form.id, this.toWire(row)), t('admin.editor.assetAdded', { name: row.name }), () => {
       this.newAsset = { ...blankAsset(), displayOrder: (this.assets().at(-1)?.displayOrder ?? 0) + 10 };
     });
   }
@@ -111,7 +113,7 @@ export class CatalogueEditorComponent implements OnChanges {
       },
       error: (err: unknown) => {
         this.saving.set(false);
-        this.error.set(toErrorMessage(err, 'Could not save.'));
+        this.error.set(toErrorMessage(err, 'admin.error.save'));
       },
     });
   }
@@ -129,7 +131,7 @@ export class CatalogueEditorComponent implements OnChanges {
       },
       error: (err: unknown) => {
         this.busyAsset.set(null);
-        this.error.set(toErrorMessage(err, 'Could not save the asset.'));
+        this.error.set(toErrorMessage(err, 'admin.error.saveAsset'));
       },
     });
   }

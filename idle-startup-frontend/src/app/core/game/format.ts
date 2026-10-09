@@ -1,3 +1,5 @@
+import { t } from '../i18n/i18n';
+
 /**
  * Money formatting. Pure functions so they can be unit-tested and memoized by the
  * pipes in shared/pipes — presentation logic does not belong on GameService.
@@ -39,8 +41,8 @@ export function formatElapsed(timeSpan: string): string {
   const d = Math.floor(total / 86_400);
   const h = Math.floor((total % 86_400) / 3_600);
   const m = Math.floor((total % 3_600) / 60);
-  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m`;
-  return 'less than a minute';
+  if (d > 0) return h > 0 ? t('time.dh', { d, h }) : t('time.d', { d });
+  if (h > 0) return t('time.hm', { h, m });
+  if (m > 0) return t('time.m', { m });
+  return t('time.lessThanMinute');
 }

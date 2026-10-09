@@ -1,4 +1,5 @@
 import { PrestigeLevel } from '../models/game.models';
+import { t } from '../i18n/i18n';
 
 /**
  * Single source of truth for the prestige enum on the frontend.
@@ -14,16 +15,6 @@ export const PRESTIGE_ORDER: readonly PrestigeLevel[] = [
   'Billionaire',
   'GlobalEmpire',
 ] as const;
-
-export const PRESTIGE_LABELS: Readonly<Record<PrestigeLevel, string>> = {
-  TheHustle: 'P1 — The Hustle',
-  SmallBusiness: 'P2 — Small Business',
-  Entrepreneur: 'P3 — Entrepreneur',
-  BusinessMogul: 'P4 — Business Mogul',
-  Tycoon: 'P5 — Tycoon',
-  Billionaire: 'P6 — Billionaire',
-  GlobalEmpire: 'P7 — Global Empire',
-};
 
 /** Compact form for the HUD. */
 export const PRESTIGE_SHORT: Readonly<Record<PrestigeLevel, string>> = {
@@ -47,8 +38,14 @@ export const PRESTIGE_COLORS: Readonly<Record<PrestigeLevel, string>> = {
   GlobalEmpire: '#0D9488',
 };
 
+/** Translated level name: "Small Business" · "Petite Entreprise". */
+export function prestigeName(level: PrestigeLevel | string): string {
+  return t('prestige.' + level);
+}
+
+/** "P2 — Small Business", in the current language. */
 export function prestigeLabel(level: PrestigeLevel | string): string {
-  return PRESTIGE_LABELS[level as PrestigeLevel] ?? level;
+  return `${prestigeShort(level)} — ${prestigeName(level)}`;
 }
 
 export function prestigeShort(level: PrestigeLevel | string): string {
@@ -63,5 +60,5 @@ export function prestigeColor(level: PrestigeLevel | string): string {
 export function nextPrestigeLabel(level: PrestigeLevel | string): string | null {
   const i = PRESTIGE_ORDER.indexOf(level as PrestigeLevel);
   if (i < 0 || i >= PRESTIGE_ORDER.length - 1) return null;
-  return PRESTIGE_LABELS[PRESTIGE_ORDER[i + 1]!];
+  return prestigeLabel(PRESTIGE_ORDER[i + 1]!);
 }

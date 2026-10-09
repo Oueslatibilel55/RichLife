@@ -110,7 +110,7 @@ the service's methods.
   server's `incomePerSecond` **verbatim** — the prestige multiplier is already baked into it, so never
   re-derive it from `passiveIncomePerSecond` plus the businesses.
 - **Sync**: `POST /game/sync` every 5 s. When the response says `adjusted`, the client **must** adopt
-  `acceptedCash`; it does, and raises `syncAdjusted` so the UI can say so.
+  `acceptedCash`; it does, and raises `syncAdjusted` so the UI can say so — an info toast that closes itself after 4 s.
 - **Spending syncs first.** `Company.DeductCash` on the server compares the price against its *last recorded*
   cash and never accrues, so `openBusiness`, `buyAsset`, `closeBusiness` and `prestige` all go through
   `afterSync(...)`, then deduct the price from the local purse. Skipping this makes the server reject
@@ -180,11 +180,36 @@ share `features/auth/auth.scss`.
 Production budgets cap a component stylesheet at 4 kB (warning) / 8 kB (error); the build is currently
 warning-free.
 
+### Languages (i18n) — English, French, Arabic
+
+Switchable at runtime, no reload: `<app-lang-switcher />` sits in the game top bar, the admin top bar,
+the auth pages and the profile page. The choice is saved in `localStorage` (`rl_lang`); the first visit
+follows the browser language. Angular's compile-time `@angular/localize` is **not** used.
+
+- `core/i18n/i18n.ts` — a module-level `currentLang` signal, `setLang()`, and `t(key, params)` (falls
+  back to English, then to the key; `{name}` placeholders). Arabic sets `<html dir="rtl">`.
+- `core/i18n/translate.pipe.ts` — `{{ 'key' | t }}` / `{{ 'key' | t: { n: 3 } }}`. **Impure on purpose**:
+  `t()` reads the language signal, so OnPush views re-render on a switch. In TS, call `t()` (inside a
+  `computed()` it re-evaluates by itself). A message already stored in a signal (an error, a notice)
+  stays in the language it was produced in.
+- `core/i18n/dict/<feature>.ts` — one `{ en, fr, ar }` file per feature; **every key in all three**.
+  `core.ts` holds the shared ones (prestige names, sectors, durations, client errors, page titles,
+  achievements by `ach.<code>.title|desc`). Route `title`s are keys, translated by
+  `TranslatedTitleStrategy`.
+- **Server text**: business-rule messages are English; `toErrorMessage()` looks them up in
+  `dict/server.ts` (keyed by the exact contract wording; variable ones matched by regex in
+  `api-error.ts`). A new server message needs a line there, or it shows in English. Its `fallback`
+  argument is a key. Catalogue/luxury names and descriptions, usernames and company names are content
+  and stay as sent.
+- **RTL**: use logical CSS (`margin-inline-start`, `text-align: start`, `inset-inline-end`), never
+  physical left/right unless symmetric; a left/right-pointing icon gets `.rtl-flip`. Arabic glyphs come
+  from the Cairo font (fallback after Plus Jakarta Sans). Money stays `$1,234` in every language.
+
 ### Prestige levels
 
 The backend enum — `TheHustle`, `SmallBusiness`, `Entrepreneur`, `BusinessMogul`, `Tycoon`, `Billionaire`,
-`GlobalEmpire` — lives in **one place**: `core/game/prestige.ts` (`PRESTIGE_ORDER`, labels, short labels,
-colours, `nextPrestigeLabel`). Adding or renaming a level means editing that file and the `PrestigeLevel`
+`GlobalEmpire` — lives in **one place**: `core/game/prestige.ts` (`PRESTIGE_ORDER`, short labels,
+colours, `nextPrestigeLabel`; names are the `prestige.<Level>` i18n keys in `core/i18n/dict/core.ts`). Adding or renaming a level means editing that file, those keys and the `PrestigeLevel`
 union in `core/models/game.models.ts` — nothing else. Sector icons live in `core/game/sectors.ts`.
 
 Thresholds are **not** mirrored on the client: use `company.nextPrestigeThreshold`, and detect the top level

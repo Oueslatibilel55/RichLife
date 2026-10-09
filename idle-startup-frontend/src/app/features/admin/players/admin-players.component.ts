@@ -8,6 +8,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { prestigeColor, prestigeShort } from '../../../core/game/prestige';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { t } from '../../../core/i18n/i18n';
 
 type PendingAction =
   | { kind: 'cash'; player: AdminPlayer }
@@ -17,7 +19,7 @@ type PendingAction =
 @Component({
   selector: 'app-admin-players',
   standalone: true,
-  imports: [FormsModule, DatePipe, MoneyPipe],
+  imports: [FormsModule, DatePipe, MoneyPipe, TranslatePipe],
   templateUrl: './admin-players.component.html',
   styleUrl: './admin-players.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,7 +64,7 @@ export class AdminPlayersComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load players.'));
+        this.error.set(toErrorMessage(err, 'admin.error.loadPlayers'));
         this.loading.set(false);
       },
     });
@@ -71,8 +73,8 @@ export class AdminPlayersComponent implements OnInit {
   toggleAdmin(p: AdminPlayer): void {
     this.run(p, this.admin.setAdmin(p.id, !p.isAdmin),
       p.isAdmin
-        ? `${p.username} is a player again (after their next login).`
-        : `${p.username} is now staff: no game access from their next login.`);
+        ? t('admin.players.demoted', { name: p.username })
+        : t('admin.players.promoted', { name: p.username }));
   }
 
   ask(kind: PendingAction['kind'], player: AdminPlayer): void {
@@ -90,21 +92,21 @@ export class AdminPlayersComponent implements OnInit {
       case 'cash': {
         const cash = Number(this.cashInput());
         if (!Number.isFinite(cash) || cash < 0) {
-          this.error.set('Cash must be a number of 0 or more.');
+          this.error.set(t('admin.players.cashInvalid'));
           return;
         }
-        this.run(p, this.admin.setCash(p.id, cash), `${p.username}'s cash was set.`);
+        this.run(p, this.admin.setCash(p.id, cash), t('admin.players.cashSet', { name: p.username }));
         break;
       }
       case 'reset':
-        this.run(p, this.admin.resetPlayer(p.id), `${p.username} starts over from zero.`);
+        this.run(p, this.admin.resetPlayer(p.id), t('admin.players.wasReset', { name: p.username }));
         break;
       case 'delete':
         this.busyId.set(p.id);
         this.admin.deletePlayer(p.id).subscribe({
           next: () => {
             this.players.update((rows) => rows.filter((r) => r.id !== p.id));
-            this.done(`${p.username} was deleted.`);
+            this.done(t('admin.players.deleted', { name: p.username }));
           },
           error: (err: unknown) => this.fail(err),
         });
@@ -133,6 +135,6 @@ export class AdminPlayersComponent implements OnInit {
 
   private fail(err: unknown): void {
     this.busyId.set(null);
-    this.error.set(toErrorMessage(err, 'That action failed.'));
+    this.error.set(toErrorMessage(err, 'admin.error.action'));
   }
 }

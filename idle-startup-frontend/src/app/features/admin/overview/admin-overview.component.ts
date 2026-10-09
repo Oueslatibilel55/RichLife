@@ -6,11 +6,12 @@ import { prestigeColor, prestigeLabel } from '../../../core/game/prestige';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-admin-overview',
   standalone: true,
-  imports: [MoneyPipe, DatePipe, IconComponent],
+  imports: [MoneyPipe, DatePipe, IconComponent, TranslatePipe],
   templateUrl: './admin-overview.component.html',
   styleUrl: './admin-overview.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,7 +46,7 @@ export class AdminOverviewComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load the stats.'));
+        this.error.set(toErrorMessage(err, 'admin.error.loadStats'));
         this.loading.set(false);
       },
     });

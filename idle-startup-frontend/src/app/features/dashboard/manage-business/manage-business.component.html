@@ -9,18 +9,18 @@
     <div class="modal modal--panel" (click)="$event.stopPropagation()">
       <div class="modal__header">
         <h2 id="manage-title">{{ biz.name }}</h2>
-        <button type="button" class="icon-btn" aria-label="Close" (click)="closed.emit()">
+        <button type="button" class="icon-btn" [attr.aria-label]="'manage.closeAria' | t" (click)="closed.emit()">
           <app-icon name="close" />
         </button>
       </div>
 
       <div class="summary">
         <div class="stat">
-          <span class="stat__label">Current income</span>
-          <span class="stat__value stat__value--success">{{ biz.netIncomePerSecond | rate }}/s</span>
+          <span class="stat__label">{{ 'manage.currentIncome' | t }}</span>
+          <span class="stat__value stat__value--success">{{ biz.netIncomePerSecond | rate }}{{ 'dashboard.perSecond' | t }}</span>
         </div>
         <div class="stat">
-          <span class="stat__label">Your cash</span>
+          <span class="stat__label">{{ 'manage.yourCash' | t }}</span>
           <span class="stat__value">{{ cash() | money }}</span>
         </div>
       </div>
@@ -32,25 +32,25 @@
 
         <!-- Level: pay to multiply this business's whole income -->
         <div class="level">
-          <div class="level__badge num" [attr.aria-label]="'Level ' + biz.level">
-            <span>Lv</span>{{ biz.level }}
+          <div class="level__badge num" [attr.aria-label]="'manage.level.aria' | t: { n: biz.level }">
+            <span>{{ 'manage.level.short' | t }}</span>{{ biz.level }}
           </div>
           <div class="level__text">
-            <strong class="num">Income ×{{ biz.levelMultiplier.toFixed(2) }}</strong>
+            <strong class="num">{{ 'manage.level.income' | t: { mult: biz.levelMultiplier.toFixed(2) } }}</strong>
             @if (biz.nextLevelCost === null) {
-              <span>Max level reached 🏆</span>
+              <span>{{ 'manage.level.max' | t }} 🏆</span>
             } @else if (nextMilestone() === biz.level + 1) {
-              <span class="num">Next level <b>doubles</b> income · +{{ levelGain() | rate }}/s</span>
+              <span class="num">{{ 'manage.level.nextDoubles' | t: { gain: (levelGain() | rate) } }}</span>
             } @else {
               <span class="num">
-                Next level +{{ levelGain() | rate }}/s
-                @if (nextMilestone(); as m) { · Lv {{ m }} doubles it }
+                {{ 'manage.level.next' | t: { gain: (levelGain() | rate) } }}
+                @if (nextMilestone(); as m) { · {{ 'manage.level.milestone' | t: { n: m } }} }
               </span>
             }
           </div>
           @if (biz.nextLevelCost !== null) {
             @if (cash() < biz.nextLevelCost) {
-              <span class="asset__short num">Need {{ biz.nextLevelCost - cash() | money }}</span>
+              <span class="asset__short num">{{ 'manage.need' | t: { amount: (biz.nextLevelCost - cash() | money) } }}</span>
             } @else {
               <button
                 type="button"
@@ -58,7 +58,7 @@
                 [disabled]="levelling()"
                 (click)="levelUp()"
               >
-                {{ levelling() ? 'Upgrading…' : 'Level up · ' + (biz.nextLevelCost | money) }}
+                {{ levelling() ? ('manage.level.upgrading' | t) : ('manage.level.up' | t: { price: (biz.nextLevelCost | money) }) }}
               </button>
             }
           }
@@ -69,8 +69,14 @@
           <div class="manager manager--hired">
             <span class="manager__icon" aria-hidden="true">{{ managerAvatar(biz.managerName) }}</span>
             <div class="manager__text">
-              <strong>{{ biz.managerName ?? 'Your manager' }} runs this business</strong>
-              <span class="num">Shift ends in <b>{{ shiftLeftLabel() }}</b> — earns while you're away until then.</span>
+              <strong>
+                @if (biz.managerName) {
+                  {{ 'manage.manager.runs' | t: { name: biz.managerName } }}
+                } @else {
+                  {{ 'manage.manager.runsAnon' | t }}
+                }
+              </strong>
+              <span class="num">{{ 'manage.manager.endsIn' | t: { time: shiftLeftLabel() } }}</span>
             </div>
             <span class="badge badge--success num">⏱ {{ shiftLeftLabel() }}</span>
           </div>
@@ -79,16 +85,14 @@
             <span class="manager__icon" aria-hidden="true">{{ managerAvatar(biz.managerName) }}</span>
             <div class="manager__text">
               @if (biz.managerName) {
-                <strong>{{ biz.managerName }}'s shift has ended</strong>
+                <strong>{{ 'manage.manager.ended' | t: { name: biz.managerName } }}</strong>
               } @else {
-                <strong>Hire a manager</strong>
+                <strong>{{ 'manage.manager.hireTitle' | t }}</strong>
               }
-              <span class="num">
-                A 4-hour shift: earns <b>+{{ offlineGain() | rate }}/s</b> while you're away.
-              </span>
+              <span class="num">{{ 'manage.manager.pitch' | t: { gain: (offlineGain() | rate) } }}</span>
             </div>
             @if (cash() < biz.managerCost) {
-              <span class="asset__short num">Need {{ biz.managerCost - cash() | money }}</span>
+              <span class="asset__short num">{{ 'manage.need' | t: { amount: (biz.managerCost - cash() | money) } }}</span>
             } @else {
               <button
                 type="button"
@@ -96,7 +100,7 @@
                 [disabled]="hiring()"
                 (click)="hireManager()"
               >
-                {{ hiring() ? 'Hiring…' : (biz.managerName ? 'Rehire · ' : 'Hire · ') + (biz.managerCost | money) }}
+                {{ hiring() ? ('manage.manager.hiring' | t) : ((biz.managerName ? 'manage.manager.rehire' : 'manage.manager.hire') | t: { price: (biz.managerCost | money) }) }}
               </button>
             }
           </div>
@@ -105,15 +109,16 @@
         @if (entry(); as cat) {
           @if (cat.availableAssets.length > 0) {
             <div class="assets-head">
-              <h3 class="list-title">Assets</h3>
-              <span class="badge badge--primary num">You own {{ biz.assetCount }}</span>
+              <h3 class="list-title">{{ 'manage.assets.title' | t }}</h3>
+              <span class="badge badge--primary num">{{ plural('manage.assets.owned', biz.assetCount) | t: { n: biz.assetCount } }}</span>
             </div>
 
             @if (nextUnlock(); as next) {
               <div class="unlock">
                 <div class="unlock__text num">
-                  🔓 <strong>{{ next.name }}</strong> unlocks at {{ next.unlockAtAssetCount }} assets —
-                  <b>{{ toGo(next.unlockAtAssetCount) }} to go</b>
+                  🔓 <strong>{{ next.name }}</strong>
+                  {{ plural('manage.assets.unlocksAt', next.unlockAtAssetCount) | t: { n: next.unlockAtAssetCount } }} —
+                  <b>{{ plural('manage.assets.toGo', toGo(next.unlockAtAssetCount)) | t: { n: toGo(next.unlockAtAssetCount) } }}</b>
                 </div>
                 <div class="unlock__bar" role="progressbar"
                      [attr.aria-valuenow]="biz.assetCount" aria-valuemin="0" [attr.aria-valuemax]="next.unlockAtAssetCount">
@@ -122,7 +127,7 @@
                 <span class="unlock__count num">{{ biz.assetCount }} / {{ next.unlockAtAssetCount }}</span>
               </div>
             } @else if (cat.availableAssets.length > 1) {
-              <p class="all-unlocked">✨ Every asset is unlocked — buy any of them as often as you like.</p>
+              <p class="all-unlocked">✨ {{ 'manage.assets.allUnlocked' | t }}</p>
             }
 
             <ul class="assets">
@@ -131,18 +136,18 @@
                   <div class="asset__info">
                     <span class="asset__name">{{ asset.name }}</span>
                     <span class="asset__meta num">
-                      <span class="asset__income">+{{ asset.incomePerSecond | rate }}/s</span>
+                      <span class="asset__income">+{{ asset.incomePerSecond | rate }}{{ 'dashboard.perSecond' | t }}</span>
                       · {{ asset.price | money }}
                     </span>
                   </div>
 
                   @if (!asset.isUnlocked) {
-                    <span class="locked num" [title]="'Unlocks when this business owns ' + asset.unlockAtAssetCount + ' assets'">
-                      🔒 {{ toGo(asset.unlockAtAssetCount) }} more
+                    <span class="locked num" [title]="plural('manage.assets.lockedTitle', asset.unlockAtAssetCount) | t: { n: asset.unlockAtAssetCount }">
+                      🔒 {{ 'manage.assets.more' | t: { n: toGo(asset.unlockAtAssetCount) } }}
                       <small>{{ biz.assetCount }}/{{ asset.unlockAtAssetCount }}</small>
                     </span>
                   } @else if (cash() < asset.price) {
-                    <span class="asset__short num">Need {{ asset.price - cash() | money }}</span>
+                    <span class="asset__short num">{{ 'manage.need' | t: { amount: (asset.price - cash() | money) } }}</span>
                   } @else {
                     <button
                       type="button"
@@ -150,29 +155,29 @@
                       [disabled]="busyAssetId() === asset.id"
                       (click)="buyAsset(asset.id, asset.price)"
                     >
-                      {{ busyAssetId() === asset.id ? 'Buying…' : 'Buy' }}
+                      {{ (busyAssetId() === asset.id ? 'manage.assets.buying' : 'manage.assets.buy') | t }}
                     </button>
                   }
                 </li>
               }
             </ul>
           } @else {
-            <p class="muted">No assets available for this business.</p>
+            <p class="muted">{{ 'manage.assets.none' | t }}</p>
           }
         } @else {
-          <p class="muted">Loading assets…</p>
+          <p class="muted">{{ 'manage.assets.loading' | t }}</p>
         }
 
         <!-- Closing refunds totalValue minus a fee: 10% normally, 25% in an emergency -->
         <div class="danger-zone">
           @if (!confirmingClose()) {
             <button type="button" class="danger-zone__trigger" (click)="confirmingClose.set(true)">
-              Close this business
+              {{ 'manage.close.trigger' | t }}
             </button>
           } @else {
             <p class="danger-zone__warn">
-              Sell <strong>{{ biz.name }}</strong> for {{ normalRefund() | money }}? This cannot be
-              undone.
+              {{ 'manage.close.warnBefore' | t }} <strong>{{ biz.name }}</strong>
+              {{ 'manage.close.warnAfter' | t: { refund: (normalRefund() | money) } }}
             </p>
             <div class="danger-zone__actions">
               <button
@@ -181,7 +186,7 @@
                 [disabled]="closing()"
                 (click)="confirmingClose.set(false)"
               >
-                Keep it
+                {{ 'manage.close.keep' | t }}
               </button>
               <button
                 type="button"
@@ -189,7 +194,7 @@
                 [disabled]="closing()"
                 (click)="closeBusiness(false)"
               >
-                {{ closing() ? 'Closing…' : 'Sell — 10% fee' }}
+                {{ (closing() ? 'manage.close.closing' : 'manage.close.sell') | t }}
               </button>
             </div>
           }

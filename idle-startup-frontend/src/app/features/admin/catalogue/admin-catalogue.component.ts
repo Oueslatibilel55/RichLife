@@ -8,13 +8,14 @@ import { sectorIcon } from '../../../core/game/sectors';
 import { toErrorMessage } from '../../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../../shared/pipes/money.pipe';
 import { CatalogueEditorComponent } from './catalogue-editor.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 const ALL = 'All';
 
 @Component({
   selector: 'app-admin-catalogue',
   standalone: true,
-  imports: [FormsModule, MoneyPipe, RatePipe, CatalogueEditorComponent],
+  imports: [FormsModule, MoneyPipe, RatePipe, CatalogueEditorComponent, TranslatePipe],
   templateUrl: './admin-catalogue.component.html',
   styleUrl: './admin-catalogue.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,7 +61,7 @@ export class AdminCatalogueComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load the catalogue.'));
+        this.error.set(toErrorMessage(err, 'admin.error.loadCatalogue'));
         this.loading.set(false);
       },
     });

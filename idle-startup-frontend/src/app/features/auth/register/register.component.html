@@ -5,25 +5,27 @@
       Rich Life
     </div>
     <div>
-      <h2 class="auth-aside__title">From food cart to global empire.</h2>
-      <p class="auth-aside__lead">Start with $3 a second. Where you end up is up to you.</p>
+      <h2 class="auth-aside__title">{{ 'auth.register.asideTitle' | t }}</h2>
+      <p class="auth-aside__lead">{{ 'auth.register.asideLead' | t }}</p>
     </div>
     <ul class="auth-aside__points">
-      <li><span>🏪</span> Open businesses across 7 sectors</li>
-      <li><span>⚡</span> Automate them and earn offline</li>
-      <li><span>🏆</span> Prestige up and top the leaderboard</li>
+      <li><span>🏪</span> {{ 'auth.point.sectors' | t }}</li>
+      <li><span>⚡</span> {{ 'auth.point.automate' | t }}</li>
+      <li><span>🏆</span> {{ 'auth.point.prestige' | t }}</li>
     </ul>
   </aside>
 
   <main class="auth-main">
+    <div class="auth-lang"><app-lang-switcher /></div>
+
     <div class="auth-card animate-fade-in-up">
       <div class="auth-card__header">
         <div class="auth-logo">
           <span class="auth-logo__mark"><app-icon name="trend" /></span>
           Rich Life
         </div>
-        <h1 class="auth-card__title">Start your empire</h1>
-        <p class="auth-card__sub">Create your account and begin with $3/sec.</p>
+        <h1 class="auth-card__title">{{ 'auth.register.title' | t }}</h1>
+        <p class="auth-card__sub">{{ 'auth.register.sub' | t }}</p>
       </div>
 
       @if (error()) {
@@ -32,12 +34,12 @@
 
       <form class="auth-form" (ngSubmit)="onSubmit()">
         <div class="form-group">
-          <label for="username">Username</label>
+          <label for="username">{{ 'auth.username' | t }}</label>
           <input
             id="username"
             class="form-input"
             type="text"
-            placeholder="YourEmpireName"
+            [placeholder]="'auth.register.usernamePlaceholder' | t"
             [(ngModel)]="username"
             name="username"
             autocomplete="username"
@@ -45,7 +47,7 @@
         </div>
 
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">{{ 'auth.email' | t }}</label>
           <input
             id="email"
             class="form-input"
@@ -58,12 +60,12 @@
         </div>
 
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">{{ 'auth.password' | t }}</label>
           <input
             id="password"
             class="form-input"
             type="password"
-            placeholder="Min. 6 characters"
+            [placeholder]="'auth.register.passwordPlaceholder' | t"
             [(ngModel)]="password"
             name="password"
             autocomplete="new-password"
@@ -71,7 +73,7 @@
         </div>
 
         <div class="form-group">
-          <label for="country">Country</label>
+          <label for="country">{{ 'auth.country' | t }}</label>
           <select
             id="country"
             class="form-input form-select"
@@ -87,13 +89,13 @@
           type="submit"
           class="btn btn--primary btn--full btn--lg"
           [disabled]="loading()">
-          @if (loading()) { Creating account… } @else { Create account }
+          @if (loading()) { {{ 'auth.register.submitting' | t }} } @else { {{ 'auth.register.submit' | t }} }
         </button>
       </form>
 
       <p class="auth-card__footer">
-        Already have an account?
-        <a routerLink="/login" class="auth-link">Sign in</a>
+        {{ 'auth.register.haveAccount' | t }}
+        <a routerLink="/login" class="auth-link">{{ 'auth.register.signIn' | t }}</a>
       </p>
     </div>
   </main>

@@ -5,13 +5,14 @@ import { sectorIcon } from '../../core/game/sectors';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../shared/pipes/money.pipe';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 const ALL = 'All';
 
 @Component({
   selector: 'app-businesses',
   standalone: true,
-  imports: [MoneyPipe, RatePipe, IconComponent],
+  imports: [MoneyPipe, RatePipe, IconComponent, TranslatePipe],
   templateUrl: './businesses.component.html',
   styleUrl: './businesses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,7 +56,7 @@ export class BusinessesComponent implements OnInit {
     this.game.loadCatalogue().subscribe({
       next: () => this.loading.set(false),
       error: (err: unknown) => {
-        this.errorMsg.set(toErrorMessage(err, 'Could not load the catalogue.'));
+        this.errorMsg.set(toErrorMessage(err, 'businesses.loadError'));
         this.loading.set(false);
       },
     });
@@ -86,7 +87,7 @@ export class BusinessesComponent implements OnInit {
         setTimeout(() => this.successId.set(null), 3000);
       },
       error: (err: unknown) => {
-        this.errorMsg.set(toErrorMessage(err, 'Failed to open business.'));
+        this.errorMsg.set(toErrorMessage(err, 'businesses.openError'));
         this.openingId.set(null);
       },
     });

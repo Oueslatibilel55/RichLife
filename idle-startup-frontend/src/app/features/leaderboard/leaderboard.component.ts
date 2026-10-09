@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { GameService } from '../../core/services/game.service';
 import { AuthService } from '../../core/services/auth.service';
 import { LeaderboardEntryDto } from '../../core/models/game.models';
@@ -6,6 +6,7 @@ import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 /** "TN" -> 🇹🇳 via regional indicator symbols. Falls back to the raw code. */
 function flagOf(country: string): string {
@@ -21,7 +22,7 @@ function flagOf(country: string): string {
 @Component({
   selector: 'app-leaderboard',
   standalone: true,
-  imports: [MoneyPipe, IconComponent],
+  imports: [MoneyPipe, IconComponent, TranslatePipe],
   templateUrl: './leaderboard.component.html',
   styleUrl: './leaderboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,7 +33,12 @@ export class LeaderboardComponent implements OnInit {
 
   readonly entries = signal<LeaderboardEntryDto[]>([]);
   readonly loading = signal(true);
-  readonly error = signal('');
+  /** The raw failure, translated in `errorText` so a language switch re-renders it. */
+  private readonly failure = signal<{ err: unknown } | null>(null);
+  readonly errorText = computed(() => {
+    const f = this.failure();
+    return f ? toErrorMessage(f.err, 'leaderboard.loadError') : '';
+  });
 
   readonly prestigeLabel = prestigeLabel;
   readonly prestigeColor = prestigeColor;
@@ -44,7 +50,7 @@ export class LeaderboardComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.error.set('');
+    this.failure.set(null);
 
     this.game.getLeaderboard(50).subscribe({
       next: (rows) => {
@@ -52,7 +58,7 @@ export class LeaderboardComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load the leaderboard.'));
+        this.failure.set({ err });
         this.loading.set(false);
       },
     });

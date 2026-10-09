@@ -1,24 +1,24 @@
 <div class="toolbar">
-  <input class="form-input" type="search" placeholder="Search name or id…" aria-label="Search the catalogue"
+  <input class="form-input" type="search" [placeholder]="'admin.catalogue.searchPlaceholder' | t" [attr.aria-label]="'admin.catalogue.searchAria' | t"
          [ngModel]="search()" (ngModelChange)="search.set($event)" />
-  <select class="form-input form-select" aria-label="Prestige level" [ngModel]="level()" (ngModelChange)="level.set($event)">
-    <option [value]="all">All levels</option>
+  <select class="form-input form-select" [attr.aria-label]="'admin.catalogue.levelAria' | t" [ngModel]="level()" (ngModelChange)="level.set($event)">
+    <option [value]="all">{{ 'admin.catalogue.allLevels' | t }}</option>
     @for (l of levels; track l) { <option [value]="l">{{ prestigeLabel(l) }}</option> }
   </select>
   <label class="check">
-    <input type="checkbox" [ngModel]="showRetired()" (ngModelChange)="showRetired.set($event)" /> Show retired
+    <input type="checkbox" [ngModel]="showRetired()" (ngModelChange)="showRetired.set($event)" /> {{ 'admin.catalogue.showRetired' | t }}
   </label>
-  <button type="button" class="btn btn--primary" (click)="editing.set(null)">+ New business</button>
+  <button type="button" class="btn btn--primary" (click)="editing.set(null)">+ {{ 'admin.catalogue.newBusiness' | t }}</button>
 </div>
 
-<p class="muted num">{{ activeCount() }} active of {{ entries().length }} businesses. Edits apply to businesses opened after them.</p>
+<p class="muted num">{{ 'admin.catalogue.summary' | t: { active: activeCount(), total: entries().length } }}</p>
 
 @if (error()) {
   <div class="alert alert--error" role="alert">{{ error() }}</div>
 }
 
 @if (loading()) {
-  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>Loading catalogue…</p></div>
+  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'admin.catalogue.loading' | t }}</p></div>
 } @else {
   @for (group of groups(); track group.level) {
     <section class="group">
@@ -30,21 +30,21 @@
             <div class="item__main">
               <span class="item__name">
                 {{ e.name }}
-                @if (!e.isActive) { <span class="badge badge--neutral">Retired</span> }
+                @if (!e.isActive) { <span class="badge badge--neutral">{{ 'admin.catalogue.retired' | t }}</span> }
               </span>
               <span class="item__meta num">
-                {{ e.id }} · {{ e.openingCost | money }} · {{ e.baseIncomePerSecond | rate }}/s
-                · {{ e.availableAssets.length }} assets
-                @if (payback(e); as m) { · pays back in {{ m }} min }
+                {{ e.id }} · {{ e.openingCost | money }} · {{ e.baseIncomePerSecond | rate }}{{ 'admin.perSecond' | t }}
+                · {{ (e.availableAssets.length === 1 ? 'admin.catalogue.assetsOne' : 'admin.catalogue.assetsMany') | t: { n: e.availableAssets.length } }}
+                @if (payback(e); as m) { · {{ 'admin.catalogue.payback' | t: { n: m } }} }
               </span>
             </div>
-            <button type="button" class="btn btn--outline btn--sm" (click)="editing.set(e)">Edit</button>
+            <button type="button" class="btn btn--outline btn--sm" (click)="editing.set(e)">{{ 'admin.catalogue.edit' | t }}</button>
           </li>
         }
       </ul>
     </section>
   } @empty {
-    <div class="empty-state"><div class="empty-state__icon" aria-hidden="true">🔍</div><p class="empty-state__text">Nothing matches</p></div>
+    <div class="empty-state"><div class="empty-state__icon" aria-hidden="true">🔍</div><p class="empty-state__text">{{ 'admin.catalogue.empty' | t }}</p></div>
   }
 }
 

@@ -1,25 +1,27 @@
 <div class="shell">
   <header class="topbar">
     <div class="topbar__inner">
-      <a routerLink="/admin" class="brand" aria-label="Rich Life admin — overview">
+      <a routerLink="/admin" class="brand" [attr.aria-label]="'admin.brandAria' | t">
         <span class="brand__mark"><app-icon name="shield" [size]="18" /></span>
         <span class="brand__name">Rich Life</span>
-        <span class="staff-badge">Admin</span>
+        <span class="staff-badge">{{ 'admin.badge' | t }}</span>
       </a>
 
-      <nav class="topnav" aria-label="Admin">
+      <nav class="topnav" [attr.aria-label]="'admin.navMain' | t">
         @for (s of sections; track s.path) {
           <a [routerLink]="s.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: s.exact }" class="topnav__link">
             <app-icon [name]="s.icon" [size]="18" />
-            {{ s.label }}
+            {{ s.label | t }}
           </a>
         }
       </nav>
 
-      <div class="user staff-user">
+      <app-lang-switcher class="staff-lang" />
+
+      <div class="user">
         <span class="user__avatar" aria-hidden="true">{{ initial() }}</span>
         <span class="user__name">{{ auth.currentUser()?.username }}</span>
-        <button type="button" class="icon-btn" aria-label="Log out" title="Log out" (click)="logout()">
+        <button type="button" class="icon-btn" [attr.aria-label]="'admin.logout' | t" [title]="'admin.logout' | t" (click)="logout()">
           <app-icon name="logout" />
         </button>
       </div>
@@ -29,18 +31,18 @@
   <main class="shell__content">
     <div class="page">
       <header class="page-header">
-        <h1>{{ heading() }}</h1>
-        @if (blurb()) { <p>{{ blurb() }}</p> }
+        <h1>{{ heading() | t }}</h1>
+        @if (blurb()) { <p>{{ blurb() | t }}</p> }
       </header>
       <router-outlet />
     </div>
   </main>
 
-  <nav class="tabbar" aria-label="Admin (mobile)">
+  <nav class="tabbar" [attr.aria-label]="'admin.navMobile' | t">
     @for (s of sections; track s.path) {
       <a [routerLink]="s.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: s.exact }" class="tabbar__link">
         <app-icon [name]="s.icon" [size]="22" />
-        <span>{{ s.label }}</span>
+        <span>{{ s.label | t }}</span>
       </a>
     }
   </nav>

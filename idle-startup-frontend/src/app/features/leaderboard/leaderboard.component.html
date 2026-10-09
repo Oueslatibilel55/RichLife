@@ -1,31 +1,31 @@
 <div class="page board-page">
   <header class="board-head">
     <div class="page-header">
-      <h1>Leaderboard</h1>
-      <p>Ranked by all-time earnings, not current net worth.</p>
+      <h1>{{ 'leaderboard.title' | t }}</h1>
+      <p>{{ 'leaderboard.subtitle' | t }}</p>
     </div>
     @if (!loading()) {
       <button type="button" class="btn btn--outline btn--sm" (click)="load()">
         <app-icon name="refresh" [size]="16" />
-        Refresh
+        {{ 'leaderboard.refresh' | t }}
       </button>
     }
   </header>
 
-  @if (error()) {
-    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  @if (errorText()) {
+    <div class="alert alert--error" role="alert">{{ errorText() }}</div>
   }
 
   @if (loading()) {
     <div class="loading-screen">
       <span class="spinner" aria-hidden="true"></span>
-      <p>Loading rankings…</p>
+      <p>{{ 'leaderboard.loading' | t }}</p>
     </div>
   } @else if (entries().length === 0) {
     <div class="empty-state">
       <div class="empty-state__icon" aria-hidden="true">🏆</div>
-      <p class="empty-state__text">No one has ranked yet</p>
-      <p class="empty-state__sub">Create a company and start earning.</p>
+      <p class="empty-state__text">{{ 'leaderboard.emptyTitle' | t }}</p>
+      <p class="empty-state__sub">{{ 'leaderboard.emptySub' | t }}</p>
     </div>
   } @else {
     <ol class="card board">
@@ -37,7 +37,7 @@
             <span class="row__user">
               <span aria-hidden="true">{{ flagOf(entry.country) }}</span>
               {{ entry.username }}
-              @if (isMe(entry.username)) { <span class="badge badge--primary">You</span> }
+              @if (isMe(entry.username)) { <span class="badge badge--primary">{{ 'leaderboard.you' | t }}</span> }
             </span>
             <span class="row__company">
               {{ entry.companyName }}

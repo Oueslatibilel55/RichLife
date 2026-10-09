@@ -1,43 +1,45 @@
 <div class="shell">
   <header class="topbar">
     <div class="topbar__inner">
-      <a routerLink="/dashboard" class="brand" aria-label="Rich Life — dashboard">
+      <a routerLink="/dashboard" class="brand" [attr.aria-label]="'layout.brandAria' | t">
         <span class="brand__mark"><app-icon name="trend" [size]="18" /></span>
         <span class="brand__name">Rich Life</span>
       </a>
 
-      <nav class="topnav" aria-label="Main">
+      <nav class="topnav" [attr.aria-label]="'layout.navMain' | t">
         @for (item of nav; track item.path) {
           <a [routerLink]="item.path" routerLinkActive="active" class="topnav__link">
             <app-icon [name]="item.icon" [size]="18" />
-            {{ item.label }}
+            {{ item.label | t }}
           </a>
         }
       </nav>
 
       <div class="hud">
         <div class="hud__cash">
-          <span class="hud__label">Cash</span>
+          <span class="hud__label">{{ 'layout.cash' | t }}</span>
           <span class="hud__value num">{{ game.cash() | money }}</span>
         </div>
-        <span class="hud__rate num">+{{ game.cashRate() | rate }}/s</span>
+        <span class="hud__rate num">+{{ game.cashRate() | rate }}{{ 'layout.perSecond' | t }}</span>
         @if (game.company(); as company) {
           <span
             class="hud__prestige"
             [style.color]="prestigeColor(company.prestigeLevel)"
-            [title]="company.prestigeLevel"
+            [title]="prestigeLabel(company.prestigeLevel)"
           >
             {{ prestigeShort(company.prestigeLevel) }}
           </span>
         }
       </div>
 
+      <app-lang-switcher />
+
       <div class="user">
-        <a routerLink="/profile" class="user__link" title="Your profile">
+        <a routerLink="/profile" class="user__link" [title]="'layout.yourProfile' | t">
           <span class="user__avatar" aria-hidden="true">{{ initial() }}</span>
           <span class="user__name">{{ auth.currentUser()?.username }}</span>
         </a>
-        <button type="button" class="icon-btn" aria-label="Log out" title="Log out" (click)="logout()">
+        <button type="button" class="icon-btn" [attr.aria-label]="'layout.logout' | t" [title]="'layout.logout' | t" (click)="logout()">
           <app-icon name="logout" />
         </button>
       </div>
@@ -48,11 +50,11 @@
     <router-outlet />
   </main>
 
-  <nav class="tabbar" aria-label="Main (mobile)">
+  <nav class="tabbar" [attr.aria-label]="'layout.navMobile' | t">
     @for (item of nav; track item.path) {
       <a [routerLink]="item.path" routerLinkActive="active" class="tabbar__link">
         <app-icon [name]="item.icon" [size]="22" />
-        <span>{{ item.label }}</span>
+        <span>{{ item.label | t }}</span>
       </a>
     }
   </nav>
@@ -69,17 +71,16 @@
   >
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal__icon" aria-hidden="true">💤</div>
-      <h2 class="modal__title" id="offline-title">Welcome back</h2>
+      <h2 class="modal__title" id="offline-title">{{ 'layout.welcomeBack' | t }}</h2>
       <p class="modal__sub">
-        Your automated businesses ran for {{ formatElapsed(offline.elapsed) }} while you were
-        away.
+        {{ 'layout.offlineRan' | t: { elapsed: formatElapsed(offline.elapsed) } }}
       </p>
 
       <div class="offline-earned">+{{ offline.earned | money }}</div>
 
       @if (offline.capped) {
         <p class="offline-capped">
-          Offline income is capped at 4 hours — come back sooner to collect more.
+          {{ 'layout.offlineCapped' | t }}
         </p>
       }
 
@@ -88,7 +89,7 @@
         class="btn btn--primary btn--full btn--lg"
         (click)="game.dismissOfflineEarnings()"
       >
-        Collect
+        {{ 'layout.collect' | t }}
       </button>
     </div>
   </div>
@@ -97,8 +98,8 @@
 <!-- The server clamped our figure: it is the authority, so we adopted its number -->
 @if (game.syncAdjusted()) {
   <div class="toast" role="status">
-    <span>Your balance was corrected by the server.</span>
-    <button type="button" class="icon-btn toast__close" aria-label="Dismiss" (click)="game.dismissSyncWarning()">
+    <span>{{ 'layout.balanceCorrected' | t }}</span>
+    <button type="button" class="icon-btn toast__close" [attr.aria-label]="'layout.dismiss' | t" (click)="game.dismissSyncWarning()">
       <app-icon name="close" [size]="16" />
     </button>
   </div>
@@ -111,8 +112,8 @@
       <a routerLink="/profile" class="achievement" (click)="game.dismissAchievement(a.code)">
         <span class="achievement__icon" aria-hidden="true">{{ a.icon }}</span>
         <span class="achievement__text">
-          <small>Achievement unlocked</small>
-          <strong>{{ a.title }}</strong>
+          <small>{{ 'layout.achievementUnlocked' | t }}</small>
+          <strong>{{ ('ach.' + a.code + '.title') | t }}</strong>
         </span>
       </a>
     }

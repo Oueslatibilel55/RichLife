@@ -49,5 +49,5 @@
   &__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
   &__track { height: 10px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
   &__fill { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--primary); }
-  &__value { text-align: right; font-weight: 700; }
+  &__value { text-align: end; font-weight: 700; }
 }

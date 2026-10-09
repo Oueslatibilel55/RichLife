@@ -1,13 +1,23 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProfileService } from './profile.service';
 import { Profile } from './profile.models';
 import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
 import { toErrorMessage } from '../../core/http/api-error';
+import { currentLang } from '../../core/i18n/i18n';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { MoneyPipe, RatePipe } from '../../shared/pipes/money.pipe';
+import { LangSwitcherComponent } from '../../shared/components/lang-switcher/lang-switcher.component';
 
 type Filter = 'all' | 'unlocked' | 'locked';
+
+/** Date styles used on the page, formatted in the current UI language. */
+const DATE_FORMATS = {
+  monthYear: { month: 'long', year: 'numeric' },
+  day: { day: 'numeric', month: 'short', year: 'numeric' },
+  dayTime: { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' },
+} satisfies Record<string, Intl.DateTimeFormatOptions>;
 
 /** "TN" -> 🇹🇳 via regional indicator symbols. */
 function flagOf(country: string): string {
@@ -18,7 +28,7 @@ function flagOf(country: string): string {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [RouterLink, DatePipe, DecimalPipe, MoneyPipe, RatePipe],
+  imports: [RouterLink, DecimalPipe, MoneyPipe, RatePipe, TranslatePipe, LangSwitcherComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,8 +38,15 @@ export class ProfileComponent implements OnInit {
 
   readonly profile = signal<Profile | null>(null);
   readonly loading = signal(true);
-  readonly error = signal('');
   readonly filter = signal<Filter>('all');
+  /** The raw failure, translated in `errorText` so a language switch re-renders it. */
+  private readonly failure = signal<{ err: unknown } | null>(null);
+  readonly errorText = computed(() => {
+    const f = this.failure();
+    return f ? toErrorMessage(f.err, 'profile.loadError') : '';
+  });
+
+  readonly filters: readonly Filter[] = ['all', 'unlocked', 'locked'];
 
   readonly flagOf = flagOf;
   readonly prestigeLabel = prestigeLabel;
@@ -55,10 +72,17 @@ export class ProfileComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load your profile.'));
+        this.failure.set({ err });
         this.loading.set(false);
       },
     });
+  }
+
+  /** Formats a UTC ISO date in the current UI language (reads the language signal, so it re-renders on a switch). */
+  date(iso: string | null, style: keyof typeof DATE_FORMATS): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(currentLang(), DATE_FORMATS[style]);
   }
 
   percent(current: number, target: number): number {

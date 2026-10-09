@@ -2,13 +2,16 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@a
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { GameService } from '../../../core/services/game.service';
-import { prestigeColor, prestigeShort } from '../../../core/game/prestige';
+import { prestigeColor, prestigeLabel, prestigeShort } from '../../../core/game/prestige';
 import { formatElapsed } from '../../../core/game/format';
 import { MoneyPipe, RatePipe } from '../../pipes/money.pipe';
 import { IconComponent, IconName } from '../icon/icon.component';
+import { LangSwitcherComponent } from '../lang-switcher/lang-switcher.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 interface NavItem {
   path: string;
+  /** Translation key. */
   label: string;
   icon: IconName;
 }
@@ -16,7 +19,7 @@ interface NavItem {
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterLink, RouterOutlet, RouterLinkActive, MoneyPipe, RatePipe, IconComponent],
+  imports: [RouterLink, RouterOutlet, RouterLinkActive, MoneyPipe, RatePipe, IconComponent, LangSwitcherComponent, TranslatePipe],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,15 +30,16 @@ export class LayoutComponent implements OnInit {
 
   readonly prestigeShort = prestigeShort;
   readonly prestigeColor = prestigeColor;
+  readonly prestigeLabel = prestigeLabel;
   readonly formatElapsed = formatElapsed;
 
   /** Rendered twice: top nav on desktop, bottom tab bar on phones. Players only — admins have their own app. */
   readonly nav: readonly NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { path: '/businesses', label: 'Businesses', icon: 'briefcase' },
-    { path: '/luxury', label: 'Luxury', icon: 'gem' },
-    { path: '/leaderboard', label: 'Leaderboard', icon: 'trophy' },
-    { path: '/profile', label: 'Profile', icon: 'contact' },
+    { path: '/dashboard', label: 'nav.dashboard', icon: 'dashboard' },
+    { path: '/businesses', label: 'nav.businesses', icon: 'briefcase' },
+    { path: '/luxury', label: 'nav.luxury', icon: 'gem' },
+    { path: '/leaderboard', label: 'nav.leaderboard', icon: 'trophy' },
+    { path: '/profile', label: 'nav.profile', icon: 'contact' },
   ];
 
   readonly initial = computed(() =>

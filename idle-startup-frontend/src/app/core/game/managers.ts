@@ -1,4 +1,5 @@
 import { BusinessDto } from '../models/game.models';
+import { t } from '../i18n/i18n';
 
 /**
  * A stable avatar per manager name, so "Lucy" always looks the same wherever she
@@ -27,6 +28,6 @@ export function formatShiftLeft(ms: number): string {
   const minutes = Math.floor(ms / 60_000);
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  return m > 0 ? `${m}m` : '<1m';
+  if (h > 0) return t('time.hm', { h, m });
+  return m > 0 ? t('time.m', { m }) : t('dashboard.shiftUnderMinute');
 }

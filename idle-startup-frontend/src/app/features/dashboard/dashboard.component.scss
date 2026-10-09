@@ -173,7 +173,7 @@
   padding: 4px 14px;
   background: var(--surface-2);
   border-radius: var(--radius);
-  text-align: left;
+  text-align: start;
 
   div {
     display: flex;
@@ -198,7 +198,7 @@
 
 .biz__level {
   display: inline-block;
-  margin-right: 4px;
+  margin-inline-end: 4px;
   padding: 0 6px;
   border-radius: 6px;
   background: var(--money-soft);

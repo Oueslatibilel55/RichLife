@@ -1,5 +1,5 @@
-@if (error()) {
-  <div class="page"><div class="alert alert--error" role="alert">{{ error() }}</div></div>
+@if (errorText()) {
+  <div class="page"><div class="alert alert--error" role="alert">{{ errorText() }}</div></div>
 }
 
 @if (profile(); as p) {
@@ -11,15 +11,21 @@
         <h1>{{ p.username }}</h1>
         <p class="hero__meta">
           @if (flagOf(p.country)) { <span aria-hidden="true">{{ flagOf(p.country) }}</span> }
-          {{ p.country }} · member since {{ p.memberSince | date: 'MMMM yyyy' }}
+          {{ p.country }} · {{ 'profile.memberSince' | t: { date: date(p.memberSince, 'monthYear') } }}
         </p>
       </div>
       @if (p.rank !== null) {
-        <a routerLink="/leaderboard" class="hero__rank" title="See the leaderboard">
+        <a routerLink="/leaderboard" class="hero__rank" [title]="'profile.seeLeaderboard' | t">
           <span class="num">#{{ p.rank }}</span>
-          <small class="num">of {{ p.rankedPlayers }}</small>
+          <small class="num">{{ 'profile.rankOf' | t: { n: p.rankedPlayers } }}</small>
         </a>
       }
+    </section>
+
+    <!-- Settings -->
+    <section class="card setting">
+      <span class="setting__label">🌐 {{ 'lang.label' | t }}</span>
+      <app-lang-switcher />
     </section>
 
     <!-- Company -->
@@ -27,7 +33,7 @@
       <section class="card company">
         <div class="company__head">
           <div>
-            <p class="eyebrow">Your company</p>
+            <p class="eyebrow">{{ 'profile.yourCompany' | t }}</p>
             <h2>{{ c.name }}</h2>
           </div>
           <span class="badge" [style.background]="prestigeColor(c.prestigeLevel) + '18'" [style.color]="prestigeColor(c.prestigeLevel)">
@@ -35,22 +41,22 @@
           </span>
         </div>
         <div class="company__stats">
-          <div class="stat"><span class="stat__label">All-time earned</span><span class="stat__value stat__value--money">{{ c.allTimeEarnings | money }}</span></div>
-          <div class="stat"><span class="stat__label">Net worth</span><span class="stat__value">{{ c.netWorth | money }}</span></div>
-          <div class="stat"><span class="stat__label">Income</span><span class="stat__value stat__value--success">{{ c.incomePerSecond | rate }}/s</span></div>
-          <div class="stat"><span class="stat__label">Multiplier</span><span class="stat__value stat__value--primary">×{{ c.prestigeMultiplier | number: '1.2-2' }}</span></div>
-          <div class="stat"><span class="stat__label">Prestiges</span><span class="stat__value num">{{ c.prestigeCount }}</span></div>
-          <div class="stat"><span class="stat__label">Businesses</span><span class="stat__value num">{{ c.businesses }}</span></div>
-          <div class="stat"><span class="stat__label">Assets</span><span class="stat__value num">{{ c.assets }}</span></div>
-          <div class="stat"><span class="stat__label">Managers</span><span class="stat__value num">{{ c.managersOnShift }} on shift · {{ c.managersHired }} hired</span></div>
-          <div class="stat"><span class="stat__label">Best business</span><span class="stat__value num">{{ c.businesses ? 'Lv ' + c.highestBusinessLevel : '—' }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.allTimeEarned' | t }}</span><span class="stat__value stat__value--money">{{ c.allTimeEarnings | money }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.netWorth' | t }}</span><span class="stat__value">{{ c.netWorth | money }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.income' | t }}</span><span class="stat__value stat__value--success">{{ c.incomePerSecond | rate }}{{ 'profile.perSecond' | t }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.multiplier' | t }}</span><span class="stat__value stat__value--primary">×{{ c.prestigeMultiplier | number: '1.2-2' }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.prestiges' | t }}</span><span class="stat__value num">{{ c.prestigeCount }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.businesses' | t }}</span><span class="stat__value num">{{ c.businesses }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.assets' | t }}</span><span class="stat__value num">{{ c.assets }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.managers' | t }}</span><span class="stat__value num">{{ 'profile.managersValue' | t: { onShift: c.managersOnShift, hired: c.managersHired } }}</span></div>
+          <div class="stat"><span class="stat__label">{{ 'profile.bestBusiness' | t }}</span><span class="stat__value num">{{ c.businesses ? ('profile.level' | t: { n: c.highestBusinessLevel }) : '—' }}</span></div>
         </div>
       </section>
     } @else {
       <section class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">🚀</div>
-        <p class="empty-state__text">No company yet</p>
-        <p class="empty-state__sub"><a routerLink="/dashboard">Start your empire</a> to begin earning achievements.</p>
+        <p class="empty-state__text">{{ 'profile.noCompany' | t }}</p>
+        <p class="empty-state__sub"><a routerLink="/dashboard">{{ 'profile.startEmpire' | t }}</a> {{ 'profile.startEmpireSuffix' | t }}</p>
       </section>
     }
 
@@ -58,14 +64,14 @@
     @if (p.company) {
       <section class="section">
         <div class="section__head">
-          <h2>Collection <span class="num muted">{{ p.luxury.length }}</span></h2>
-          <a routerLink="/luxury" class="btn btn--soft btn--sm">💎 Luxury shop</a>
+          <h2>{{ 'profile.collection' | t }} <span class="num muted">{{ p.luxury.length }}</span></h2>
+          <a routerLink="/luxury" class="btn btn--soft btn--sm">💎 {{ 'profile.luxuryShop' | t }}</a>
         </div>
         @if (p.luxury.length === 0) {
           <div class="empty-state">
             <div class="empty-state__icon" aria-hidden="true">💎</div>
-            <p class="empty-state__text">Nothing to show off yet</p>
-            <p class="empty-state__sub">Watches, supercars, yachts and islands unlock as you prestige.</p>
+            <p class="empty-state__text">{{ 'profile.collectionEmpty' | t }}</p>
+            <p class="empty-state__sub">{{ 'profile.collectionEmptySub' | t }}</p>
           </div>
         } @else {
           <ul class="collection">
@@ -73,11 +79,11 @@
               <li class="card owned">
                 <figure>
                   <img [src]="l.imageUrl" [alt]="l.name" loading="lazy" decoding="async" />
-                  <figcaption class="photo-credit">Photo: {{ l.imageCredit }}</figcaption>
+                  <figcaption class="photo-credit">{{ 'profile.photoCredit' | t: { credit: l.imageCredit } }}</figcaption>
                 </figure>
                 <div class="owned__body">
                   <span class="owned__name">{{ l.name }}</span>
-                  <span class="owned__meta num">{{ l.price | money }} · {{ l.purchasedAt | date: 'd MMM yyyy' }}</span>
+                  <span class="owned__meta num">{{ l.price | money }} · {{ date(l.purchasedAt, 'day') }}</span>
                 </div>
               </li>
             }
@@ -89,15 +95,15 @@
     <!-- Achievements -->
     <section class="section">
       <div class="section__head">
-        <h2>Achievements <span class="num muted">{{ p.achievementsUnlocked }} / {{ p.achievementsTotal }}</span></h2>
-        <div class="filters" role="group" aria-label="Filter achievements">
-          @for (f of ['all', 'unlocked', 'locked']; track f) {
+        <h2>{{ 'profile.achievements' | t }} <span class="num muted">{{ p.achievementsUnlocked }} / {{ p.achievementsTotal }}</span></h2>
+        <div class="filters" role="group" [attr.aria-label]="'profile.filterAria' | t">
+          @for (f of filters; track f) {
             <button type="button" class="chip" [class.chip--active]="filter() === f" [attr.aria-pressed]="filter() === f"
-                    (click)="filter.set($any(f))">{{ f === 'all' ? 'All' : f === 'unlocked' ? 'Unlocked' : 'Locked' }}</button>
+                    (click)="filter.set(f)">{{ 'profile.filter.' + f | t }}</button>
           }
         </div>
       </div>
-      <div class="overall" role="progressbar" [attr.aria-valuenow]="p.achievementsUnlocked" aria-valuemin="0" [attr.aria-valuemax]="p.achievementsTotal">
+      <div class="overall" role="progressbar" [attr.aria-label]="'profile.achievements' | t" [attr.aria-valuenow]="p.achievementsUnlocked" aria-valuemin="0" [attr.aria-valuemax]="p.achievementsTotal">
         <span [style.width.%]="overall()"></span>
       </div>
 
@@ -106,10 +112,10 @@
           <li class="card ach" [class.ach--done]="a.unlocked">
             <span class="ach__icon" aria-hidden="true">{{ a.icon }}</span>
             <div class="ach__body">
-              <span class="ach__title">{{ a.title }}</span>
-              <span class="ach__desc">{{ a.description }}</span>
+              <span class="ach__title">{{ ('ach.' + a.code + '.title') | t }}</span>
+              <span class="ach__desc">{{ ('ach.' + a.code + '.desc') | t }}</span>
               @if (a.unlocked) {
-                <span class="ach__date">✓ Unlocked {{ a.unlockedAt | date: 'd MMM yyyy, HH:mm' }}</span>
+                <span class="ach__date">✓ {{ 'profile.unlockedOn' | t: { date: date(a.unlockedAt, 'dayTime') } }}</span>
               } @else {
                 <div class="ach__bar"><span [style.width.%]="percent(a.current, a.target)"></span></div>
                 <span class="ach__progress num">
@@ -123,11 +129,11 @@
             </div>
           </li>
         } @empty {
-          <li class="muted">Nothing here yet.</li>
+          <li class="muted">{{ 'profile.nothingHere' | t }}</li>
         }
       </ul>
     </section>
   </div>
 } @else if (loading()) {
-  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>Loading your profile…</p></div>
+  <div class="loading-screen"><span class="spinner" aria-hidden="true"></span><p>{{ 'profile.loading' | t }}</p></div>
 }

@@ -5,14 +5,15 @@ import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { LuxuryService } from './luxury.service';
-import { LUXURY_CATEGORY_ICONS, LUXURY_CATEGORY_LABELS, LuxuryCategory, LuxuryItem } from './luxury.models';
+import { LUXURY_CATEGORY_ICONS, LuxuryCategory, LuxuryItem, luxuryCategoryLabel } from './luxury.models';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 const ALL = 'All';
 
 @Component({
   selector: 'app-luxury',
   standalone: true,
-  imports: [RouterLink, MoneyPipe],
+  imports: [RouterLink, MoneyPipe, TranslatePipe],
   templateUrl: './luxury.component.html',
   styleUrl: './luxury.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,7 +55,7 @@ export class LuxuryComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not load the luxury shop.'));
+        this.error.set(toErrorMessage(err, 'luxury.loadError'));
         this.loading.set(false);
       },
     });
@@ -65,7 +66,7 @@ export class LuxuryComponent implements OnInit {
   }
 
   categoryLabel(c: string): string {
-    return LUXURY_CATEGORY_LABELS[c as LuxuryCategory] ?? c;
+    return luxuryCategoryLabel(c);
   }
 
   /** Like the business shop: the live purse can afford it even before the server's flag catches up. */
@@ -88,7 +89,7 @@ export class LuxuryComponent implements OnInit {
         setTimeout(() => this.justBought.set(null), 3000);
       },
       error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'Could not buy that.'));
+        this.error.set(toErrorMessage(err, 'luxury.buyError'));
         this.confirming.set(null);
         this.buying.set(false);
       },

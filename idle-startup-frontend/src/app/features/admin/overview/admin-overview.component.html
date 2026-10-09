@@ -4,54 +4,54 @@
 
 @if (stats(); as s) {
   <div class="toolbar">
-    <span class="muted">Updated {{ s.generatedAt | date: 'HH:mm:ss' }}</span>
+    <span class="muted">{{ 'admin.overview.updated' | t: { time: (s.generatedAt | date: 'HH:mm:ss') ?? '' } }}</span>
     <button type="button" class="btn btn--outline btn--sm" [disabled]="loading()" (click)="load()">
-      <app-icon name="refresh" [size]="16" /> Refresh
+      <app-icon name="refresh" [size]="16" /> {{ 'admin.refresh' | t }}
     </button>
   </div>
 
   <section class="tiles">
     <div class="card tile">
       <span class="tile__icon" aria-hidden="true">👥</span>
-      <span class="stat__label">Players</span>
+      <span class="stat__label">{{ 'admin.overview.players' | t }}</span>
       <span class="tile__value num">{{ s.players }}</span>
-      <span class="tile__sub num">+{{ s.newPlayers24h }} today · +{{ s.newPlayers7d }} this week</span>
+      <span class="tile__sub num">{{ 'admin.overview.newPlayers' | t: { day: s.newPlayers24h, week: s.newPlayers7d } }}</span>
     </div>
     <div class="card tile">
       <span class="tile__icon" aria-hidden="true">🟢</span>
-      <span class="stat__label">Active (24 h)</span>
+      <span class="stat__label">{{ 'admin.overview.active' | t }}</span>
       <span class="tile__value num">{{ s.activePlayers24h }}</span>
-      <span class="tile__sub num">of {{ s.companies }} companies</span>
+      <span class="tile__sub num">{{ 'admin.overview.ofCompanies' | t: { n: s.companies } }}</span>
     </div>
     <div class="card tile">
       <span class="tile__icon" aria-hidden="true">💵</span>
-      <span class="stat__label">Cash in the game</span>
+      <span class="stat__label">{{ 'admin.overview.cash' | t }}</span>
       <span class="tile__value tile__value--money num">{{ s.totalCash | money }}</span>
-      <span class="tile__sub num">{{ s.totalAllTimeEarnings | money }} earned all-time</span>
+      <span class="tile__sub num">{{ 'admin.overview.earnedAllTime' | t: { amount: (s.totalAllTimeEarnings | money) } }}</span>
     </div>
     <div class="card tile">
       <span class="tile__icon" aria-hidden="true">🏪</span>
-      <span class="stat__label">Businesses owned</span>
+      <span class="stat__label">{{ 'admin.overview.businesses' | t }}</span>
       <span class="tile__value num">{{ s.businessesOwned }}</span>
-      <span class="tile__sub num">avg level {{ s.averageBusinessLevel }}</span>
+      <span class="tile__sub num">{{ 'admin.overview.avgLevel' | t: { n: s.averageBusinessLevel } }}</span>
     </div>
     <div class="card tile">
       <span class="tile__icon" aria-hidden="true">🧑‍💼</span>
-      <span class="stat__label">Managers on shift</span>
+      <span class="stat__label">{{ 'admin.overview.managers' | t }}</span>
       <span class="tile__value num">{{ s.managersOnShift }}</span>
-      <span class="tile__sub num">{{ s.managerNames }} names in the pool</span>
+      <span class="tile__sub num">{{ 'admin.overview.namesInPool' | t: { n: s.managerNames } }}</span>
     </div>
     <div class="card tile">
       <span class="tile__icon" aria-hidden="true">🛡️</span>
-      <span class="stat__label">Admins</span>
+      <span class="stat__label">{{ 'admin.overview.admins' | t }}</span>
       <span class="tile__value num">{{ s.admins }}</span>
-      <span class="tile__sub num">{{ s.catalogueActive }}/{{ s.catalogueBusinesses }} businesses · {{ s.catalogueAssets }} assets</span>
+      <span class="tile__sub num">{{ 'admin.overview.catalogueSummary' | t: { active: s.catalogueActive, total: s.catalogueBusinesses, assets: s.catalogueAssets } }}</span>
     </div>
   </section>
 
   <div class="panels">
     <section class="card panel">
-      <h2>Companies by prestige</h2>
+      <h2>{{ 'admin.overview.byPrestige' | t }}</h2>
       <ul class="bars">
         @for (row of s.prestigeDistribution; track row.level) {
           <li class="bars__row">
@@ -70,9 +70,9 @@
     </section>
 
     <section class="card panel">
-      <h2>Most owned businesses</h2>
+      <h2>{{ 'admin.overview.topBusinesses' | t }}</h2>
       @if (s.topBusinesses.length === 0) {
-        <p class="muted">Nobody owns a business yet.</p>
+        <p class="muted">{{ 'admin.overview.noBusinesses' | t }}</p>
       } @else {
         <ul class="bars">
           @for (b of s.topBusinesses; track b.catalogueId) {
@@ -91,6 +91,6 @@
 } @else if (loading()) {
   <div class="loading-screen">
     <span class="spinner" aria-hidden="true"></span>
-    <p>Loading stats…</p>
+    <p>{{ 'admin.overview.loading' | t }}</p>
   </div>
 }
