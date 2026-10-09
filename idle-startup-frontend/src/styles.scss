@@ -275,6 +275,7 @@ input, button, select, textarea { font: inherit; font-size: 16px; }
 
   &--error   { background: var(--danger-soft);  color: #B91C1C; border-color: #FECACA; }
   &--success { background: var(--success-soft); color: #047857; border-color: #A7F3D0; }
+  &--info    { background: var(--primary-soft); color: #3730A3; border-color: #C7D2FE; }
 }
 
 // ── Page shell ────────────────────────────────────────────────────────────────

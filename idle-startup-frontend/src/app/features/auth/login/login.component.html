@@ -28,6 +28,9 @@
         <p class="auth-card__sub">{{ 'auth.login.sub' | t }}</p>
       </div>
 
+      @if (expired && !error()) {
+        <div class="alert alert--info" role="status">{{ 'auth.login.expired' | t }}</div>
+      }
       @if (error()) {
         <div class="alert alert--error" role="alert">{{ error() }}</div>
       }

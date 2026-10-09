@@ -3,6 +3,7 @@ import type { DictSet } from './index';
 /** Login and register pages, including client-side validation. */
 export const AUTH: DictSet = {
   en: {
+    'auth.login.expired': 'You were signed out while you were away. Please sign in again — your empire kept its progress.',
     'auth.point.sectors': 'Open businesses across 7 sectors',
     'auth.point.automate': 'Automate them and earn offline',
     'auth.point.prestige': 'Prestige up and top the leaderboard',
@@ -41,6 +42,7 @@ export const AUTH: DictSet = {
     'auth.register.countryRequired': 'Pick a country.',
   },
   fr: {
+    'auth.login.expired': 'Vous avez été déconnecté pendant votre absence. Reconnectez-vous — votre empire a gardé sa progression.',
     'auth.point.sectors': 'Ouvrez des entreprises dans 7 secteurs',
     'auth.point.automate': 'Automatisez-les et gagnez même hors ligne',
     'auth.point.prestige': 'Montez en prestige et dominez le classement',
@@ -79,6 +81,7 @@ export const AUTH: DictSet = {
     'auth.register.countryRequired': 'Choisissez un pays.',
   },
   ar: {
+    'auth.login.expired': 'تم تسجيل خروجك أثناء غيابك. يرجى تسجيل الدخول مجددًا — إمبراطوريتك احتفظت بتقدّمها.',
     'auth.point.sectors': 'افتح مشاريع في 7 قطاعات',
     'auth.point.automate': 'أتمتها واربح حتى وأنت غير متصل',
     'auth.point.prestige': 'ارتقِ في المكانة وتصدّر لوحة المتصدرين',

@@ -1,6 +1,18 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, catchError, finalize, of, switchMap, tap, throwError } from 'rxjs';
+import {
+  Observable,
+  TimeoutError,
+  catchError,
+  finalize,
+  of,
+  retry,
+  switchMap,
+  tap,
+  throwError,
+  timeout,
+  timer,
+} from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 import { timeSpanSeconds } from '../game/format';
@@ -20,6 +32,16 @@ const TICK_MS = 50;
 const SYNC_MS = 5_000;
 /** A reload or a quick tab switch is not "time away" — no welcome-back dialog below this. */
 const MIN_AWAY_SECONDS = 60;
+/**
+ * Loading the game after time away. The deployed API sleeps after ~15 idle minutes and
+ * takes 30–60 s to wake; meanwhile Netlify's proxy answers 502/504 and a phone that just
+ * woke up can leave a request hanging forever. So each attempt is cut off, and the load
+ * is retried for about a minute before the caller gives up (the layout then sends the
+ * player back to the login page).
+ */
+const LOAD_ATTEMPT_MS = 15_000;
+const LOAD_RETRIES = 3;
+const LOAD_RETRY_DELAY_MS = 3_000;
 
 /**
  * The single source of game truth. Deliberately stateful and long-lived: it survives
@@ -49,6 +71,8 @@ export class GameService {
   private readonly _offlineEarnings = signal<OfflineEarningsDto | null>(null);
   /** False until /game/state has answered once — distinguishes "loading" from "no company". */
   private readonly _loaded = signal(false);
+  /** True while the first load is being retried — the server is probably waking up. */
+  private readonly _wakingServer = signal(false);
   private readonly _syncAdjusted = signal(false);
   private syncWarningTimer: ReturnType<typeof setTimeout> | null = null;
   /** Wall clock, refreshed once a second by the ticker — drives countdowns (manager shifts). */
@@ -61,6 +85,7 @@ export class GameService {
   readonly catalogue = this._catalogue.asReadonly();
   readonly offlineEarnings = this._offlineEarnings.asReadonly();
   readonly loaded = this._loaded.asReadonly();
+  readonly wakingServer = this._wakingServer.asReadonly();
   /** True when the server last clamped our figure — surfaced as a gentle warning. */
   readonly syncAdjusted = this._syncAdjusted.asReadonly();
   readonly now = this._now.asReadonly();
@@ -118,23 +143,38 @@ export class GameService {
    * The correct app-start call: GET /game/state credits time spent away (capped at
    * 4 h, automated businesses only) and moves the server watermark, so it cannot
    * double-credit with /sync. A 404 simply means "this player has no company yet".
+   *
+   * Only a success or a 404 marks the game as loaded. Any other failure must NOT: with
+   * `loaded` true and no company, the dashboard offers to create one — which is what a
+   * player with a company saw when the sleeping server answered 502 after time away.
    */
   bootstrap(): Observable<OfflineEarningsDto | null> {
     return this.http.get<OfflineEarningsDto>(`${this.api}/game/state`).pipe(
+      timeout(LOAD_ATTEMPT_MS),
+      retry({
+        count: LOAD_RETRIES,
+        delay: (err: unknown, attempt: number) => {
+          if (!isTransient(err)) return throwError(() => err);
+          this._wakingServer.set(true);
+          return timer(LOAD_RETRY_DELAY_MS * attempt);
+        },
+      }),
       tap((res) => {
         this.applyCompany(res.company);
+        this._loaded.set(true);
         if (res.earned > 0 && timeSpanSeconds(res.elapsed) >= MIN_AWAY_SECONDS) {
           this._offlineEarnings.set(res);
         }
       }),
-      catchError((err: HttpErrorResponse) => {
-        if (err.status === 404) {
+      catchError((err: unknown) => {
+        if (err instanceof HttpErrorResponse && err.status === 404) {
           this._company.set(null);
+          this._loaded.set(true);
           return of(null);
         }
         return throwError(() => err);
       }),
-      finalize(() => this._loaded.set(true)),
+      finalize(() => this._wakingServer.set(false)),
     );
   }
 
@@ -460,4 +500,10 @@ export class GameService {
       body: JSON.stringify({ cash: Math.floor(this._cash()) }),
     }).catch(() => void 0);
   }
+}
+
+/** Worth retrying: no answer, a timeout, or the proxy/server not ready yet. */
+function isTransient(err: unknown): boolean {
+  if (err instanceof TimeoutError) return true;
+  return err instanceof HttpErrorResponse && [0, 502, 503, 504].includes(err.status);
 }

@@ -6,7 +6,7 @@ import {
   HttpRequest,
 } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Observable, ReplaySubject, catchError, switchMap, take, throwError } from 'rxjs';
+import { Observable, ReplaySubject, catchError, switchMap, take, throwError, timeout } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 /**
@@ -17,6 +17,13 @@ import { AuthService } from '../services/auth.service';
  * if the refresh failed, so queued requests always resolve one way or the other.
  */
 let refreshCycle: ReplaySubject<string> | null = null;
+
+/**
+ * A refresh that never answers (a phone waking from sleep can leave a request hanging)
+ * would keep `refreshCycle` set forever, and every later request would queue behind it —
+ * the app stuck on its spinner until the player logged out by hand. Cut it off instead.
+ */
+const REFRESH_TIMEOUT_MS = 20_000;
 
 function withToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
   return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
@@ -49,30 +56,37 @@ function handle401(
   next: HttpHandlerFn,
   auth: AuthService,
 ): Observable<HttpEvent<unknown>> {
-  const pending = refreshCycle;
-  if (pending) {
-    return pending.pipe(
-      take(1),
-      switchMap((t) => next(withToken(req, t))),
-    );
-  }
+  return (refreshCycle ?? startRefresh(auth)).pipe(
+    take(1),
+    switchMap((t) => next(withToken(req, t))),
+  );
+}
 
+/**
+ * Runs the refresh on its own subscription, not on the request that hit the 401: if that
+ * request is cancelled (navigation, a caller's timeout) the refresh must still finish,
+ * or `refreshCycle` would stay set and every later request would wait on it forever.
+ */
+function startRefresh(auth: AuthService): ReplaySubject<string> {
   const cycle = new ReplaySubject<string>(1);
   refreshCycle = cycle;
 
-  return auth.refresh().pipe(
-    switchMap((res) => {
-      refreshCycle = null;
-      cycle.next(res.accessToken);
-      cycle.complete();
-      return next(withToken(req, res.accessToken));
-    }),
-    catchError((err: unknown) => {
-      refreshCycle = null;
-      // Fail the queued requests too rather than leaving them hanging forever.
-      cycle.error(err);
-      auth.logout();
-      return throwError(() => err);
-    }),
-  );
+  auth
+    .refresh()
+    .pipe(timeout(REFRESH_TIMEOUT_MS))
+    .subscribe({
+      next: (res) => {
+        refreshCycle = null;
+        cycle.next(res.accessToken);
+        cycle.complete();
+      },
+      error: (err: unknown) => {
+        refreshCycle = null;
+        // Fail the queued requests too rather than leaving them hanging forever.
+        cycle.error(err);
+        auth.logout('expired');
+      },
+    });
+
+  return cycle;
 }

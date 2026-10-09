@@ -48,8 +48,16 @@ export class LayoutComponent implements OnInit {
 
   ngOnInit(): void {
     // The service outlives navigation — reuse live state, bootstrap only when empty.
-    // A 404 here just means "no company yet"; the dashboard handles that.
-    this.game.ensureLoaded().subscribe({ error: () => void 0 });
+    // A 404 here just means "no company yet"; the dashboard handles that. Anything else
+    // has already been retried for about a minute (GameService.bootstrap): rather than
+    // leave the player on an endless spinner, send them back to sign in.
+    this.game.ensureLoaded().subscribe({ error: () => this.sessionLost() });
+  }
+
+  private sessionLost(): void {
+    this.game.stopAll();
+    this.game.reset();
+    this.auth.logout('expired');
   }
 
   logout(): void {

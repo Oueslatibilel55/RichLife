@@ -26,6 +26,8 @@ export class LoginComponent {
   password = '';
   readonly loading = signal(false);
   readonly error = signal('');
+  /** Set when the app signed the player out itself (session lost while away). */
+  readonly expired = this.route.snapshot.queryParamMap.get('reason') === 'expired';
 
   onSubmit(): void {
     if (this.loading()) return;

@@ -208,7 +208,7 @@
 } @else if (!game.loaded()) {
   <div class="loading-screen">
     <span class="spinner" aria-hidden="true"></span>
-    <p>{{ 'dashboard.loading' | t }}</p>
+    <p>{{ (game.wakingServer() ? 'dashboard.wakingServer' : 'dashboard.loading') | t }}</p>
   </div>
 }
 

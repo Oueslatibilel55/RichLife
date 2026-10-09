@@ -97,9 +97,10 @@ export class AuthService {
       .pipe(tap((res) => this.saveSession(res)));
   }
 
-  logout(): void {
+  /** `'expired'` tells the login page to explain why the player was signed out. */
+  logout(reason?: 'expired'): void {
     this.clearSession();
-    void this.router.navigate(['/login']);
+    void this.router.navigate(['/login'], reason ? { queryParams: { reason } } : {});
   }
 
   /** Drops the session without navigating — used by the interceptor mid-flight. */

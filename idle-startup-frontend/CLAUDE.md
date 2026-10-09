@@ -102,8 +102,13 @@ deliberately stateful and long-lived. All state signals are exposed read-only (`
 the service's methods.
 
 - **Bootstrap**: `bootstrap()` calls `GET /game/state` — the only endpoint that credits offline earnings.
-  A `404` means "no company yet", not an error. `loaded` flips once it has answered, which is what separates
-  "still fetching" from "this player has none".
+  A `404` means "no company yet", not an error. `loaded` flips **only on a success or a 404** — that is what
+  separates "still fetching" from "this player has none". Never set it on another failure: the dashboard
+  would offer to create a company to a player who has one (seen after time away, when the sleeping Render
+  API made Netlify answer 502). Each attempt times out after 15 s and transient failures (no answer,
+  timeout, 502/503/504) are retried for about a minute while `wakingServer` tells the spinner to say so;
+  if it still fails, `LayoutComponent` resets the game and sends the player to `/login?reason=expired`,
+  where a notice explains it.
 - **Ticker**: `setInterval` every 50 ms adding `cashRate() × (real seconds since the previous tick)` to the
   local `cash` signal — **elapsed-time based, never a fixed `/20` step**: browsers throttle timers, a fixed step
   under-counted, and the server accepts a too-low figure (it only clamps high ones). `cashRate` is the
@@ -154,7 +159,10 @@ every refresh — store the whole response.
 
 `authInterceptor` attaches the bearer token and, on a 401 for a non-`/auth/` URL, refreshes once and retries.
 Concurrent 401s **queue** on that single refresh via a module-level `ReplaySubject` and are retried with the
-new token; if the refresh fails, the queue is errored and the user is logged out.
+new token; if the refresh fails, the queue is errored and the user is logged out (to `/login?reason=expired`).
+The refresh runs on its **own subscription** with a 20 s timeout, not on the request that hit the 401: if that
+request were cancelled mid-refresh, `refreshCycle` would stay set and every later request would queue behind
+it forever — the app stuck on its spinner until a manual logout.
 
 ### Styling
 

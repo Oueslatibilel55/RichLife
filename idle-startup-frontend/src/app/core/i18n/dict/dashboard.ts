@@ -3,6 +3,7 @@ import type { DictSet } from './index';
 /** Dashboard: company overview, prestige card + confirmation, owned businesses, manage-business dialog. */
 export const DASHBOARD: DictSet = {
   en: {
+    'dashboard.wakingServer': 'Waking up the server… this can take up to a minute.',
     'dashboard.shiftUnderMinute': '<1m',
     'dashboard.create.title': 'Name your company',
     'dashboard.create.sub': 'Build your empire one business at a time.',
@@ -102,6 +103,7 @@ export const DASHBOARD: DictSet = {
     'manage.error.close': 'Could not close that business.',
   },
   fr: {
+    'dashboard.wakingServer': 'Réveil du serveur… cela peut prendre jusqu’à une minute.',
     'dashboard.shiftUnderMinute': '<1 min',
     'dashboard.create.title': 'Nommez votre entreprise',
     'dashboard.create.sub': 'Bâtissez votre empire, une affaire après l’autre.',
@@ -201,6 +203,7 @@ export const DASHBOARD: DictSet = {
     'manage.error.close': 'Impossible de fermer ce commerce.',
   },
   ar: {
+    'dashboard.wakingServer': 'جارٍ تشغيل الخادم… قد يستغرق ذلك حتى دقيقة.',
     'dashboard.shiftUnderMinute': 'أقل من دقيقة',
     'dashboard.create.title': 'سمِّ شركتك',
     'dashboard.create.sub': 'ابنِ إمبراطوريتك مشروعًا تلو الآخر.',
