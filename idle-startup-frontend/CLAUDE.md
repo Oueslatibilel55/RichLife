@@ -256,7 +256,7 @@ Component SCSS should consume these tokens rather than redeclaring colours.
 
 **Game navigation** (`LayoutComponent`): the desktop top nav lists all 8 pages (`nav`, Bourse
 included) — labels from 1280 px, icons with a tooltip between 900 and 1279 px. On phones (< 900 px)
-there is **no tab bar**: a floating round button (`.fab`, bottom-end) opens `.fab-menu` — avatar,
+there is **no tab bar**: a floating round button (`.fab`, bottom-left in every language) opens `.fab-menu` — avatar,
 💎, language, every page of `nav` as a tile, cash/rate and log out; it closes on any navigation
 (`features/017-bourse.md`). `--tabbar-h` now only reserves room under the content and above toasts
 for that button. The top bar keeps only the money (cash, rate, 💎 chip) on phones. Language and
