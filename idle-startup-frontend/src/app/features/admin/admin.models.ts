@@ -1,4 +1,4 @@
-import { PrestigeLevel, Sector } from '../../core/models/game.models';
+import { PlaceTier, PrestigeLevel, Sector } from '../../core/models/game.models';
 import { LuxuryCategory } from '../luxury/luxury.models';
 
 // Wire contracts for the admin panel — mirror api-contract.md §7, §7b, §7c and §7d.
@@ -96,6 +96,17 @@ export interface AdminCatalogueAsset {
   /** Read-only, computed by the server. */
   incomePerSecond: number;
   displayOrder: number;
+  /** Mean time between failures, in hours (1–10,000). */
+  mtbfHours: number;
+}
+
+/** Where a business can open places (§7); the first by display order is where it opens. */
+export interface AdminPlaceKind {
+  id: string;
+  name: string;
+  tier: PlaceTier;
+  price: number;
+  displayOrder: number;
 }
 
 export interface AdminCatalogueEntry {
@@ -113,10 +124,14 @@ export interface AdminCatalogueEntry {
   createdAt: string;
   updatedAt: string;
   availableAssets: AdminCatalogueAsset[];
+  /** Units a new place holds, and how many more each place level adds. */
+  placeBaseCapacity: number;
+  placeCapacityPerLevel: number;
+  placeKinds: AdminPlaceKind[];
 }
 
 /** PUT body: the entry's own fields (no id, no assets) plus isActive. */
-export type CatalogueEntryFields = Omit<AdminCatalogueEntry, 'id' | 'createdAt' | 'updatedAt' | 'availableAssets'>;
+export type CatalogueEntryFields = Omit<AdminCatalogueEntry, 'id' | 'createdAt' | 'updatedAt' | 'availableAssets' | 'placeKinds'>;
 
 /** Asset POST/PUT body (PUT omits the id). */
 export type CatalogueAssetFields = Omit<AdminCatalogueAsset, 'incomePerSecond'>;

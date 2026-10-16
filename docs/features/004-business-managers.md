@@ -11,6 +11,9 @@ while you are away (up to the 4-hour cap).
 
 ## Rule
 
+> First version, superseded the same day by **Shifts** below: managers now work 4-hour
+> shifts and are rehired. "Once per business" and `IsAutomated` no longer apply.
+
 - Price: `managerCost = 2 × openingCost` (`GameConstants.ManagerCostMultiplier`), paid in
   cash, once per business. A rule, not content — no catalogue column, no migration.
 - Effect: `Business.IsAutomated = true`, so the business counts toward
@@ -27,8 +30,8 @@ price, new random name). The flag `businesses.IsAutomated` was replaced by
 existing managers were converted to a fresh shift instead of dropped).
 
 Time away is paid over the window `lastSyncAt` → `lastSyncAt + min(elapsed, 4 h)`: base
-income for all of it, each business only for the part its shift covers
-(`Business.ManagedSecondsWithin`). The player's example — hire 11:00, leave 12:00, back
+income for all of it, each business only for the part its shift covers — the overlap of the
+window with `[managerUntil − 4 h, managerUntil]` (`Business.ManagedSecondsWithin`). The player's example — hire 11:00, leave 12:00, back
 18:00 — pays base 4 h + that business 3 h; tested as
 `Offline_HireThenPlayOneHourThenAwaySixHours_…` and over HTTP (64,800 = 3 × 14,400 +
 2 × 10,800). `isAutomated` / `offlineIncomePerSecond` in the API are "as of the response";
@@ -47,14 +50,19 @@ dialog ("Lucy runs this business") and as the badge on the dashboard card.
 - `businesses.ManagerNameId` → FK to `manager_names` (`RESTRICT`), plus a copied
   `ManagerName` — the same id-plus-copy shape as `CatalogueId`/`Name`.
 - `IManagerNameRepository.PickRandomAsync(excludeIds)` — `ORDER BY RANDOM()`, skipping names
-  the company already uses while unused ones remain. The domain receives the picked name:
-  `Company.AutomateBusiness(businessId, manager)`.
+  on the company's currently running shifts while unused ones remain (otherwise any name).
+  With an empty table the hire answers `"No managers are available right now."`. The domain
+  receives the picked name: `Company.AutomateBusiness(businessId, manager, nowUtc)`.
+- Admins add and delete names over `/api/admin/manager-names` (006).
 - `BusinessDto.managerName` (null until hired). Frontend: `core/game/managers.ts` maps a
   name to a stable avatar emoji.
 - Verified over HTTP: three managers for one company → three different names, FK id and
   copied name match in the database.
 
 ## Backend changes
+
+As first shipped; with shifts the signature became `AutomateBusiness(businessId, manager,
+nowUtc)` and `IsAutomated` is computed (`HasManagerAt(now)`), not stored.
 
 - `GameConstants.ManagerCostMultiplier = 2m`; `Business.ManagerCost`.
 - `Company.AutomateBusiness(businessId)` → `Result<Business>`; failures
@@ -69,9 +77,9 @@ dialog ("Lucy runs this business") and as the badge on the dashboard card.
 - `BusinessDto.managerCost` in `game.models.ts`; `GameService.automateBusiness()` (syncs
   first, then deducts locally).
 - Manage-business dialog: a "Hire a manager" card showing the extra offline income
-  (`netIncomePerSecond × prestigeMultiplier`) and the price; after hiring it turns into
-  "Manager hired · ⚡ Auto". The dashboard button reads "Manage · hire a manager" until
-  hired.
+  (`netIncomePerSecond × prestigeMultiplier`) and the price; after hiring it shows the shift ("{name} runs
+  this business", the time left, then "Rehire · {price}" once it ends). The dashboard button
+  reads "Manage · hire a manager" until hired.
 
 ## Verification
 

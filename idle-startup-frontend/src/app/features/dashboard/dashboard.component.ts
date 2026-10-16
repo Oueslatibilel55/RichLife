@@ -12,6 +12,7 @@ import {
 import { sectorIcon } from '../../core/game/sectors';
 import { formatShiftLeft, managerAvatar, shiftMsLeft } from '../../core/game/managers';
 import { taxMsLeft } from '../../core/game/taxes';
+import { brokenUnits, businessIncomeNow } from '../../core/game/units';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../shared/pipes/money.pipe';
 import { ManageBusinessComponent } from './manage-business/manage-business.component';
@@ -53,6 +54,15 @@ export class DashboardComponent implements OnInit {
   readonly managerAvatar = managerAvatar;
   readonly shiftMsLeft = shiftMsLeft;
   readonly formatShiftLeft = formatShiftLeft;
+
+  /** A business's income now, and its broken units — both on the 1-second clock (§5 Places and breakdowns). */
+  incomeNow(b: BusinessDto): number {
+    return businessIncomeNow(b, this.game.now());
+  }
+
+  brokenCount(b: BusinessDto): number {
+    return brokenUnits(b, this.game.now()).length;
+  }
   readonly taxMsLeft = taxMsLeft;
 
   readonly payingTaxId = signal<string | null>(null);

@@ -16,7 +16,10 @@ public record BusinessCatalogueDto(
     string Description,
     bool CanAfford,
     bool IsOwned,
-    IReadOnlyList<AssetCatalogueDto> AvailableAssets
+    IReadOnlyList<AssetCatalogueDto> AvailableAssets,
+    int PlaceBaseCapacity,
+    int PlaceCapacityPerLevel,
+    IReadOnlyList<PlaceKindDto> PlaceKinds
 );
 
 public record AssetCatalogueDto(
@@ -25,7 +28,18 @@ public record AssetCatalogueDto(
     decimal Price,
     decimal IncomePerSecond,
     int UnlockAtAssetCount,
-    bool IsUnlocked
+    bool IsUnlocked,
+    int MtbfHours
+);
+
+/// <summary>Where a business can open a place. The first one is where it opens.</summary>
+public record PlaceKindDto(
+    string Id,
+    string Name,
+    string Tier,
+    decimal Price,
+    decimal IncomeMultiplier,
+    bool CanAfford
 );
 
 // -- Admin view: every entry, with the raw fields an editor needs ---------------------
@@ -44,7 +58,10 @@ public record AdminCatalogueEntryDto(
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    IReadOnlyList<AdminCatalogueAssetDto> AvailableAssets
+    IReadOnlyList<AdminCatalogueAssetDto> AvailableAssets,
+    int PlaceBaseCapacity,
+    int PlaceCapacityPerLevel,
+    IReadOnlyList<AdminPlaceKindDto> PlaceKinds
 );
 
 public record AdminCatalogueAssetDto(
@@ -54,6 +71,15 @@ public record AdminCatalogueAssetDto(
     int UnlockAtAssetCount,
     decimal? FixedIncomePerSecond,
     decimal IncomePerSecond,
+    int DisplayOrder,
+    int MtbfHours
+);
+
+public record AdminPlaceKindDto(
+    string Id,
+    string Name,
+    PlaceTier Tier,
+    decimal Price,
     int DisplayOrder
 );
 
@@ -68,7 +94,10 @@ public record CreateCatalogueEntryRequest(
     int BaseEmployeeCount,
     string Description,
     int DisplayOrder,
-    IReadOnlyList<CreateCatalogueAssetRequest>? AvailableAssets
+    IReadOnlyList<CreateCatalogueAssetRequest>? AvailableAssets,
+    int? PlaceBaseCapacity = null,
+    int? PlaceCapacityPerLevel = null,
+    IReadOnlyList<CreatePlaceKindRequest>? PlaceKinds = null
 );
 
 public record UpdateCatalogueEntryRequest(
@@ -81,7 +110,9 @@ public record UpdateCatalogueEntryRequest(
     int BaseEmployeeCount,
     string Description,
     int DisplayOrder,
-    bool IsActive
+    bool IsActive,
+    int? PlaceBaseCapacity = null,
+    int? PlaceCapacityPerLevel = null
 );
 
 public record CreateCatalogueAssetRequest(
@@ -90,7 +121,8 @@ public record CreateCatalogueAssetRequest(
     decimal Price,
     int UnlockAtAssetCount,
     decimal? FixedIncomePerSecond,
-    int DisplayOrder
+    int DisplayOrder,
+    int? MtbfHours = null
 );
 
 public record UpdateCatalogueAssetRequest(
@@ -98,5 +130,21 @@ public record UpdateCatalogueAssetRequest(
     decimal Price,
     int UnlockAtAssetCount,
     decimal? FixedIncomePerSecond,
+    int DisplayOrder,
+    int? MtbfHours = null
+);
+
+public record CreatePlaceKindRequest(
+    string Id,
+    string Name,
+    PlaceTier Tier,
+    decimal Price,
+    int DisplayOrder
+);
+
+public record UpdatePlaceKindRequest(
+    string Name,
+    PlaceTier Tier,
+    decimal Price,
     int DisplayOrder
 );

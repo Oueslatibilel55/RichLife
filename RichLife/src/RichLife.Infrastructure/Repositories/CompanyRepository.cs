@@ -10,6 +10,7 @@ public class CompanyRepository(GameDbContext db) : ICompanyRepository
     public Task<Company?> GetByPlayerIdAsync(Guid playerId, CancellationToken ct = default)
         => db.Companies
              .Include(c => c.Businesses).ThenInclude(b => b.Assets)
+             .Include(c => c.Businesses).ThenInclude(b => b.Places)
              .Include(c => c.Assets)
              .Include(c => c.LuxuryAssets)
              .Include(c => c.Loans)
@@ -19,6 +20,7 @@ public class CompanyRepository(GameDbContext db) : ICompanyRepository
     public Task<Company?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => db.Companies
              .Include(c => c.Businesses).ThenInclude(b => b.Assets)
+             .Include(c => c.Businesses).ThenInclude(b => b.Places)
              .Include(c => c.Assets)
              .Include(c => c.LuxuryAssets)
              .Include(c => c.Loans)

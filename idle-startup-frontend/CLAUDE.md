@@ -30,10 +30,11 @@ Don't claim a build passed without actually running it.
 
 ## Backend dependency
 
-This is the frontend half of a two-repo project. The API is the sibling .NET solution at `../RichLife`
-(it has its own CLAUDE.md), served on `http://localhost:5187`.
+This is the frontend half of the RichLife monorepo (one git repository; the root `../CLAUDE.md` covers
+cross-boundary work). The API is the sibling .NET solution at `../RichLife` (it has its own CLAUDE.md),
+served on `http://localhost:5187`.
 
-**`../docs/api-contract.md` is the source of truth** for every route, payload and status code, and section 8
+**`../docs/api-contract.md` is the source of truth** for every route, payload and status code, and §9
 records frontend conformance plus the deliberate client-side behaviours. Read it before touching anything
 that talks to the API; when the two disagree, the contract wins.
 
@@ -45,8 +46,8 @@ port 4200 serve the app to a phone or another PC; the dev server only answers th
 `allowedHosts` there. The proxy only exists under `ng serve` — a static `ng build --configuration development`
 output has no `/api` behind it.
 
-Every documented endpoint now has a caller except `POST /api/game/sync-beacon`, which is unusable by design
-(see M1 in the contract).
+Every documented endpoint now has a caller except `POST /api/game/sync-beacon`, which `sendBeacon` cannot
+authenticate (M1 in the contract, resolved by a keepalive `fetch` to `/game/sync` instead).
 
 ## Architecture
 
@@ -63,13 +64,16 @@ core/
   guards/      authGuard, guestGuard, admin.guard (adminMatchGuard, adminChildGuard, playerGuard)
   interceptors/auth.interceptor.ts
   services/    auth.service.ts, game.service.ts
-features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury, bank, store, leaderboard, profile,
+  i18n/        i18n.ts, translate.pipe.ts, translated-title.strategy.ts, dict/<feature>.ts (en/fr/ar)
+features/      auth/{login,register}, dashboard (+ manage-business), businesses, luxury (+ luxury.service, luxury.models),
+               bank, store, leaderboard, profile (+ profile.service, profile.models),
                admin/ (admin-layout, overview, players, catalogue (+ editor), managers, loans, luxury (+ editor);
                        admin.service, admin.models)
 shared/
   components/layout  — persistent HUD/nav shell (top bar + mobile tab bar)
   components/icon    — inline SVG icon set
   components/avatar  — <app-avatar [avatar] [name] [size]>: the player's avatar (emoji on its gradient) or initial
+  components/lang-switcher — <app-lang-switcher />: en / fr / ar picker
   pipes/money.pipe.ts — `money` (whole dollars) and `rate` (keeps cents)
 ```
 
@@ -91,12 +95,13 @@ returns a `UrlTree` carrying a `returnUrl`, which `LoginComponent` honours.
   the game — plus `canActivateChild: [adminChildGuard]`.
 - The game layout route has `canActivate: [authGuard, playerGuard]`: an admin is sent to `/admin`, so
   `LayoutComponent` — and with it `GameService`'s bootstrap, ticker and sync — never runs for an admin.
-  After login every user is sent to `/dashboard`; `playerGuard` forwards admins on to `/admin`.
+  After login a user goes to `returnUrl` (default `/dashboard`; register always goes to `/dashboard`);
+  `playerGuard` forwards admins on to `/admin`.
 - All guards read `AuthService.isAdmin`, a computed over the access token's role claim (`core/http/jwt.ts`
   accepts the full .NET claim URI or `role`). UX only — the API answers 403 to admins on `/api/game/*` and to
   players on `/api/admin/*`. A role change shows up after the next login/refresh (new token).
 - Admin pages call `AdminService` (stateless HTTP); keep their requests modest — the server's `game-actions`
-  rate limit (20 req / 10 s) is shared by everyone.
+  rate limit (20 req / 10 s) is one budget per signed-in user, shared by every page they open.
 - Admin pages (contract §7–§7d): **Overview** (stats incl. luxury, achievement distribution — titles via
   `ach.<code>.title`, server English as fallback — and loan totals); **Players** (cash, reset, role, delete,
   and **Forgive loan** when `loanOutstanding` is not null — `POST /admin/players/{id}/forgive-loan`, same
@@ -125,7 +130,8 @@ the service's methods.
   separates "still fetching" from "this player has none". Never set it on another failure: the dashboard
   would offer to create a company to a player who has one (seen after time away, when the sleeping Render
   API made Netlify answer 502). Each attempt times out after 15 s and transient failures (no answer,
-  timeout, 502/503/504) are retried for about a minute while `wakingServer` tells the spinner to say so;
+  timeout, 502/503/504) are retried up to 3 times with a 3 / 6 / 9 s back-off (≈ 20–80 s in all) while
+  `wakingServer` tells the spinner to say so;
   if it still fails, `LayoutComponent` resets the game and sends the player to `/login?reason=expired`,
   where a notice explains it.
 - **Ticker**: `setInterval` every 50 ms adding `cashRate() × (real seconds since the previous tick)` to the
@@ -137,8 +143,11 @@ the service's methods.
 - **Sync**: `POST /game/sync` every 5 s. When the response says `adjusted`, the client **must** adopt
   `acceptedCash`; it does, and raises `syncAdjusted` so the UI can say so — an info toast that closes itself after 4 s.
 - **Spending syncs first.** `Company.DeductCash` on the server compares the price against its *last recorded*
-  cash and never accrues, so `openBusiness`, `buyAsset`, `closeBusiness` and `prestige` all go through
-  `afterSync(...)`, then deduct the price from the local purse. Skipping this makes the server reject
+  cash and never accrues, so every money-moving call goes through `afterSync(...)`: `openBusiness`,
+  `buyAsset`, `levelUpBusiness`, `automateBusiness`, `closeBusiness`, `prestige`, `payTaxes` / `payAllTaxes`,
+  `takeLoan` / `repayLoan`, every `storeAction`, and `spend(price, purchase)` — the helper for purchases a
+  feature service owns (luxury). Purchases then deduct the price from the local purse (`closeBusiness`
+  deducts nothing; bank, tax and store calls adopt the server's cash instead). Skipping this makes the server reject
   purchases the player can visibly afford and silently loses `allTimeEarnings` (the leaderboard ranking).
 - **Leaving the page**: `fetch(..., { keepalive: true })` to `/game/sync` on `visibilitychange`/`pagehide`.
   Not `sendBeacon` — it cannot attach the bearer token the endpoint requires.
@@ -152,13 +161,14 @@ the service's methods.
 - **Prestige** is a cash purchase behind a confirmation dialog in `DashboardComponent`
   (`confirmingPrestige`) showing cash before/after, the multiplier change and that businesses are kept.
 - **Managers**: `automateBusiness(id, managerCost)` (sync first, deduct locally), surfaced as the "Hire a
-  manager" card in `ManageBusinessComponent`. After hiring, `refreshCompany()` — `isAutomated` and the
+  manager" card in `ManageBusinessComponent`, which calls `refreshCompany()` after hiring — `isAutomated` and the
   company's `offlineIncomePerSecond` are server-computed. A manager works a **4-hour shift** (`managerUntil`)
   and is then rehired: decide "on shift" with `shiftMsLeft(biz, game.now())` from `core/game/managers.ts`,
   never with `isAutomated` (true only as of the response). `GameService.now` is a 1-second clock signal
   driven by the ticker, for countdowns. `managerName` is picked by the server; `core/game/managers.ts`
   (`managerAvatar`) gives each name a stable emoji for the dialog and the dashboard badge.
-- **Levels**: `levelUpBusiness(id, cost)` (sync first, deduct locally, then `refreshCompany()`). The server
+- **Levels**: `levelUpBusiness(id, cost)` (sync first, deduct locally; `ManageBusinessComponent` then calls
+  `refreshCompany()`). The server
   sends `level`, `levelMultiplier`, `nextLevelCost` and `nextLevelIncomePerSecond` (both `null` at max) —
   never re-derive the formula client-side; `netIncomePerSecond` already includes the level.
 - **Achievements / profile** (`features/007-player-profile.md`): `/sync` responses carry `newAchievements`
@@ -196,8 +206,18 @@ the service's methods.
   first"). Each business card and the manage dialog show `taxDue` (Pay) or `taxAccruing` + the time to
   `taxPeriodEndsAt` (`taxMsLeft` in `core/game/taxes.ts`); the dialog hides "Close" while tax is due.
   `payTaxes(id)` / `payAllTaxes()` go through `afterSync` and adopt `cash` **and** `company` from
-  `TaxPaymentDto`. A `/sync` or `/state` with `taxBilled > 0` raises `taxToast` (6 s) and refreshes the
-  company. Keys in `dict/taxes.ts`; styles are global (`.tax-*` in `styles.scss`).
+  `TaxPaymentDto`. A `/sync` or `/state` with `taxBilled > 0` raises `taxToast` (6 s); `/sync` then
+  refreshes the company (`/state` already carries it). Keys in `dict/taxes.ts`; styles are global (`.tax-*` in `styles.scss`).
+
+- **Places and breakdowns** (contract §5, `features/014-business-places-and-equipment.md`): units
+  break on a schedule the server sends ahead (`workingFrom` / `breaksAt`). `core/game/units.ts`
+  derives every "now" figure on the 1-second clock — `cashRate` uses `companyIncomeNow`, the cards
+  use `businessIncomeNow` / `brokenUnits`; never display `netIncomePerSecond` or a unit's
+  `status` raw, they are as of the response. The places panel (`features/dashboard/places/`) lives
+  in the manage dialog; `openPlace`, `levelUpPlace`, `buyUnit`, `repairUnit`, `repairAll` go
+  through `businessSpend` (sync first, deduct locally, patch the business, refresh the company).
+  `/sync` or `/state` with `autoRepairs > 0` raises `repairToast` (or a welcome-back line).
+  Faults are `fault.<id>` keys in `dict/places.ts` (`faultLabel()` falls back to the server name).
 
 Because the service survives navigation, components **must not blindly re-bootstrap it**: call
 `ensureLoaded()`, which reuses live state and only fetches when there is none.
@@ -205,7 +225,9 @@ Because the service survives navigation, components **must not blindly re-bootst
 ### Auth
 
 `AuthService` keeps the session in `localStorage` under `rl_token`, `rl_refresh`, `rl_user` (all reads and
-writes are wrapped — `localStorage` throws in private-mode Safari). `isAuthenticated`/`currentUser`/`token`
+writes are wrapped — `localStorage` throws in private-mode Safari). Other keys: `rl_lang` (language) and
+`rl_store_tab` (the store's last tab). Logout also removes a `rl_offline_shown` key from `sessionStorage`
+that nothing writes any more — a leftover. `isAuthenticated`/`currentUser`/`token`
 are signals read back from storage at construction, so a refresh keeps the session. Both tokens rotate on
 every refresh — store the whole response.
 
@@ -239,14 +261,16 @@ Leaderboard, Profile, the language picker and log out, so on phones the top bar 
 money (cash, rate, 💎 chip). Language and account are `.desk-only` in the top bar. The layout's
 SCSS is at its 4 kB budget: new shell styles go in `styles.scss` (as the toasts do).
 
-Breakpoints in use: 480 / 640 / 768 / 900 / 1024 / 1280 px. A list with more than ~4 columns is **cards below 900 px**
-(Players, Loans, Banks) and a table only above — a table scrolling sideways inside a card is unusable on a phone. `LayoutComponent` shows the top nav at ≥ 900 px and a
+Main breakpoints: 480 / 640 / 768 / 900 / 1024 / 1280 px (plus a few local ones: 420, 600, 860, 960, 1100,
+and max-width 1199 / 1279 for the nav). A list with more than ~4 columns is **cards below 900 px** and a table
+only above (Loans, Banks) — a table scrolling sideways inside a card is unusable on a phone. Players is a card
+grid at every width (1 → 3 → 5 columns). `LayoutComponent` shows the top nav at ≥ 900 px and a
 fixed bottom tab bar below it (content gets `padding-bottom` for it). Icons are inline SVG via
 `shared/components/icon` (`<app-icon name="…" />`) — add a `@case` there for a new one. Login and register
 share `features/auth/auth.scss`.
 
-Production budgets cap a component stylesheet at 4 kB (warning) / 8 kB (error); the build is currently
-warning-free.
+Production budgets cap a component stylesheet at 4 kB (warning) / 8 kB (error); the last production build
+(2026-10-09, taxes) was warning-free.
 
 ### Languages (i18n) — English, French, Arabic
 

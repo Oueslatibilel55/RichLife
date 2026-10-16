@@ -94,6 +94,65 @@ export interface BusinessDto {
   taxAccruing: number;
   /** When the current period is billed (UTC ISO). */
   taxPeriodEndsAt: string;
+  /** Units broken at response time (§5 Places and breakdowns) — recount live with `core/game/units.ts`. */
+  brokenUnits: number;
+  /** Places a business can run (10). */
+  maxPlaces: number;
+  /** In opening order; the first came with the business. */
+  places: PlaceDto[];
+}
+
+export type PlaceTier = 'Quiet' | 'Busy' | 'Prime';
+export type UnitStatus = 'Working' | 'Broken' | 'Repairing';
+
+/** One location of a business (contract §2 PlaceDto). */
+export interface PlaceDto {
+  id: string;
+  kindId: string;
+  /** Catalogue content — not translated. */
+  name: string;
+  /** Flavour ("24 Oak Street") — a proper name, not translated. */
+  street: string;
+  tier: PlaceTier;
+  level: number;
+  maxLevel: number;
+  /** Tier × (1 + 0.05 × (level − 1)) — already in `incomePerSecond`. */
+  multiplier: number;
+  capacity: number;
+  unitCount: number;
+  baseIncomePerSecond: number;
+  /** What the place adds to the business's `netIncomePerSecond` at response time (before prestige). */
+  incomePerSecond: number;
+  /** null at max level. */
+  nextLevelCost: number | null;
+  nextLevelCapacity: number | null;
+  units: UnitDto[];
+}
+
+/**
+ * One unit in a place. It works while `workingFrom <= now < breaksAt` — both known in advance,
+ * so the client follows breakdowns on its own clock. The fault fields describe the failure due
+ * at `breaksAt`.
+ */
+export interface UnitDto {
+  id: string;
+  /** null for units bought before places existed. */
+  catalogueId: string | null;
+  name: string;
+  price: number;
+  incomePerSecond: number;
+  /** What it adds to `netIncomePerSecond` while it works (before prestige). */
+  contributionPerSecond: number;
+  /** As of the response — use `unitStatus()` for now. */
+  status: UnitStatus;
+  workingFrom: string;
+  breaksAt: string;
+  /** Stable id — translate with `fault.<id>`; `faultName` is the English fallback. */
+  fault: string;
+  faultName: string;
+  repairCost: number;
+  fastRepairCost: number;
+  repairHours: number;
 }
 
 export interface AssetCatalogueDto {
@@ -105,6 +164,19 @@ export interface AssetCatalogueDto {
   unlockAtAssetCount: number;
   /** Server-computed against the caller's business — the authority. Not recomputed client-side. */
   isUnlocked: boolean;
+  /** Mean time between failures, in hours. */
+  mtbfHours: number;
+}
+
+/** Where a business can open a place; the first one is where it opens. */
+export interface PlaceKindDto {
+  id: string;
+  name: string;
+  tier: PlaceTier;
+  price: number;
+  incomeMultiplier: number;
+  /** Against the server's last recorded cash — a hint, like the catalogue's `canAfford`. */
+  canAfford: boolean;
 }
 
 export interface BusinessCatalogueDto {
@@ -122,6 +194,10 @@ export interface BusinessCatalogueDto {
   /** Server-computed. Authoritative — do not recompute by matching names. */
   isOwned: boolean;
   availableAssets: AssetCatalogueDto[];
+  /** Units a new place holds, and how many more each place level adds. */
+  placeBaseCapacity: number;
+  placeCapacityPerLevel: number;
+  placeKinds: PlaceKindDto[];
 }
 
 /** GET /api/game/state — the bootstrap call. Credits time spent away. */
@@ -139,6 +215,9 @@ export interface OfflineEarningsDto {
   doubleOffer: OfflineDoubleOfferDto | null;
   /** Tax newly billed for periods that ended while away (§5 Taxes). */
   taxBilled: number;
+  /** Repairs managers made from cash while away and on return (§5 Places and breakdowns); `cashAfter` is net of them. */
+  autoRepairs: number;
+  repairsPaid: number;
   company: CompanyDto;
 }
 
@@ -155,6 +234,9 @@ export interface SyncResultDto {
   /** Unpaid taxes after the call, and what this call billed (usually 0). Cash is never touched. */
   taxesDue: number;
   taxBilled: number;
+  /** Repairs managers on shift just paid from cash — `acceptedCash` is net of them. */
+  autoRepairs: number;
+  repairsPaid: number;
 }
 
 /** Answer to paying taxes (§5): what was paid, the server's cash after it, the whole company. */

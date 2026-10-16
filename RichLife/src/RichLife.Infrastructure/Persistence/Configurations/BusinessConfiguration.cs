@@ -14,7 +14,6 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         b.Property(x => x.CatalogueId).HasMaxLength(60).IsRequired();
         b.Property(x => x.Name).HasMaxLength(80).IsRequired();
         b.Property(x => x.OpeningCost).HasPrecision(20, 4);
-        b.Property(x => x.GrossIncomePerSecond).HasPrecision(20, 6);
         b.Property(x => x.MonthlySalaryCost).HasPrecision(20, 4);
         b.Property(x => x.AskingPrice).HasPrecision(20, 4);
         b.Property(x => x.TaxableEarnings).HasPrecision(24, 6);
@@ -41,13 +40,14 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
 
         // Computed properties — do NOT map to DB
         b.Ignore(x => x.SalaryCostPerSecond);
-        b.Ignore(x => x.NetIncomePerSecond);
+        b.Ignore(x => x.FullGrossIncomePerSecond);
+        b.Ignore(x => x.FullNetIncomePerSecond);
+        b.Ignore(x => x.Faults);
         b.Ignore(x => x.TotalValue);
         b.Ignore(x => x.ManagerCost);
         b.Ignore(x => x.LevelMultiplier);
         b.Ignore(x => x.IsMaxLevel);
         b.Ignore(x => x.NextLevelCost);
-        b.Ignore(x => x.NextLevelIncomePerSecond);
         b.Ignore(x => x.TaxPeriodEndsAt);
         b.Ignore(x => x.TaxAccruing);
         // Level: the AddBusinessLevels migration backfills existing rows with 1.
@@ -56,5 +56,13 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
          .WithOne()
          .HasForeignKey(a => a.BusinessId)
          .OnDelete(DeleteBehavior.Cascade);
+
+        // Places (features/014-business-places-and-equipment.md). The property returns a sorted
+        // copy; EF reads and writes the backing list.
+        b.HasMany(x => x.Places)
+         .WithOne()
+         .HasForeignKey(p => p.BusinessId)
+         .OnDelete(DeleteBehavior.Cascade);
+        b.Navigation(x => x.Places).HasField("_places").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

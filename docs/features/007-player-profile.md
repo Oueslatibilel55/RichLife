@@ -21,14 +21,18 @@ achievements as short-term goals.
 
 ## Rules
 
+> Since then: 008 added an 8th metric (luxury owned) and an 18th achievement
+> (`first-luxury`), and 011 made each unlock pay **10 diamonds**. Figures below are as shipped.
+
 - 17 achievements over 7 metrics (all-time earnings, cash on hand, businesses owned, assets
   owned, managers hired, highest business level, prestige count), defined in code in
   `Domain/Achievements/Achievements.cs` (`AchievementCatalog`) — rules, like `GameConstants`.
   **Codes are stored: never rename or reuse one.**
 - Checked on every `/sync` and on `GET /api/profile`; saved **once** with the time first seen
   (`company_achievements`), so an unlock is permanent even if the metric drops. Announced in
-  exactly one sync response. An admin reset clears them; prestige keeps them.
-- No rewards yet (a cash reward per achievement is the obvious follow-up).
+  at most one sync response — one first met while `GET /api/profile` runs is saved there and
+  never announced. An admin reset clears them; prestige keeps them.
+- No rewards at first; since 011 each unlock pays 10 diamonds.
 - Admins have no profile (`/api/profile` is behind the player policy → 403).
 
 ## Backend
@@ -50,7 +54,8 @@ achievements as short-term goals.
   `/profile` under the player layout.
 - `GameService.achievementToasts` (queued from `/sync`, auto-dismissed) rendered by
   `LayoutComponent`; toast styles are global (`styles.scss`) to keep the layout under its
-  style budget. The tab bar now sizes its columns to the item count (4 for players).
+  style budget. The tab bar then sized its columns to the item count (4 for players); since 011
+  it is a fixed five-slot bar (Home · Businesses · Store · Bank · More).
 
 ## Verification
 

@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, OnChanges, inject, input, output, s
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { AdminService } from '../admin.service';
-import { AdminCatalogueEntry, CatalogueAssetFields, CatalogueEntryFields } from '../admin.models';
-import { PrestigeLevel, Sector } from '../../../core/models/game.models';
+import { AdminCatalogueEntry, AdminPlaceKind, CatalogueAssetFields, CatalogueEntryFields } from '../admin.models';
+import { PlaceTier, PrestigeLevel, Sector } from '../../../core/models/game.models';
 import { PRESTIGE_ORDER, prestigeLabel } from '../../../core/game/prestige';
 import { SECTOR_ICONS } from '../../../core/game/sectors';
 import { toErrorMessage } from '../../../core/http/api-error';
@@ -23,8 +23,10 @@ interface AssetForm extends Omit<CatalogueAssetFields, 'fixedIncomePerSecond'> {
 }
 
 const blankAsset = (): AssetForm => ({
-  id: '', name: '', price: 0, unlockAtAssetCount: 0, fixed: '', displayOrder: 10, incomePerSecond: null,
+  id: '', name: '', price: 0, unlockAtAssetCount: 0, fixed: '', displayOrder: 10, incomePerSecond: null, mtbfHours: 48,
 });
+
+const blankKind = (): AdminPlaceKind => ({ id: '', name: '', tier: 'Quiet', price: 0, displayOrder: 10 });
 
 /**
  * Create or edit one catalogue entry and its assets (contract §7). Create first, then the
@@ -49,6 +51,9 @@ export class CatalogueEditorComponent implements OnChanges {
   form: EntryForm = this.blankEntry();
   readonly assets = signal<AssetForm[]>([]);
   newAsset: AssetForm = blankAsset();
+  readonly kinds = signal<AdminPlaceKind[]>([]);
+  newKind: AdminPlaceKind = blankKind();
+  readonly tiers: PlaceTier[] = ['Quiet', 'Busy', 'Prime'];
 
   readonly saving = signal(false);
   readonly busyAsset = signal<string | null>(null);
@@ -72,6 +77,7 @@ export class CatalogueEditorComponent implements OnChanges {
           openingCost: e.openingCost, baseIncomePerSecond: e.baseIncomePerSecond,
           monthlySalaryCost: e.monthlySalaryCost, baseEmployeeCount: e.baseEmployeeCount,
           description: e.description, displayOrder: e.displayOrder, isActive: e.isActive,
+          placeBaseCapacity: e.placeBaseCapacity, placeCapacityPerLevel: e.placeCapacityPerLevel,
         }
       : this.blankEntry();
     this.loadAssets(e);
@@ -100,6 +106,25 @@ export class CatalogueEditorComponent implements OnChanges {
     this.assetCall('__new', this.admin.addAsset(this.form.id, this.toWire(row)), t('admin.editor.assetAdded', { name: row.name }), () => {
       this.newAsset = { ...blankAsset(), displayOrder: (this.assets().at(-1)?.displayOrder ?? 0) + 10 };
     });
+  }
+
+  saveKind(row: AdminPlaceKind): void {
+    this.assetCall(`kind:${row.id}`, this.admin.updatePlaceKind(this.form.id, this.kindToWire(row)), t('admin.editor.placeSaved', { name: row.name }));
+  }
+
+  removeKind(row: AdminPlaceKind): void {
+    this.assetCall(`kind:${row.id}`, this.admin.removePlaceKind(this.form.id, row.id), t('admin.editor.placeRemoved', { name: row.name }));
+  }
+
+  addKind(): void {
+    const row = { ...this.newKind, id: this.newKind.id.trim() };
+    this.assetCall('kind:__new', this.admin.addPlaceKind(this.form.id, this.kindToWire(row)), t('admin.editor.placeAdded', { name: row.name }), () => {
+      this.newKind = { ...blankKind(), displayOrder: (this.kinds().at(-1)?.displayOrder ?? 0) + 10 };
+    });
+  }
+
+  private kindToWire(row: AdminPlaceKind): AdminPlaceKind {
+    return { id: row.id, name: row.name, tier: row.tier, price: Number(row.price), displayOrder: Number(row.displayOrder) };
   }
 
   private submit(call: Observable<AdminCatalogueEntry>, message: string): void {
@@ -141,9 +166,10 @@ export class CatalogueEditorComponent implements OnChanges {
       (e?.availableAssets ?? []).map((a) => ({
         id: a.id, name: a.name, price: a.price, unlockAtAssetCount: a.unlockAtAssetCount,
         fixed: a.fixedIncomePerSecond === null ? '' : String(a.fixedIncomePerSecond),
-        displayOrder: a.displayOrder, incomePerSecond: a.incomePerSecond,
+        displayOrder: a.displayOrder, incomePerSecond: a.incomePerSecond, mtbfHours: a.mtbfHours,
       })),
     );
+    this.kinds.set((e?.placeKinds ?? []).map((k) => ({ ...k })));
   }
 
   private toWire(row: AssetForm): CatalogueAssetFields {
@@ -151,6 +177,7 @@ export class CatalogueEditorComponent implements OnChanges {
     return {
       id: row.id, name: row.name, price: Number(row.price), unlockAtAssetCount: Number(row.unlockAtAssetCount),
       fixedIncomePerSecond: fixed === '' ? null : Number(fixed), displayOrder: Number(row.displayOrder),
+      mtbfHours: Number(row.mtbfHours),
     };
   }
 
@@ -163,7 +190,7 @@ export class CatalogueEditorComponent implements OnChanges {
     return {
       id: '', name: '', sector: 'Services', requiredPrestige: 'TheHustle' as PrestigeLevel,
       openingCost: 1000, baseIncomePerSecond: 1, monthlySalaryCost: 0, baseEmployeeCount: 0,
-      description: '', displayOrder: 100, isActive: true,
+      description: '', displayOrder: 100, isActive: true, placeBaseCapacity: 4, placeCapacityPerLevel: 2,
     };
   }
 }

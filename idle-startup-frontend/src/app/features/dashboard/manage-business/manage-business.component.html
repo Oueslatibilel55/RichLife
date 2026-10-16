@@ -17,7 +17,7 @@
       <div class="summary">
         <div class="stat">
           <span class="stat__label">{{ 'manage.currentIncome' | t }}</span>
-          <span class="stat__value stat__value--success">{{ biz.netIncomePerSecond | rate }}{{ 'dashboard.perSecond' | t }}</span>
+          <span class="stat__value stat__value--success">{{ incomeNow() | rate }}{{ 'dashboard.perSecond' | t }}</span>
         </div>
         <div class="stat">
           <span class="stat__label">{{ 'manage.yourCash' | t }}</span>
@@ -126,13 +126,8 @@
           }
         </div>
 
+        <!-- Places and the units in them (§5 Places and breakdowns) -->
         @if (entry(); as cat) {
-          @if (cat.availableAssets.length > 0) {
-            <div class="assets-head">
-              <h3 class="list-title">{{ 'manage.assets.title' | t }}</h3>
-              <span class="badge badge--primary num">{{ plural('manage.assets.owned', biz.assetCount) | t: { n: biz.assetCount } }}</span>
-            </div>
-
             @if (nextUnlock(); as next) {
               <div class="unlock">
                 <div class="unlock__text num">
@@ -149,44 +144,8 @@
             } @else if (cat.availableAssets.length > 1) {
               <p class="all-unlocked">✨ {{ 'manage.assets.allUnlocked' | t }}</p>
             }
-
-            <ul class="assets">
-              @for (asset of cat.availableAssets; track asset.id) {
-                <li class="asset" [class.asset--locked]="!asset.isUnlocked">
-                  <div class="asset__info">
-                    <span class="asset__name">{{ asset.name }}</span>
-                    <span class="asset__meta num">
-                      <span class="asset__income">+{{ asset.incomePerSecond | rate }}{{ 'dashboard.perSecond' | t }}</span>
-                      · {{ asset.price | money }}
-                    </span>
-                  </div>
-
-                  @if (!asset.isUnlocked) {
-                    <span class="locked num" [title]="plural('manage.assets.lockedTitle', asset.unlockAtAssetCount) | t: { n: asset.unlockAtAssetCount }">
-                      🔒 {{ 'manage.assets.more' | t: { n: toGo(asset.unlockAtAssetCount) } }}
-                      <small>{{ biz.assetCount }}/{{ asset.unlockAtAssetCount }}</small>
-                    </span>
-                  } @else if (cash() < asset.price) {
-                    <span class="asset__short num">{{ 'manage.need' | t: { amount: (asset.price - cash() | money) } }}</span>
-                  } @else {
-                    <button
-                      type="button"
-                      class="btn btn--primary btn--sm"
-                      [disabled]="busyAssetId() === asset.id"
-                      (click)="buyAsset(asset.id, asset.price)"
-                    >
-                      {{ (busyAssetId() === asset.id ? 'manage.assets.buying' : 'manage.assets.buy') | t }}
-                    </button>
-                  }
-                </li>
-              }
-            </ul>
-          } @else {
-            <p class="muted">{{ 'manage.assets.none' | t }}</p>
-          }
-        } @else {
-          <p class="muted">{{ 'manage.assets.loading' | t }}</p>
         }
+        <app-places [businessId]="biz.id" />
 
         <!-- Closing refunds totalValue minus a fee: 10% normally, 25% in an emergency -->
         <div class="danger-zone">

@@ -190,6 +190,9 @@
                         <span class="biz__level num">{{ 'dashboard.level' | t: { n: biz.level } }}</span> {{ 'sector.' + biz.sector | t }}
                       </span>
                     </div>
+                    @if (brokenCount(biz) > 0) {
+                      <span class="badge badge--danger num" [title]="'places.brokenTitle' | t">🔧 {{ brokenCount(biz) }}</span>
+                    }
                     @if (shiftMsLeft(biz, game.now()) > 0) {
                       <span class="badge badge--success num" [title]="'dashboard.biz.onShiftTitle' | t">
                         {{ managerAvatar(biz.managerName) }} {{ biz.managerName ?? ('dashboard.biz.manager' | t) }} ·
@@ -200,7 +203,7 @@
                   <div class="biz__stats">
                     <div class="stat">
                       <span class="stat__label">{{ 'dashboard.income' | t }}</span>
-                      <span class="stat__value stat__value--success">{{ biz.netIncomePerSecond | rate }}{{ 'dashboard.perSecond' | t }}</span>
+                      <span class="stat__value stat__value--success">{{ incomeNow(biz) | rate }}{{ 'dashboard.perSecond' | t }}</span>
                     </div>
                     <div class="stat">
                       <span class="stat__label">{{ 'dashboard.biz.assets' | t }}</span>

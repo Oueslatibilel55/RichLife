@@ -24,7 +24,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         // Computed properties — do NOT map to DB
         b.Ignore(x => x.PrestigeMultiplier);
         b.Ignore(x => x.NetWorth);
-        b.Ignore(x => x.IncomePerSecond);
+        b.Ignore(x => x.FullIncomePerSecond);
         b.Ignore(x => x.DomainEvents);
         b.Ignore(x => x.ActiveLoan);
         b.Ignore(x => x.TaxesDue);

@@ -6,14 +6,17 @@ public record AssetCatalogueDetails(
     decimal Price,
     int UnlockAtAssetCount,
     decimal? FixedIncomePerSecond,
-    int DisplayOrder);
+    int DisplayOrder,
+    int MtbfHours = GameConstants.DefaultMtbfHours);
 
 /// <summary>
-/// An asset that can be bought for one catalogue business. Part of the
+/// An asset (a "unit" in the API) that can be bought for one catalogue business. Part of the
 /// <see cref="BusinessCatalogueEntry"/> aggregate: its id is unique within that business only.
 /// </summary>
 public sealed class AssetCatalogueEntry
 {
+    public const int MaxMtbfHours = 10_000;
+
     public string Id { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
     public decimal Price { get; private set; }
@@ -25,6 +28,9 @@ public sealed class AssetCatalogueEntry
     public decimal? FixedIncomePerSecond { get; private set; }
 
     public int DisplayOrder { get; private set; }
+
+    /// <summary>Mean time between failures, in hours (features/014-business-places-and-equipment.md).</summary>
+    public int MtbfHours { get; private set; } = GameConstants.DefaultMtbfHours;
 
     private AssetCatalogueEntry() { }
 
@@ -42,6 +48,7 @@ public sealed class AssetCatalogueEntry
         UnlockAtAssetCount   = d.UnlockAtAssetCount;
         FixedIncomePerSecond = d.FixedIncomePerSecond;
         DisplayOrder         = d.DisplayOrder;
+        MtbfHours            = d.MtbfHours;
     }
 
     internal static string? Validate(AssetCatalogueDetails d)
@@ -51,6 +58,8 @@ public sealed class AssetCatalogueEntry
         if (d.Price <= 0m) return "Asset price must be positive.";
         if (d.UnlockAtAssetCount < 0) return "Unlock count cannot be negative.";
         if (d.FixedIncomePerSecond < 0m) return "Asset income cannot be negative.";
+        if (d.MtbfHours is < 1 or > MaxMtbfHours)
+            return $"Time between failures must be between 1 and {MaxMtbfHours} hours.";
         return null;
     }
 }

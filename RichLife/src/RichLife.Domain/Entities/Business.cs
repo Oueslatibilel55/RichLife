@@ -17,7 +17,6 @@ public class Business : BaseEntity
     public BusinessSector Sector { get; private set; }
     public PrestigeLevel RequiredPrestige { get; private set; }
     public decimal OpeningCost { get; private set; }
-    public decimal GrossIncomePerSecond { get; private set; }
     public decimal MonthlySalaryCost { get; private set; }
     /// <summary>
     /// End of the current (or last) manager shift, UTC. A manager works
@@ -37,7 +36,12 @@ public class Business : BaseEntity
     public decimal? AskingPrice { get; private set; }
     public int EmployeeCount { get; private set; }
 
-    // Assets owned by this business (trucks, cars, rooms, etc.)
+    // Places (features/014-business-places-and-equipment.md): every business has at least one.
+    private readonly List<BusinessPlace> _places = [];
+    public IReadOnlyList<BusinessPlace> Places =>
+        _places.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id).ToList();
+
+    // Units owned by this business (trucks, washers, rooms…), each standing in one place.
     private readonly List<BusinessAsset> _assets = [];
     public IReadOnlyList<BusinessAsset> Assets => _assets.AsReadOnly();
 
@@ -47,8 +51,54 @@ public class Business : BaseEntity
     // Salaries are quoted monthly and amortized over a 30-day month.
     public decimal SalaryCostPerSecond => MonthlySalaryCost / GameConstants.SecondsPerSalaryMonth;
 
-    /// <summary>Gross income (base + assets) scaled by the level; salary is not scaled.</summary>
-    public decimal NetIncomePerSecond => IncomeAt(Level);
+    /// <summary>
+    /// Gross income at <paramref name="atUtc"/>: each place's own income plus its working units,
+    /// × the place's multiplier. A broken or repairing unit earns nothing.
+    /// </summary>
+    public decimal GrossIncomePerSecondAt(DateTime atUtc) =>
+        _places.Sum(p => (p.BaseIncomePerSecond
+                          + _assets.Where(a => a.PlaceId == p.Id && a.EarnsAt(atUtc)).Sum(a => a.IncomePerSecond))
+                         * p.Multiplier);
+
+    /// <summary>Gross income with every unit working — the most the business can earn.</summary>
+    public decimal FullGrossIncomePerSecond =>
+        _places.Sum(p => (p.BaseIncomePerSecond
+                          + _assets.Where(a => a.PlaceId == p.Id).Sum(a => a.IncomePerSecond))
+                         * p.Multiplier);
+
+    /// <summary>Gross income scaled by the level, minus salaries (not scaled).</summary>
+    public decimal NetIncomePerSecondAt(DateTime atUtc) => NetAt(GrossIncomePerSecondAt(atUtc), Level);
+
+    /// <summary><see cref="NetIncomePerSecondAt"/> with every unit working.</summary>
+    public decimal FullNetIncomePerSecond => NetAt(FullGrossIncomePerSecond, Level);
+
+    /// <summary>What a unit adds to <see cref="NetIncomePerSecondAt"/> while it works.</summary>
+    public decimal UnitContributionPerSecond(BusinessAsset unit) =>
+        unit.IncomePerSecond * (PlaceOf(unit)?.Multiplier ?? 1m) * LevelMultiplier;
+
+    /// <summary>What a place adds to <see cref="NetIncomePerSecondAt"/> (before salaries).</summary>
+    public decimal PlaceIncomePerSecondAt(BusinessPlace place, DateTime atUtc) =>
+        (place.BaseIncomePerSecond
+         + _assets.Where(a => a.PlaceId == place.Id && a.EarnsAt(atUtc)).Sum(a => a.IncomePerSecond))
+        * place.Multiplier * LevelMultiplier;
+
+    public BusinessPlace? PlaceOf(BusinessAsset unit) => _places.FirstOrDefault(p => p.Id == unit.PlaceId);
+
+    public IEnumerable<BusinessAsset> UnitsIn(BusinessPlace place) =>
+        _assets.Where(a => a.PlaceId == place.Id).OrderBy(a => a.CreatedAt).ThenBy(a => a.Id);
+
+    /// <summary>What can break in this business, in a fixed order.</summary>
+    public IReadOnlyList<Operations.FaultDefinition> Faults => Operations.FaultCatalog.For(CatalogueId, Sector);
+
+    public Operations.FaultDefinition FaultOf(BusinessAsset unit) => unit.FaultFrom(Faults);
+
+    /// <summary>Standard price of fixing <paramref name="unit"/>'s fault.</summary>
+    public decimal RepairCostOf(BusinessAsset unit) => FaultOf(unit).RepairCost(unit.PurchasePrice);
+
+    public decimal FastRepairCostOf(BusinessAsset unit) =>
+        Math.Round(RepairCostOf(unit) * GameConstants.FastRepairMultiplier, 2, MidpointRounding.AwayFromZero);
+
+    public int BrokenUnitsAt(DateTime atUtc) => _assets.Count(a => a.StatusAt(atUtc) == UnitStatus.Broken);
 
     public decimal LevelMultiplier => MultiplierAt(Level);
 
@@ -66,10 +116,11 @@ public class Business : BaseEntity
         }
     }
 
-    /// <summary>What <see cref="NetIncomePerSecond"/> becomes after the next level. Null at max.</summary>
-    public decimal? NextLevelIncomePerSecond => IsMaxLevel ? null : IncomeAt(Level + 1);
+    /// <summary>What <see cref="NetIncomePerSecondAt"/> becomes after the next level. Null at max.</summary>
+    public decimal? NextLevelIncomePerSecondAt(DateTime atUtc) =>
+        IsMaxLevel ? null : NetAt(GrossIncomePerSecondAt(atUtc), Level + 1);
 
-    private decimal IncomeAt(int level) => GrossIncomePerSecond * MultiplierAt(level) - SalaryCostPerSecond;
+    private decimal NetAt(decimal gross, int level) => gross * MultiplierAt(level) - SalaryCostPerSecond;
 
     /// <summary>(1 + bonus × (level − 1)), doubled once for every milestone reached.</summary>
     public static decimal MultiplierAt(int level)
@@ -80,8 +131,9 @@ public class Business : BaseEntity
         return multiplier;
     }
 
-    /// <summary>Liquidation value: what was paid to open it plus every asset bought for it.</summary>
-    public decimal TotalValue => OpeningCost + _assets.Sum(a => a.CurrentValue);
+    /// <summary>Liquidation value: what was paid to open it, its extra places and every unit bought for it.</summary>
+    public decimal TotalValue =>
+        OpeningCost + _places.Sum(p => p.PurchasePrice) + _assets.Sum(a => a.CurrentValue);
 
     /// <summary>Price of hiring a manager, which automates the business.</summary>
     public decimal ManagerCost => OpeningCost * GameConstants.ManagerCostMultiplier;
@@ -140,28 +192,54 @@ public class Business : BaseEntity
 
     private Business() { }
 
+    /// <summary>
+    /// A new business with its first place, which comes with it (no extra price). The place
+    /// earns <paramref name="baseIncomePerSecond"/> on its own; without
+    /// <paramref name="firstPlace"/> it is a quiet "Main" place.
+    /// </summary>
     public static Business Create(
         Guid companyId, string catalogueId, string name, BusinessSector sector,
         PrestigeLevel requiredPrestige, decimal openingCost,
-        decimal grossIncomePerSecond, decimal monthlySalaryCost,
-        int employeeCount)
+        decimal baseIncomePerSecond, decimal monthlySalaryCost,
+        int employeeCount, PlaceSpec? firstPlace = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(catalogueId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        return new Business
+        var business = new Business
         {
-            CompanyId            = companyId,
-            CatalogueId          = catalogueId,
-            Name                 = name,
-            Sector               = sector,
-            RequiredPrestige     = requiredPrestige,
-            OpeningCost          = openingCost,
-            GrossIncomePerSecond = grossIncomePerSecond,
-            MonthlySalaryCost    = monthlySalaryCost,
-            EmployeeCount        = employeeCount
+            CompanyId         = companyId,
+            CatalogueId       = catalogueId,
+            Name              = name,
+            Sector            = sector,
+            RequiredPrestige  = requiredPrestige,
+            OpeningCost       = openingCost,
+            MonthlySalaryCost = monthlySalaryCost,
+            EmployeeCount     = employeeCount
         };
+        var spec = firstPlace ?? PlaceSpec.Default(openingCost);
+        business._places.Add(BusinessPlace.Create(
+            business.Id, spec.KindId, spec.Name, spec.Tier, spec.Price, purchasePrice: 0m,
+            baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel));
+        return business;
     }
+
+    /// <summary>A further place; price and the place limit are checked by the aggregate.</summary>
+    internal BusinessPlace AddPlace(PlaceSpec spec, decimal baseIncomePerSecond)
+    {
+        var place = BusinessPlace.Create(
+            Id, spec.KindId, spec.Name, spec.Tier, spec.Price, purchasePrice: spec.Price,
+            baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel);
+        _places.Add(place);
+        MarkUpdated();
+        return place;
+    }
+
+    /// <summary>The first place (in opening order) with room for one more unit.</summary>
+    public BusinessPlace? FirstPlaceWithRoom() =>
+        Places.FirstOrDefault(p => _assets.Count(a => a.PlaceId == p.Id) < p.Capacity);
+
+    public int UnitCountIn(BusinessPlace place) => _assets.Count(a => a.PlaceId == place.Id);
 
     /// <summary>True while a manager shift is running at <paramref name="atUtc"/>.</summary>
     public bool HasManagerAt(DateTime atUtc) => ManagerUntil > atUtc;
@@ -196,10 +274,93 @@ public class Business : BaseEntity
         MarkUpdated();
     }
 
+    /// <summary>Puts a unit in one of this business's places. Room and price are checked by the aggregate.</summary>
     public void AddAsset(BusinessAsset asset)
     {
+        ArgumentNullException.ThrowIfNull(asset);
+        if (_places.All(p => p.Id != asset.PlaceId))
+            throw new ArgumentException("The unit's place does not belong to this business.", nameof(asset));
         _assets.Add(asset);
-        GrossIncomePerSecond += asset.IncomePerSecond;
+        MarkUpdated();
+    }
+
+    // -- Breakdowns (features/014-business-places-and-equipment.md) ------------------
+
+    /// <summary>
+    /// Net earnings (before prestige) of time away in [<paramref name="fromUtc"/>, <paramref name="toUtc"/>):
+    /// only the part the manager's shift covers counts, each unit only while it works, and the
+    /// part before <paramref name="boostEndUtc"/> counts <see cref="GameConstants.BoostMultiplier"/>
+    /// times. A unit that breaks during the shift is repaired by the manager at the standard
+    /// price when <paramref name="tryPay"/> accepts it, and earns again once fixed.
+    /// </summary>
+    internal OfflineRun EarnOffline(
+        DateTime fromUtc, DateTime toUtc, DateTime? boostEndUtc, Func<decimal, bool> tryPay)
+    {
+        if (ManagerUntil is not { } until) return default;
+        var shiftStart = until - GameConstants.ManagerShift;
+        var ms = fromUtc > shiftStart ? fromUtc : shiftStart;
+        var me = toUtc < until ? toUtc : until;
+        if (me <= ms) return default;
+
+        var extra = GameConstants.BoostMultiplier - 1m;
+        var be = boostEndUtc is { } b && b > ms ? (b < me ? b : me) : ms;
+        decimal Weight(DateTime a1, DateTime a2) =>
+            Common.Time.Overlap(a1, a2, ms, me) + extra * Common.Time.Overlap(a1, a2, ms, be);
+
+        var gross = _places.Sum(p => p.BaseIncomePerSecond * p.Multiplier) * Weight(ms, me);
+        var repairs = 0;
+        var spent = 0m;
+        foreach (var unit in _assets.OrderBy(a => a.BreaksAt))
+        {
+            var multiplier = PlaceOf(unit)?.Multiplier ?? 1m;
+            // Each repair moves the unit's window past the last one, so this always ends.
+            for (var guard = 0; guard < 100; guard++)
+            {
+                gross += unit.IncomePerSecond * multiplier * Weight(unit.WorkingFrom, unit.BreaksAt);
+                if (unit.BreaksAt >= me || unit.WorkingFrom > unit.BreaksAt) break;
+
+                var fault = FaultOf(unit);
+                var cost = fault.RepairCost(unit.PurchasePrice);
+                if (!tryPay(cost)) break;
+
+                var at = unit.BreaksAt > ms ? unit.BreaksAt : ms;
+                unit.Repair(at, TimeSpan.FromHours(fault.RepairHours));
+                repairs++;
+                spent += cost;
+            }
+        }
+
+        var net = gross * LevelMultiplier - SalaryCostPerSecond * Weight(ms, me);
+        return new OfflineRun(net, repairs, spent);
+    }
+
+    /// <summary>
+    /// While a shift runs, the manager repairs every broken unit at the standard price, as far as
+    /// <paramref name="tryPay"/> allows. Returns how many and what they cost.
+    /// </summary>
+    internal (int Repairs, decimal Spent) RepairUnderManager(DateTime nowUtc, Func<decimal, bool> tryPay)
+    {
+        if (!HasManagerAt(nowUtc)) return (0, 0m);
+        var repairs = 0;
+        var spent = 0m;
+        foreach (var unit in _assets.Where(a => a.StatusAt(nowUtc) == UnitStatus.Broken).OrderBy(a => a.BreaksAt))
+        {
+            var fault = FaultOf(unit);
+            var cost = fault.RepairCost(unit.PurchasePrice);
+            if (!tryPay(cost)) continue;
+            unit.Repair(nowUtc, TimeSpan.FromHours(fault.RepairHours));
+            repairs++;
+            spent += cost;
+        }
+        if (repairs > 0) MarkUpdated();
+        return (repairs, spent);
+    }
+
+    /// <summary>Starts a repair: back after the fault's repair time, or at once when <paramref name="fast"/>.</summary>
+    internal void RepairUnit(BusinessAsset unit, bool fast, DateTime nowUtc)
+    {
+        var hours = fast ? 0 : FaultOf(unit).RepairHours;
+        unit.Repair(nowUtc, TimeSpan.FromHours(hours));
         MarkUpdated();
     }
 

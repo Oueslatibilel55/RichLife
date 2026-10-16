@@ -36,6 +36,11 @@ public class CatalogueAdminService(ICatalogueRepository catalogueRepo, IUnitOfWo
             var added = entry.AddAsset(asset.Id, CatalogueMapper.ToDetails(asset));
             if (!added.IsSuccess) return Result.Fail<AdminCatalogueEntryDto>(added.Error!);
         }
+        foreach (var kind in req.PlaceKinds ?? [])
+        {
+            var added = entry.AddPlaceKind(kind.Id, CatalogueMapper.ToDetails(kind));
+            if (!added.IsSuccess) return Result.Fail<AdminCatalogueEntryDto>(added.Error!);
+        }
 
         await catalogueRepo.AddAsync(entry, ct);
         await uow.CommitAsync(ct);
@@ -44,7 +49,7 @@ public class CatalogueAdminService(ICatalogueRepository catalogueRepo, IUnitOfWo
 
     public Task<Result<AdminCatalogueEntryDto>> UpdateAsync(
         string id, UpdateCatalogueEntryRequest req, CancellationToken ct = default)
-        => EditAsync(id, e => e.Update(CatalogueMapper.ToDetails(req), req.IsActive), ct);
+        => EditAsync(id, e => e.Update(CatalogueMapper.ToDetails(req, e), req.IsActive), ct);
 
     public Task<Result<AdminCatalogueEntryDto>> AddAssetAsync(
         string id, CreateCatalogueAssetRequest req, CancellationToken ct = default)
@@ -52,11 +57,23 @@ public class CatalogueAdminService(ICatalogueRepository catalogueRepo, IUnitOfWo
 
     public Task<Result<AdminCatalogueEntryDto>> UpdateAssetAsync(
         string id, string assetId, UpdateCatalogueAssetRequest req, CancellationToken ct = default)
-        => EditAsync(id, e => e.UpdateAsset(assetId, CatalogueMapper.ToDetails(req)), ct);
+        => EditAsync(id, e => e.UpdateAsset(assetId, CatalogueMapper.ToDetails(req, e.FindAsset(assetId))), ct);
 
     public Task<Result<AdminCatalogueEntryDto>> RemoveAssetAsync(
         string id, string assetId, CancellationToken ct = default)
         => EditAsync(id, e => e.RemoveAsset(assetId), ct);
+
+    public Task<Result<AdminCatalogueEntryDto>> AddPlaceKindAsync(
+        string id, CreatePlaceKindRequest req, CancellationToken ct = default)
+        => EditAsync(id, e => e.AddPlaceKind(req.Id, CatalogueMapper.ToDetails(req)), ct);
+
+    public Task<Result<AdminCatalogueEntryDto>> UpdatePlaceKindAsync(
+        string id, string kindId, UpdatePlaceKindRequest req, CancellationToken ct = default)
+        => EditAsync(id, e => e.UpdatePlaceKind(kindId, CatalogueMapper.ToDetails(req)), ct);
+
+    public Task<Result<AdminCatalogueEntryDto>> RemovePlaceKindAsync(
+        string id, string kindId, CancellationToken ct = default)
+        => EditAsync(id, e => e.RemovePlaceKind(kindId), ct);
 
     /// <summary>Load tracked, apply one aggregate method, commit only if it succeeded.</summary>
     private async Task<Result<AdminCatalogueEntryDto>> EditAsync(

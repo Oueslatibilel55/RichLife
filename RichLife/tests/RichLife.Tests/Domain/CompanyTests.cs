@@ -260,7 +260,7 @@ public class CompanyTests
 
         Assert.Equal("food-cart", business.CatalogueId);
         Assert.Equal(1_000m, business.OpeningCost);
-        Assert.Equal(5m, business.GrossIncomePerSecond);
+        Assert.Equal(5m, business.FullGrossIncomePerSecond);
     }
 
     // -- Buying assets ------------------------------------------------------
@@ -274,11 +274,11 @@ public class CompanyTests
         entry.AddAsset("menu-item", CatalogueFixtures.AssetDetails(price: 500m, fixedIncomePerSecond: 2m));
         var business = company.OpenBusiness(entry).Value;
 
-        var result = company.BuyAsset(business.Id, entry, "menu-item");
+        var result = company.BuyAsset(business.Id, entry, "menu-item", T0);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(8_500m, company.Cash);
-        Assert.Equal(7m, business.GrossIncomePerSecond);
+        Assert.Equal(7m, business.FullGrossIncomePerSecond);
         Assert.Equal(1_500m, business.TotalValue);
     }
 
@@ -290,7 +290,7 @@ public class CompanyTests
         var entry = NewEntry();
         var business = company.OpenBusiness(entry).Value;
 
-        var result = company.BuyAsset(business.Id, entry, "truck");
+        var result = company.BuyAsset(business.Id, entry, "truck", T0);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Asset not available for this business.", result.Error);
@@ -306,7 +306,7 @@ public class CompanyTests
         var business = company.OpenBusiness(entry).Value;
         var cashBefore = company.Cash;
 
-        var result = company.BuyAsset(business.Id, entry, "premium-dish");
+        var result = company.BuyAsset(business.Id, entry, "premium-dish", T0);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Need 2 assets to unlock this.", result.Error);
@@ -322,7 +322,7 @@ public class CompanyTests
         entry.AddAsset("menu-item", CatalogueFixtures.AssetDetails(price: 500m));
         var business = company.OpenBusiness(entry).Value;
 
-        var result = company.BuyAsset(business.Id, entry, "menu-item");
+        var result = company.BuyAsset(business.Id, entry, "menu-item", T0);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Insufficient funds.", result.Error);
@@ -339,7 +339,7 @@ public class CompanyTests
         var business = company.OpenBusiness(entry).Value;
         entry.Update(CatalogueFixtures.Details(), isActive: false);
 
-        Assert.True(company.BuyAsset(business.Id, entry, "menu-item").IsSuccess);
+        Assert.True(company.BuyAsset(business.Id, entry, "menu-item", T0).IsSuccess);
     }
 
     [Fact]
@@ -347,7 +347,7 @@ public class CompanyTests
     {
         var company = NewCompany();
 
-        var result = company.BuyAsset(Guid.NewGuid(), NewEntry(), "menu-item");
+        var result = company.BuyAsset(Guid.NewGuid(), NewEntry(), "menu-item", T0);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Business not found.", result.Error);
@@ -360,7 +360,7 @@ public class CompanyTests
         company.AddCash(10_000m);
         var business = company.OpenBusiness(NewEntry("food-cart")).Value;
 
-        Assert.Throws<ArgumentException>(() => company.BuyAsset(business.Id, NewEntry("car-wash"), "menu-item"));
+        Assert.Throws<ArgumentException>(() => company.BuyAsset(business.Id, NewEntry("car-wash"), "menu-item", T0));
     }
 
     [Fact]
@@ -369,7 +369,7 @@ public class CompanyTests
         var company = NewCompany();
         company.AddCash(10_000m);
         var business = company.OpenBusiness(NewEntry(openingCost: 1_000m)).Value;
-        business.AddAsset(BusinessAsset.Create(business.Id, "Truck", 500m, 0.15m));
+        business.AddAsset(BusinessAsset.Create(business.Id, business.Places[0].Id, null, "Truck", 500m, 0.15m, 48, T0));
 
         var cashBefore = company.Cash;
         var result = company.CloseBusiness(business.Id);
@@ -838,7 +838,7 @@ public class CompanyTests
         Assert.Equal(1, business.Level);
         Assert.Equal(1m, business.LevelMultiplier);
         Assert.Equal(1_000m, business.NextLevelCost);
-        Assert.Equal(5.5m, business.NextLevelIncomePerSecond);
+        Assert.Equal(5.5m, business.NextLevelIncomePerSecondAt(T0));
     }
 
     [Fact]
@@ -852,7 +852,7 @@ public class CompanyTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, business.Level);
-        Assert.Equal(5.5m, business.NetIncomePerSecond);
+        Assert.Equal(5.5m, business.FullNetIncomePerSecond);
         Assert.Equal(3_000m, company.Cash);           // 5,000 − 1,000 opening − 1,000 level
         Assert.Equal(1_250m, business.NextLevelCost); // × 1.25
     }
@@ -872,11 +872,11 @@ public class CompanyTests
         var company = NewCompany();
         company.AddCash(10_000m);
         var business = company.OpenBusiness(NewEntry(openingCost: 1_000m, grossIncomePerSecond: 5m)).Value;
-        business.AddAsset(BusinessAsset.Create(business.Id, "Truck", 500m, 5m)); // gross 10
+        business.AddAsset(BusinessAsset.Create(business.Id, business.Places[0].Id, null, "Truck", 500m, 5m, 48, T0)); // gross 10
 
         company.LevelUpBusiness(business.Id);
 
-        Assert.Equal(11m, business.NetIncomePerSecond);
+        Assert.Equal(11m, business.FullNetIncomePerSecond);
     }
 
     [Fact]
@@ -885,11 +885,11 @@ public class CompanyTests
         var company = NewCompany();
         company.AddCash(5_000m);
         var business = company.OpenBusiness(NewEntry(openingCost: 1_000m, grossIncomePerSecond: 5m)).Value;
-        var before = company.IncomePerSecond;
+        var before = company.FullIncomePerSecond;
 
         company.LevelUpBusiness(business.Id);
 
-        Assert.Equal(before + 0.5m, company.IncomePerSecond);
+        Assert.Equal(before + 0.5m, company.FullIncomePerSecond);
     }
 
     [Fact]
@@ -922,7 +922,7 @@ public class CompanyTests
         Assert.False(result.IsSuccess);
         Assert.Equal("Business is already at max level.", result.Error);
         Assert.Null(business.NextLevelCost);
-        Assert.Null(business.NextLevelIncomePerSecond);
+        Assert.Null(business.NextLevelIncomePerSecondAt(T0));
     }
 
     [Fact]

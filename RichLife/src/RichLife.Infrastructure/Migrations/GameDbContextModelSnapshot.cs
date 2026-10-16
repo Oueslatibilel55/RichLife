@@ -62,6 +62,12 @@ namespace RichLife.Infrastructure.Migrations
                         .HasPrecision(20, 4)
                         .HasColumnType("numeric(20,4)");
 
+                    b.Property<int>("PlaceBaseCapacity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlaceCapacityPerLevel")
+                        .HasColumnType("integer");
+
                     b.Property<int>("RequiredPrestige")
                         .HasColumnType("integer");
 
@@ -206,10 +212,6 @@ namespace RichLife.Infrastructure.Migrations
                     b.Property<int>("EmployeeCount")
                         .HasColumnType("integer");
 
-                    b.Property<decimal>("GrossIncomePerSecond")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("numeric(20,6)");
-
                     b.Property<bool>("IsForSale")
                         .HasColumnType("boolean");
 
@@ -276,8 +278,15 @@ namespace RichLife.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("BreaksAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("BusinessId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("CatalogueId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -288,12 +297,86 @@ namespace RichLife.Infrastructure.Migrations
                     b.Property<decimal>("IncomePerSecond")
                         .HasColumnType("numeric");
 
+                    b.Property<int>("MtbfHours")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid>("PlaceId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("PurchasePrice")
                         .HasColumnType("numeric");
+
+                    b.Property<int>("RepairCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("WorkingFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("PlaceId");
+
+                    b.ToTable("BusinessAssets", (string)null);
+                });
+
+            modelBuilder.Entity("RichLife.Domain.Entities.BusinessPlace", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BaseCapacity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("BaseIncomePerSecond")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CapacityPerLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("KindId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<decimal>("PurchasePrice")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)");
+
+                    b.Property<string>("Street")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -302,7 +385,7 @@ namespace RichLife.Infrastructure.Migrations
 
                     b.HasIndex("BusinessId");
 
-                    b.ToTable("BusinessAssets");
+                    b.ToTable("business_places", (string)null);
                 });
 
             modelBuilder.Entity("RichLife.Domain.Entities.Company", b =>
@@ -623,6 +706,9 @@ namespace RichLife.Infrastructure.Migrations
                                 .HasPrecision(20, 6)
                                 .HasColumnType("numeric(20,6)");
 
+                            b1.Property<int>("MtbfHours")
+                                .HasColumnType("integer");
+
                             b1.Property<string>("Name")
                                 .IsRequired()
                                 .HasMaxLength(80)
@@ -643,7 +729,41 @@ namespace RichLife.Infrastructure.Migrations
                                 .HasForeignKey("BusinessCatalogueId");
                         });
 
+                    b.OwnsMany("RichLife.Domain.Catalogue.PlaceKindEntry", "PlaceKinds", b1 =>
+                        {
+                            b1.Property<string>("BusinessCatalogueId")
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<string>("Id")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<int>("DisplayOrder")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)");
+
+                            b1.Property<decimal>("Price")
+                                .HasPrecision(20, 4)
+                                .HasColumnType("numeric(20,4)");
+
+                            b1.Property<int>("Tier")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("BusinessCatalogueId", "Id");
+
+                            b1.ToTable("catalogue_place_kinds", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("BusinessCatalogueId");
+                        });
+
                     b.Navigation("AvailableAssets");
+
+                    b.Navigation("PlaceKinds");
                 });
 
             modelBuilder.Entity("RichLife.Domain.Entities.Asset", b =>
@@ -679,6 +799,21 @@ namespace RichLife.Infrastructure.Migrations
                 {
                     b.HasOne("RichLife.Domain.Entities.Business", null)
                         .WithMany("Assets")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RichLife.Domain.Entities.BusinessPlace", null)
+                        .WithMany()
+                        .HasForeignKey("PlaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RichLife.Domain.Entities.BusinessPlace", b =>
+                {
+                    b.HasOne("RichLife.Domain.Entities.Business", null)
+                        .WithMany("Places")
                         .HasForeignKey("BusinessId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -795,6 +930,8 @@ namespace RichLife.Infrastructure.Migrations
             modelBuilder.Entity("RichLife.Domain.Entities.Business", b =>
                 {
                     b.Navigation("Assets");
+
+                    b.Navigation("Places");
                 });
 
             modelBuilder.Entity("RichLife.Domain.Entities.Company", b =>

@@ -62,9 +62,16 @@ public class Company : AggregateRoot
     public int PrestigeCount { get; private set; }
     public decimal PrestigeMultiplier => 1m + (GameConstants.PrestigeMultiplierPerLevel * PrestigeCount);
 
-    /// <summary>Income while the player is connected: every business contributes.</summary>
-    public decimal IncomePerSecond =>
-        (PassiveIncomePerSecond + _businesses.Sum(b => b.NetIncomePerSecond)) * PrestigeMultiplier;
+    /// <summary>
+    /// Income while the player is connected, at <paramref name="atUtc"/>: every business
+    /// contributes, each with only its working units (a broken unit earns nothing).
+    /// </summary>
+    public decimal IncomePerSecondAt(DateTime atUtc) =>
+        (PassiveIncomePerSecond + _businesses.Sum(b => b.NetIncomePerSecondAt(atUtc))) * PrestigeMultiplier;
+
+    /// <summary>Online income with every unit working — the ceiling the sync check allows.</summary>
+    public decimal FullIncomePerSecond =>
+        (PassiveIncomePerSecond + _businesses.Sum(b => b.FullNetIncomePerSecond)) * PrestigeMultiplier;
 
     /// <summary>
     /// Income per second while away, as of <paramref name="atUtc"/>: base income plus every
@@ -72,7 +79,7 @@ public class Company : AggregateRoot
     /// away is computed per shift by <see cref="ApplyOfflineProgress"/>.
     /// </summary>
     public decimal OfflineIncomePerSecondAt(DateTime atUtc) =>
-        (PassiveIncomePerSecond + _businesses.Where(b => b.HasManagerAt(atUtc)).Sum(b => b.NetIncomePerSecond))
+        (PassiveIncomePerSecond + _businesses.Where(b => b.HasManagerAt(atUtc)).Sum(b => b.NetIncomePerSecondAt(atUtc)))
         * PrestigeMultiplier;
 
     // Sync
@@ -124,9 +131,16 @@ public class Company : AggregateRoot
     /// capped at <see cref="GameConstants.OfflineCap"/>; base income is paid for all of it,
     /// each business only for the part its manager's shift covers. Returns the amount credited.
     /// </summary>
-    public decimal ApplyOfflineProgress(TimeSpan elapsed)
+    public decimal ApplyOfflineProgress(TimeSpan elapsed) => ApplyOfflineRun(elapsed).Earned;
+
+    /// <summary>
+    /// <see cref="ApplyOfflineProgress"/>, also reporting the repairs managers made while away:
+    /// a unit that breaks during a shift is repaired at the standard price when cash covers it
+    /// (features/014-business-places-and-equipment.md).
+    /// </summary>
+    public OfflineRun ApplyOfflineRun(TimeSpan elapsed)
     {
-        if (elapsed <= TimeSpan.Zero) return 0m;
+        if (elapsed <= TimeSpan.Zero) return default;
 
         var effective = elapsed > GameConstants.OfflineCap ? GameConstants.OfflineCap : elapsed;
         var from = LastSyncAt;
@@ -139,17 +153,20 @@ public class Company : AggregateRoot
         var baseEarned = PassiveIncomePerSecond
             * ((decimal)effective.TotalSeconds + extra * BoostedSecondsWithin(from, to));
         var earned = baseEarned * PrestigeMultiplier;
+        var repairs = 0;
+        var repairsPaid = 0m;
         foreach (var b in _businesses)
         {
-            var seconds = b.ManagedSecondsWithin(from, to)
-                + (boostEnd is { } end ? extra * b.ManagedSecondsWithin(from, end) : 0m);
-            var businessEarned = b.NetIncomePerSecond * seconds * PrestigeMultiplier;
+            var run = b.EarnOffline(from, to, boostEnd, TryPayRepair);
+            var businessEarned = run.Earned * PrestigeMultiplier;
             b.RecordEarnings(businessEarned);   // what each business made is what it is taxed on
             earned += businessEarned;
+            repairs += run.Repairs;
+            repairsPaid += run.RepairsPaid;
         }
 
         AddCash(earned);
-        return earned;
+        return new OfflineRun(earned, repairs, repairsPaid);
     }
 
     /// <summary>
@@ -157,12 +174,24 @@ public class Company : AggregateRoot
     /// watermark forward. This is the only place that advances <see cref="LastSyncAt"/>
     /// for accrual, so <c>/state</c> and <c>/sync</c> cannot double-credit the same window.
     /// </summary>
-    public decimal AccrueOffline(DateTime nowUtc)
+    public decimal AccrueOffline(DateTime nowUtc) => AccrueOfflineRun(nowUtc).Earned;
+
+    /// <summary><see cref="AccrueOffline"/>, with the repairs managers made while away.</summary>
+    public OfflineRun AccrueOfflineRun(DateTime nowUtc)
     {
-        var earned = ApplyOfflineProgress(nowUtc - LastSyncAt);
+        var run = ApplyOfflineRun(nowUtc - LastSyncAt);
         LastSyncAt = nowUtc;
         MarkUpdated();
-        return earned;
+        return run;
+    }
+
+    /// <summary>A manager's repair is paid from cash, only when cash covers it — never into the red.</summary>
+    private bool TryPayRepair(decimal cost)
+    {
+        if (cost > Cash) return false;
+        Cash -= cost;
+        MarkUpdated();
+        return true;
     }
 
     /// <summary>
@@ -175,7 +204,8 @@ public class Company : AggregateRoot
         var elapsed = nowUtc - LastSyncAt;
         var seconds = elapsed <= TimeSpan.Zero ? 0m : (decimal)elapsed.TotalSeconds;
         seconds += (GameConstants.BoostMultiplier - 1m) * BoostedSecondsWithin(LastSyncAt, nowUtc);
-        return Cash + (IncomePerSecond * seconds * GameConstants.SyncTolerance);
+        // Every unit counted as working: breakdowns only ever lower income, so this stays a ceiling.
+        return Cash + (FullIncomePerSecond * seconds * GameConstants.SyncTolerance);
     }
 
     /// <summary>
@@ -203,7 +233,7 @@ public class Company : AggregateRoot
         if (gained > 0m)
         {
             AllTimeEarnings += gained;
-            RecordOnlineBusinessEarnings(gained);
+            RecordOnlineBusinessEarnings(gained, nowUtc);
         }
 
         Cash = accepted;
@@ -217,12 +247,13 @@ public class Company : AggregateRoot
     /// credited its share of it by income rate (the prestige and boost multipliers apply to
     /// all alike). A business losing money (salary above income) earns nothing taxable.
     /// </summary>
-    private void RecordOnlineBusinessEarnings(decimal gained)
+    private void RecordOnlineBusinessEarnings(decimal gained, DateTime nowUtc)
     {
-        var total = PassiveIncomePerSecond + _businesses.Sum(b => Math.Max(b.NetIncomePerSecond, 0m));
+        var rates = _businesses.ToDictionary(b => b, b => Math.Max(b.NetIncomePerSecondAt(nowUtc), 0m));
+        var total = PassiveIncomePerSecond + rates.Values.Sum();
         if (total <= 0m) return;
-        foreach (var b in _businesses)
-            if (b.NetIncomePerSecond > 0m) b.RecordEarnings(gained * b.NetIncomePerSecond / total);
+        foreach (var (b, rate) in rates)
+            if (rate > 0m) b.RecordEarnings(gained * rate / total);
     }
 
     public void AddCash(decimal amount)
@@ -270,28 +301,168 @@ public class Company : AggregateRoot
     /// Buys one of <paramref name="entry"/>'s assets for an owned business. Deliberately
     /// allowed on a retired entry: retiring stops new openings, not existing owners.
     /// </summary>
-    public Result<Business> BuyAsset(Guid businessId, BusinessCatalogueEntry entry, string assetCatalogueId)
+    /// <remarks>
+    /// Kept from before places existed (contract §5): the unit goes into the first place with
+    /// room. <see cref="BuyUnit"/> chooses the place.
+    /// </remarks>
+    public Result<Business> BuyAsset(Guid businessId, BusinessCatalogueEntry entry, string assetCatalogueId, DateTime nowUtc)
     {
         var business = _businesses.FirstOrDefault(b => b.Id == businessId);
         if (business is null) return Result.Fail<Business>("Business not found.");
+        EnsureMatches(business, entry);
 
-        if (business.CatalogueId != entry.Id)
-            throw new ArgumentException(
-                $"Catalogue entry '{entry.Id}' does not match business '{business.CatalogueId}'.",
-                nameof(entry));
+        var place = business.FirstPlaceWithRoom();
+        if (place is null)
+            return Result.Fail<Business>("This place is full. Upgrade it or open another place.");
+        return BuyUnit(business, place, entry, assetCatalogueId, nowUtc);
+    }
 
+    // -- Places and units (features/014-business-places-and-equipment.md) --------
+
+    /// <summary>Buys a unit into one place of a business. Allowed on a retired entry, like assets.</summary>
+    public Result<Business> BuyUnit(Guid placeId, BusinessCatalogueEntry entry, string assetCatalogueId, DateTime nowUtc)
+    {
+        var (business, place) = FindPlace(placeId);
+        if (business is null || place is null) return Result.Fail<Business>("Place not found.");
+        EnsureMatches(business, entry);
+        return BuyUnit(business, place, entry, assetCatalogueId, nowUtc);
+    }
+
+    private Result<Business> BuyUnit(
+        Business business, BusinessPlace place, BusinessCatalogueEntry entry, string assetCatalogueId, DateTime nowUtc)
+    {
         var asset = entry.FindAsset(assetCatalogueId);
         if (asset is null) return Result.Fail<Business>("Asset not available for this business.");
 
         if (business.Assets.Count < asset.UnlockAtAssetCount)
             return Result.Fail<Business>($"Need {asset.UnlockAtAssetCount} assets to unlock this.");
 
+        if (business.UnitCountIn(place) >= place.Capacity)
+            return Result.Fail<Business>("This place is full. Upgrade it or open another place.");
+
         var deduct = DeductCash(asset.Price);
         if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
 
-        business.AddAsset(BusinessAsset.Create(business.Id, asset.Name, asset.Price, entry.IncomeFor(asset)));
+        business.AddAsset(BusinessAsset.Create(
+            business.Id, place.Id, asset.Id, asset.Name, asset.Price, entry.IncomeFor(asset), asset.MtbfHours, nowUtc));
         MarkUpdated();
         return Result.Ok(business);
+    }
+
+    /// <summary>
+    /// Opens another place of an owned business, of one of the entry's place kinds, at the
+    /// kind's price. It earns the entry's base income × its tier, like the first place.
+    /// </summary>
+    public Result<Business> OpenPlace(Guid businessId, BusinessCatalogueEntry entry, string placeKindId)
+    {
+        var business = _businesses.FirstOrDefault(b => b.Id == businessId);
+        if (business is null) return Result.Fail<Business>("Business not found.");
+        EnsureMatches(business, entry);
+
+        var kind = entry.FindPlaceKind(placeKindId);
+        if (kind is null) return Result.Fail<Business>("Place not available for this business.");
+        if (business.Places.Count >= GameConstants.MaxPlacesPerBusiness)
+            return Result.Fail<Business>(string.Create(CultureInfo.InvariantCulture,
+                $"A business can have at most {GameConstants.MaxPlacesPerBusiness} places."));
+
+        var deduct = DeductCash(kind.Price);
+        if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
+
+        business.AddPlace(entry.SpecFor(kind), entry.BaseIncomePerSecond);
+        MarkUpdated();
+        return Result.Ok(business);
+    }
+
+    /// <summary>Pays <see cref="BusinessPlace.NextLevelCost"/>: more room and +5 % income for that place.</summary>
+    public Result<Business> LevelUpPlace(Guid placeId)
+    {
+        var (business, place) = FindPlace(placeId);
+        if (business is null || place is null) return Result.Fail<Business>("Place not found.");
+        if (place.NextLevelCost is not { } cost) return Result.Fail<Business>("Place is already at max level.");
+
+        var deduct = DeductCash(cost);
+        if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
+
+        place.LevelUp();
+        MarkUpdated();
+        return Result.Ok(business);
+    }
+
+    /// <summary>
+    /// Repairs a broken unit: the standard price brings it back after the fault's repair time,
+    /// a fast repair costs <see cref="GameConstants.FastRepairMultiplier"/> times more and is done at once.
+    /// </summary>
+    public Result<Business> RepairUnit(Guid unitId, bool fast, DateTime nowUtc)
+    {
+        var business = _businesses.FirstOrDefault(b => b.Assets.Any(a => a.Id == unitId));
+        if (business is null) return Result.Fail<Business>("Unit not found.");
+        var unit = business.Assets.First(a => a.Id == unitId);
+
+        switch (unit.StatusAt(nowUtc))
+        {
+            case UnitStatus.Working:   return Result.Fail<Business>("This unit is working.");
+            case UnitStatus.Repairing: return Result.Fail<Business>("Already being repaired.");
+        }
+
+        var cost = fast ? business.FastRepairCostOf(unit) : business.RepairCostOf(unit);
+        var deduct = DeductCash(cost);
+        if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
+
+        business.RepairUnit(unit, fast, nowUtc);
+        MarkUpdated();
+        return Result.Ok(business);
+    }
+
+    /// <summary>Standard repair of every broken unit of a business, paid at once — all or nothing.</summary>
+    public Result<Business> RepairAllUnits(Guid businessId, DateTime nowUtc)
+    {
+        var business = _businesses.FirstOrDefault(b => b.Id == businessId);
+        if (business is null) return Result.Fail<Business>("Business not found.");
+
+        var broken = business.Assets.Where(a => a.StatusAt(nowUtc) == UnitStatus.Broken).ToList();
+        if (broken.Count == 0) return Result.Fail<Business>("Nothing to repair.");
+
+        var deduct = DeductCash(broken.Sum(business.RepairCostOf));
+        if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
+
+        foreach (var unit in broken) business.RepairUnit(unit, fast: false, nowUtc);
+        MarkUpdated();
+        return Result.Ok(business);
+    }
+
+    /// <summary>
+    /// Every business with a manager on shift has its broken units repaired at the standard
+    /// price, as far as cash allows. Called by <c>/sync</c> and <c>/state</c>.
+    /// </summary>
+    public (int Repairs, decimal Spent) RunManagerRepairs(DateTime nowUtc)
+    {
+        var repairs = 0;
+        var spent = 0m;
+        foreach (var b in _businesses)
+        {
+            var (r, s) = b.RepairUnderManager(nowUtc, TryPayRepair);
+            repairs += r;
+            spent += s;
+        }
+        return (repairs, spent);
+    }
+
+    private (Business? Business, BusinessPlace? Place) FindPlace(Guid placeId)
+    {
+        foreach (var b in _businesses)
+        {
+            var place = b.Places.FirstOrDefault(p => p.Id == placeId);
+            if (place is not null) return (b, place);
+        }
+        return (null, null);
+    }
+
+    private static void EnsureMatches(Business business, BusinessCatalogueEntry entry)
+    {
+        if (business.CatalogueId != entry.Id)
+            throw new ArgumentException(
+                $"Catalogue entry '{entry.Id}' does not match business '{business.CatalogueId}'.",
+                nameof(entry));
     }
 
     /// <summary>

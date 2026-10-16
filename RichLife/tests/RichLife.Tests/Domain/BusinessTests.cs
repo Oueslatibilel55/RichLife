@@ -7,6 +7,8 @@ namespace RichLife.Tests.Domain;
 
 public class BusinessTests
 {
+    private static readonly DateTime T0 = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
     private static Business NewBusiness(
         decimal openingCost = 1_000m,
         decimal grossIncomePerSecond = 5m,
@@ -22,7 +24,7 @@ public class BusinessTests
 
         // A monthly salary equal to the seconds in the month costs exactly $1/s.
         Assert.Equal(1m, business.SalaryCostPerSecond);
-        Assert.Equal(4m, business.NetIncomePerSecond);
+        Assert.Equal(4m, business.FullNetIncomePerSecond);
     }
 
     [Fact]
@@ -30,15 +32,15 @@ public class BusinessTests
     {
         var business = NewBusiness(grossIncomePerSecond: 1m, monthlySalaryCost: 2_592_000m * 3m);
 
-        Assert.Equal(-2m, business.NetIncomePerSecond);
+        Assert.Equal(-2m, business.FullNetIncomePerSecond);
     }
 
     [Fact]
     public void TotalValue_IsOpeningCostPlusAssets()
     {
         var business = NewBusiness(openingCost: 1_000m);
-        business.AddAsset(BusinessAsset.Create(business.Id, "Truck", 500m, 0.15m));
-        business.AddAsset(BusinessAsset.Create(business.Id, "Van", 250m, 0.08m));
+        business.AddAsset(BusinessAsset.Create(business.Id, business.Places[0].Id, null, "Truck", 500m, 0.15m, 48, T0));
+        business.AddAsset(BusinessAsset.Create(business.Id, business.Places[0].Id, null, "Van", 250m, 0.08m, 48, T0));
 
         Assert.Equal(1_750m, business.TotalValue);
     }
@@ -48,9 +50,9 @@ public class BusinessTests
     {
         var business = NewBusiness(grossIncomePerSecond: 5m);
 
-        business.AddAsset(BusinessAsset.Create(business.Id, "Truck", 500m, 0.15m));
+        business.AddAsset(BusinessAsset.Create(business.Id, business.Places[0].Id, null, "Truck", 500m, 0.15m, 48, T0));
 
-        Assert.Equal(5.15m, business.GrossIncomePerSecond);
+        Assert.Equal(5.15m, business.FullGrossIncomePerSecond);
         Assert.Single(business.Assets);
     }
 

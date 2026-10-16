@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   AdminBank,
   AdminCatalogueEntry,
+  AdminPlaceKind,
   AdminLoan,
   AdminLuxuryItem,
   AdminPlayer,
@@ -113,6 +114,19 @@ export class AdminService {
 
   removeAsset(entryId: string, assetId: string): Observable<AdminCatalogueEntry> {
     return this.http.delete<AdminCatalogueEntry>(`${this.api}/catalogue/${entryId}/assets/${assetId}`);
+  }
+
+  addPlaceKind(entryId: string, kind: AdminPlaceKind): Observable<AdminCatalogueEntry> {
+    return this.http.post<AdminCatalogueEntry>(`${this.api}/catalogue/${entryId}/places`, kind);
+  }
+
+  updatePlaceKind(entryId: string, kind: AdminPlaceKind): Observable<AdminCatalogueEntry> {
+    const { id, ...body } = kind;
+    return this.http.put<AdminCatalogueEntry>(`${this.api}/catalogue/${entryId}/places/${id}`, body);
+  }
+
+  removePlaceKind(entryId: string, kindId: string): Observable<AdminCatalogueEntry> {
+    return this.http.delete<AdminCatalogueEntry>(`${this.api}/catalogue/${entryId}/places/${kindId}`);
   }
 
   // -- Manager names --------------------------------------------------------------

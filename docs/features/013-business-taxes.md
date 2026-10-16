@@ -29,7 +29,7 @@ ignoring it, but never a negative balance.
 - **Consequences of not paying**:
   - Prestige is refused: `"Pay your taxes before prestige."`.
   - That business can't be closed: `"Pay this business's taxes before closing it."` — otherwise
-    closing would escape the bill.
+    closing would escape the bill. Closing checks the bill already billed; it does not bill an ended period first.
   - `NetWorth` subtracts `TaxesDue`.
 - `Company.TaxesPaid` keeps the lifetime total. An admin reset clears it (the businesses and
   their bills go too).

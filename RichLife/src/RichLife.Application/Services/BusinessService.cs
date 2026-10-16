@@ -158,7 +158,78 @@ public class BusinessService(
         var entry = await catalogueRepo.GetByIdAsync(business.CatalogueId, ct);
         if (entry is null) return Result.Fail<BusinessDto>("Business not found in catalogue.");
 
-        var result = company.BuyAsset(businessId, entry, assetCatalogueId);
+        var now = UtcNow;
+        var result = company.BuyAsset(businessId, entry, assetCatalogueId, now);
+        if (!result.IsSuccess) return Result.Fail<BusinessDto>(result.Error!);
+
+        companyRepo.Update(company);
+        await uow.CommitAsync(ct);
+
+        return Result.Ok(CompanyMapper.ToDto(result.Value, now));
+    }
+
+    // -- Places, units and repairs (features/014-business-places-and-equipment.md) --
+
+    public async Task<Result<BusinessDto>> OpenPlaceAsync(
+        Guid playerId, Guid businessId, string placeKindId, CancellationToken ct = default)
+    {
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<BusinessDto>("Company not found.");
+
+        var business = company.Businesses.FirstOrDefault(b => b.Id == businessId);
+        if (business is null) return Result.Fail<BusinessDto>("Business not found.");
+
+        var entry = await catalogueRepo.GetByIdAsync(business.CatalogueId, ct);
+        if (entry is null) return Result.Fail<BusinessDto>("Business not found in catalogue.");
+
+        return await CommitAsync(company, company.OpenPlace(businessId, entry, placeKindId), ct);
+    }
+
+    public async Task<Result<BusinessDto>> LevelUpPlaceAsync(
+        Guid playerId, Guid placeId, CancellationToken ct = default)
+    {
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<BusinessDto>("Company not found.");
+
+        return await CommitAsync(company, company.LevelUpPlace(placeId), ct);
+    }
+
+    public async Task<Result<BusinessDto>> BuyUnitAsync(
+        Guid playerId, Guid placeId, string assetCatalogueId, CancellationToken ct = default)
+    {
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<BusinessDto>("Company not found.");
+
+        // Looked up here only to learn which catalogue entry to load.
+        var business = company.Businesses.FirstOrDefault(b => b.Places.Any(p => p.Id == placeId));
+        if (business is null) return Result.Fail<BusinessDto>("Place not found.");
+
+        var entry = await catalogueRepo.GetByIdAsync(business.CatalogueId, ct);
+        if (entry is null) return Result.Fail<BusinessDto>("Business not found in catalogue.");
+
+        return await CommitAsync(company, company.BuyUnit(placeId, entry, assetCatalogueId, UtcNow), ct);
+    }
+
+    public async Task<Result<BusinessDto>> RepairUnitAsync(
+        Guid playerId, Guid unitId, bool fast, CancellationToken ct = default)
+    {
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<BusinessDto>("Company not found.");
+
+        return await CommitAsync(company, company.RepairUnit(unitId, fast, UtcNow), ct);
+    }
+
+    public async Task<Result<BusinessDto>> RepairAllAsync(
+        Guid playerId, Guid businessId, CancellationToken ct = default)
+    {
+        var company = await companyRepo.GetByPlayerIdAsync(playerId, ct);
+        if (company is null) return Result.Fail<BusinessDto>("Company not found.");
+
+        return await CommitAsync(company, company.RepairAllUnits(businessId, UtcNow), ct);
+    }
+
+    private async Task<Result<BusinessDto>> CommitAsync(Company company, Result<Business> result, CancellationToken ct)
+    {
         if (!result.IsSuccess) return Result.Fail<BusinessDto>(result.Error!);
 
         companyRepo.Update(company);

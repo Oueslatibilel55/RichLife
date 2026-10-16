@@ -16,7 +16,7 @@ Minimal APIs, EF Core on PostgreSQL, orchestrated in dev by .NET Aspire.
 ## Run it
 
 ```bash
-# Everything — Postgres, pgAdmin and the API — via Aspire
+# Postgres and the API via Aspire (pgAdmin: `docker compose up pgadmin -d`; Aspire only links to it)
 dotnet run --project src/RichLife.AppHost
 
 # Or the API alone, against the docker-compose Postgres

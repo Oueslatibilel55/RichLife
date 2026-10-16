@@ -16,6 +16,7 @@ import {
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 import { timeSpanSeconds } from '../game/format';
+import { companyIncomeNow } from '../game/units';
 import {
   AchievementUnlocked,
   BankDto,
@@ -97,6 +98,9 @@ export class GameService {
   /** A tax bill just landed (§5 Taxes) — the amount, shown as a 6 s toast. */
   private readonly _taxToast = signal<number | null>(null);
   private taxToastTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Managers repaired units from cash (§5 Places and breakdowns) — how many and what it cost, a 6 s toast. */
+  private readonly _repairToast = signal<{ repairs: number; paid: number } | null>(null);
+  private repairToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly company = this._company.asReadonly();
   readonly cash = this._cash.asReadonly();
@@ -113,6 +117,7 @@ export class GameService {
   readonly diamonds = this._diamonds.asReadonly();
   readonly store = this._store.asReadonly();
   readonly taxToast = this._taxToast.asReadonly();
+  readonly repairToast = this._repairToast.asReadonly();
 
   // -- Derived --------------------------------------------------------------
 
@@ -121,13 +126,14 @@ export class GameService {
   readonly boosted = computed(() => this.boostMsLeft() > 0);
 
   /**
-   * Online rate with the prestige multiplier already applied (contract section 2), × the
-   * boost while one runs (§6e) — the server's rates never include the boost.
+   * Online rate with the prestige multiplier already applied (contract section 2), corrected
+   * every second for units that broke or came back since the response (§5 Places and
+   * breakdowns), × the boost while one runs (§6e) — the server's rates never include the boost.
    */
   readonly cashRate = computed(() => {
     const c = this._company();
     if (!c) return 0;
-    return c.incomePerSecond * (this.boosted() ? c.boostMultiplier : 1);
+    return Math.max(0, companyIncomeNow(c, this._now())) * (this.boosted() ? c.boostMultiplier : 1);
   });
   readonly offlineRate = computed(() => this._company()?.offlineIncomePerSecond ?? 0);
 
@@ -210,6 +216,8 @@ export class GameService {
           this.reloadBankIfLoaded();
         }
         if (res.taxBilled > 0) this.flashTaxToast(res.taxBilled);
+        // Repairs managers paid while away: a line in the welcome-back dialog, else a toast.
+        if (res.autoRepairs > 0 && !dialog) this.flashRepairToast(res.autoRepairs, res.repairsPaid);
       }),
       catchError((err: unknown) => {
         if (err instanceof HttpErrorResponse && err.status === 404) {
@@ -275,6 +283,20 @@ export class GameService {
     this.taxToastTimer = setTimeout(() => this.dismissTaxToast(), 6000);
   }
 
+  dismissRepairToast(): void {
+    if (this.repairToastTimer) clearTimeout(this.repairToastTimer);
+    this.repairToastTimer = null;
+    this._repairToast.set(null);
+  }
+
+  /** Managers repaired units from cash — replaces the generic "balance corrected" toast. */
+  private flashRepairToast(repairs: number, paid: number): void {
+    if (this.repairToastTimer) clearTimeout(this.repairToastTimer);
+    this.dismissSyncWarning();
+    this._repairToast.set({ repairs, paid });
+    this.repairToastTimer = setTimeout(() => this.dismissRepairToast(), 6000);
+  }
+
   dismissAchievement(code: string): void {
     this._achievementToasts.update((list) => list.filter((a) => a.code !== code));
   }
@@ -326,6 +348,12 @@ export class GameService {
             this.flashBankToast(res.loanPayment);
             this.refreshCompany().subscribe({ error: () => void 0 });
             this.reloadBankIfLoaded();
+          } else if (res.autoRepairs > 0) {
+            // Managers paid for repairs: `acceptedCash` is net of them — say so, and refresh the
+            // company to see those units under repair.
+            this._cash.set(res.acceptedCash);
+            this.flashRepairToast(res.autoRepairs, res.repairsPaid);
+            this.refreshCompany().subscribe({ error: () => void 0 });
           } else if (res.adjusted) {
             this._cash.set(res.acceptedCash);
             this.flashSyncWarning();
@@ -383,6 +411,67 @@ export class GameService {
           null,
         )
         .pipe(tap(() => this.spendLocally(price))),
+    );
+  }
+
+  // -- Places, units and repairs (contract §5 Places and breakdowns) -----------
+
+  /** Opens another place of an owned business at the kind's price. */
+  openPlace(businessId: string, placeKindId: string, price: number): Observable<BusinessDto> {
+    return this.businessSpend(price, () =>
+      this.http.post<BusinessDto>(
+        `${this.api}/game/businesses/${businessId}/places/${encodeURIComponent(placeKindId)}`,
+        null,
+      ),
+    );
+  }
+
+  /** More room and +5 % income for one place. */
+  levelUpPlace(placeId: string, cost: number): Observable<BusinessDto> {
+    return this.businessSpend(cost, () =>
+      this.http.post<BusinessDto>(`${this.api}/game/businesses/places/${placeId}/level-up`, null),
+    );
+  }
+
+  /** Buys a unit into a chosen place. */
+  buyUnit(placeId: string, assetCatalogueId: string, price: number): Observable<BusinessDto> {
+    return this.businessSpend(price, () =>
+      this.http.post<BusinessDto>(
+        `${this.api}/game/businesses/places/${placeId}/units/${encodeURIComponent(assetCatalogueId)}`,
+        null,
+      ),
+    );
+  }
+
+  /** Standard repair (back after the fault's repair time) or fast repair (at once, 2.5 × the price). */
+  repairUnit(unitId: string, fast: boolean, cost: number): Observable<BusinessDto> {
+    return this.businessSpend(cost, () =>
+      this.http.post<BusinessDto>(`${this.api}/game/businesses/units/${unitId}/repair?fast=${fast}`, null),
+    );
+  }
+
+  /** Standard repair of every broken unit of a business, all or nothing. */
+  repairAll(businessId: string, cost: number): Observable<BusinessDto> {
+    return this.businessSpend(cost, () =>
+      this.http.post<BusinessDto>(`${this.api}/game/businesses/${businessId}/repair-all`, null),
+    );
+  }
+
+  /**
+   * Sync, spend, deduct locally, put the returned business in place at once, then refresh the
+   * company — its rates and net worth are server-computed.
+   */
+  private businessSpend(price: number, op: () => Observable<BusinessDto>): Observable<BusinessDto> {
+    return this.afterSync(() =>
+      op().pipe(
+        tap((b) => {
+          this.spendLocally(price);
+          this._company.update((c) =>
+            c ? { ...c, businesses: c.businesses.map((x) => (x.id === b.id ? b : x)) } : c,
+          );
+          this.refreshCompany().subscribe({ error: () => void 0 });
+        }),
+      ),
     );
   }
 
@@ -597,7 +686,7 @@ export class GameService {
 
   // -- Leaderboard ----------------------------------------------------------
 
-  /** Note the trailing slash — the route is registered as `/api/leaderboard/`. */
+  /** The route answers with or without the trailing slash. */
   getLeaderboard(take = 50): Observable<LeaderboardEntryDto[]> {
     const clamped = Math.min(100, Math.max(1, Math.trunc(take)));
     return this.http.get<LeaderboardEntryDto[]>(`${this.api}/leaderboard/?take=${clamped}`);
@@ -686,6 +775,7 @@ export class GameService {
     this._diamonds.set(0);
     this._boostUntil.set(0);
     this.dismissBankToast();
+    this.dismissRepairToast();
     this.dismissSyncWarning();
     this._loaded.set(false);
   }

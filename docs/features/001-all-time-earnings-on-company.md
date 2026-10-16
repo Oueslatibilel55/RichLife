@@ -14,8 +14,8 @@ a player's rank. All three mean different things and players confuse them:
 | Number | Meaning | Can it decrease? |
 |---|---|---|
 | `cash` | Spendable balance | Yes — spending |
-| `netWorth` | `cash` + liquidation value of everything owned | Only via the cap/clamp |
-| `allTimeEarnings` | Every dollar income has ever produced, cumulative | **Never** |
+| `netWorth` | `cash` + liquidation value of everything owned, minus debts and unpaid taxes | Yes — any spend not counted as value (managers, levels, prestige, boosts, fees), tax bills, loan interest and penalties |
+| `allTimeEarnings` | Every dollar income has ever produced, cumulative | **Never** through play (only an admin reset zeroes it) |
 
 `allTimeEarnings` is what `/api/leaderboard` ranks on, and it is the only one of the
 three that **survives prestige** — `Company.Prestige()` spends the prestige price out of
@@ -36,6 +36,10 @@ figure.
 ---
 
 ## Backend changes
+
+> Snapshot of the change as it shipped on 2026-10-01. `CompanyDto` has grown to 20 fields
+> since, and the mapper is now `CompanyMapper.ToDto(Company c, DateTime nowUtc)` — read
+> `CompanyDto.cs` / `CompanyMapper.cs` for the current shape.
 
 ### 1. `src/RichLife.Application/DTOs/CompanyDto.cs`
 
@@ -130,7 +134,7 @@ backend.
 - `src/app/core/models/game.models.ts` — `allTimeEarnings?: number` on `CompanyDto`,
   typed **optional** precisely because the backend does not send it yet.
 - `src/app/features/dashboard/dashboard.component.html` — an "All-Time Earned" mini-stat
-  immediately to the **left** of Net Worth, wrapped in `@if (company.allTimeEarnings !== undefined)`.
+  next to Net Worth (today it sits after Net Worth and Income), wrapped in `@if (company.allTimeEarnings !== undefined)`.
   While the field is absent the tile simply does not render; the moment the backend ships
   it, it appears with no frontend deploy.
 

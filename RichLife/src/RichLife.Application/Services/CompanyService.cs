@@ -44,14 +44,17 @@ public class CompanyService(
         var elapsed = now - company.LastSyncAt;
         var cashBefore = company.Cash;
 
-        var earned = company.AccrueOffline(now);
+        var run = company.AccrueOfflineRun(now);
+        var earned = run.Earned;
+        // Managers still on shift fix whatever is broken now (contract §5 *Breakdowns*).
+        var (managerRepairs, managerSpent) = company.RunManagerRepairs(now);
         // Installments that fell due while away are collected after the earnings are in.
         var loanPayment = company.CollectLoanPayments(now);
         // Tax periods that ended while away are billed — never taken from cash (contract §5).
         var taxBilled = company.AssessTaxes(now);
         // What was just earned can be paid again for diamonds (contract §6e).
         company.OfferOfflineDouble(earned, now);
-        if (earned > 0m || loanPayment is not null || taxBilled > 0m)
+        if (earned > 0m || loanPayment is not null || taxBilled > 0m || run.Repairs > 0 || managerRepairs > 0)
         {
             companyRepo.Update(company);
             await uow.CommitAsync(ct);
@@ -66,6 +69,8 @@ public class CompanyService(
             LoanPayment: BankMapper.ToDto(loanPayment),
             DoubleOffer: StoreService.DoubleOffer(company, now),
             TaxBilled: taxBilled,
+            AutoRepairs: run.Repairs + managerRepairs,
+            RepairsPaid: run.RepairsPaid + managerSpent,
             Company: CompanyMapper.ToDto(company, now)));
     }
 
@@ -108,6 +113,10 @@ public class CompanyService(
         var result = company.Sync(clientCash, now);
         if (!result.IsSuccess) return Result.Fail<SyncResultDto>(result.Error!);
 
+        // A manager on shift repairs broken units from cash — the client learns of it through
+        // acceptedCash and autoRepairs, and refreshes the company to see them working.
+        var (autoRepairs, repairsPaid) = company.RunManagerRepairs(now);
+
         // Every sync (5 s) is also the achievement check, so an unlock is announced within
         // seconds of whatever earned it — a purchase, a level, the earnings ticking past a goal.
         var fresh = company.UnlockAchievements(now);
@@ -129,6 +138,8 @@ public class CompanyService(
             LoanPayment: BankMapper.ToDto(loanPayment),
             Diamonds: company.Diamonds,
             TaxesDue: company.TaxesDue,
-            TaxBilled: taxBilled));
+            TaxBilled: taxBilled,
+            AutoRepairs: autoRepairs,
+            RepairsPaid: repairsPaid));
     }
 }

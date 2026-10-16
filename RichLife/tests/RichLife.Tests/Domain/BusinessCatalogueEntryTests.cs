@@ -197,7 +197,7 @@ public class BusinessCatalogueEntryTests
         Assert.Equal(BusinessSector.Transport, business.Sector);
         Assert.Equal(PrestigeLevel.SmallBusiness, business.RequiredPrestige);
         Assert.Equal(50_000m, business.OpeningCost);
-        Assert.Equal(30m, business.GrossIncomePerSecond);
+        Assert.Equal(30m, business.FullGrossIncomePerSecond);
         Assert.Equal(4_800m, business.MonthlySalaryCost);
     }
 }

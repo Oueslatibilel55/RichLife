@@ -51,7 +51,7 @@ src/
     Services/               #   AuthService, CompanyService, BusinessService,
                             #   LeaderboardService, CatalogueAdminService, AdminService,
                             #   ProfileService, LuxuryService, BankService, LuxuryAdminService,
-                            #   StoreService
+                            #   StoreService; Roles (the "Admin" role name)
     Interfaces/             #   ICompanyRepository, IPlayerRepository, ILeaderboardRepository,
                             #   ICatalogueRepository, ILuxuryCatalogueRepository,
                             #   IManagerNameRepository, IAdminReadRepository, IUnitOfWork, IDomainEventDispatcher,
@@ -79,7 +79,7 @@ src/
                             #   RateLimitPolicies, AuthPolicies, ClaimsPrincipalExtensions
     Program.cs
 
-  RichLife.AppHost/         # Aspire orchestration (Postgres + api)
+  RichLife.AppHost/         # Aspire orchestration (Postgres + api; pgAdmin as an external link)
   RichLife.ServiceDefaults/ # OpenTelemetry, health checks, resilience, service discovery
 
 tests/
@@ -114,8 +114,14 @@ tests/
   to every registered `IDomainEventHandler<TEvent>`. Services never dispatch by hand, so no
   command path can forget to publish. To react to an event, register a handler in DI:
   `services.AddScoped<IDomainEventHandler<BusinessOpenedEvent>, YourHandler>()`.
-- **`TimeProvider` is injected**, never `DateTime.UtcNow` in a service. Accrual and the sync
-  ceiling depend on the clock, and tests pin it to a fixed instant.
+  Only `BusinessOpenedEvent` and `PrestigeTriggeredEvent` are raised, and **no handler is
+  registered yet** — both are published to nobody.
+- **`TimeProvider` is injected** into the game services (company, business, bank, store,
+  admin, profile). Accrual and the sync ceiling depend on the clock, and tests pin it to a
+  fixed instant. Known exceptions: `AuthService` (token and refresh expiry) still uses
+  `DateTime.UtcNow`, and entity defaults use the system clock — `Company.LastSyncAt`,
+  `Business.TaxPeriodStart`, the `BaseEntity` audit columns and `BusinessCatalogueEntry`
+  timestamps. Don't add new ones.
 - **Repository + Unit of Work** — deliberate here (aggregate-oriented persistence). This is
   *not* the "unnecessary EF wrapper" antipattern; keep it.
 - **Catalogue is content, in the database** — businesses and their assets live in
@@ -179,6 +185,18 @@ runtime failure that no domain test can catch.
 - `NetWorth` is cash plus company assets plus each business's `TotalValue`
   (opening cost + its assets) plus luxury items at their price, **minus** what is still owed
   on an active bank loan **and unpaid taxes**. Diamonds are not part of it.
+- **Places, units and breakdowns** (2026-10-16, `features/014-business-places-and-equipment.md`):
+  a `Business` owns `BusinessPlace`s (copied from the catalogue's `PlaceKindEntry`, first one free
+  with the opening) and its `BusinessAsset`s are **units** standing in a place (`PlaceId`, capped by
+  `Capacity`). There is no stored gross income any more: `NetIncomePerSecondAt(t)` counts each
+  place's base income + units working at `t` (`WorkingFrom ≤ t < BreaksAt`), × place multiplier,
+  × level; `FullNetIncomePerSecond` (all working) feeds the sync ceiling. **Anything that rates a
+  business needs the time.** Next failure and fault are drawn from `(unit Id, RepairCount)` with
+  `Common/SeededRandom` — never stored, never `System.Random`; changing a fault list's order or
+  an id changes live units' faults. Faults are rules in `Operations/FaultCatalog` (ids translated
+  by the client). Offline accrual integrates per unit and lets managers repair from cash
+  (`Business.EarnOffline`, `TryPayRepair` never goes below 0); `RunManagerRepairs(now)` runs on
+  `/sync` and `/state`. Unit mutators are internal — go through the aggregate.
 - **Business taxes** (2026-10-09, `features/013-business-taxes.md`): every 24 h from its opening
   (`Business.TaxPeriodStart`), a business is billed `GameConstants.TaxRate` (7 %) of what it earned
   in that period (`TaxableEarnings`, recorded by `Company.Sync` — the online total split by
@@ -197,8 +215,9 @@ runtime failure that no domain test can catch.
   `OfflineIncomePerSecondAt(now)`). Not refunded on close. `Business.HireManager` is
   unguarded — always go through the aggregate. Each manager gets a random first name from
   the `manager_names` table (130 seeded, content like the catalogue): `BusinessService`
-  picks it via `IManagerNameRepository` (avoiding names the company already uses) and
-  passes it in; the business stores `ManagerNameId` (FK, `RESTRICT`) plus a copied
+  picks it via `IManagerNameRepository` (avoiding names on the company's running shifts while unused names remain,
+  otherwise any name) and passes it in — with no names at all it answers
+  `"No managers are available right now."`; the business stores `ManagerNameId` (FK, `RESTRICT`) plus a copied
   `ManagerName`.
 - **Business levels** (2026-10-08): `Company.LevelUpBusiness` pays `Business.NextLevelCost`
   (`OpeningCost × 1.25^(Level − 1)`) and raises `Level` (1..100). `NetIncomePerSecond` is
@@ -241,8 +260,10 @@ runtime failure that no domain test can catch.
   count boosted seconds; `IncomePerSecond` itself never includes it), `DoubleOfflineEarnings`
   (offer set by `/state` via `OfferOfflineDouble`, 30 min, once), `ExchangeDiamonds` (cash, not
   earnings), `BuyBadge` / `FeatureBadge` (badges owned in `company_badges`; **badge ids are
-  persisted, never rename or reuse one**). Prices and amounts in `GameConstants`. `AdminReset`
-  keeps diamonds and badges. **Avatars** (`features/012-avatars.md`): `Company.AvatarId` + owned
+  persisted, never rename or reuse one**). Grants, boost / offline-double prices and
+  `DiamondCashValue` in `GameConstants`; badge and avatar prices in `BadgeCatalog` /
+  `AvatarCatalog`. `AdminReset` keeps diamonds (and the ledger), badges (and the featured one)
+  and avatars (and the one in use). **Avatars** (`features/012-avatars.md`): `Company.AvatarId` + owned
   `company_avatars`; `BuyAvatar` (puts it on) / `SelectAvatar` (owned or free, null = initial);
   free avatars (price 0) are never recorded as owned — `OwnsAvatar` treats them as owned. Avatar ids
   are persisted too: never rename or reuse one. `StoreService.Avatar(id)` maps an id to the
@@ -274,8 +295,9 @@ runtime failure that no domain test can catch.
   figure to `MaxPlausibleCash` — never trust a client-supplied balance.
 - One business per catalogue entry, per company. Enforced on the aggregate and by a unique
   index on `(CompanyId, CatalogueId)`.
-- Closing refunds `TotalValue` minus the fee: 10% graceful, 25% emergency, 40% bankruptcy
-  (`GameConstants`). A refund returns capital, so it does not count toward `AllTimeEarnings`.
+- Closing refunds `TotalValue` minus the fee: 10% graceful, 25% emergency
+  (`GameConstants`). `BankruptcyCloseFeeRate` (40%) is declared but unused — there is no
+  bankruptcy path. A refund returns capital, so it does not count toward `AllTimeEarnings`.
 - Tuning numbers belong in `GameConstants` (rules) or the catalogue tables (content), never
   inlined at a call site.
 
@@ -315,7 +337,9 @@ previously printed "Database updated." after a failed migration.
 
 ## Configuration and secrets
 
-**No secrets in `appsettings.json`.** It holds only `Jwt:Issuer`, `Jwt:Audience`, logging levels.
+**No secrets in `appsettings.json`.** The Api's holds only `Jwt:Issuer`, `Jwt:Audience`,
+logging levels and `AllowedHosts`. (The AppHost's `appsettings.json` carries the local-only
+Aspire Postgres user and password — dev values, never used in production.)
 
 **Deployed on Render** (root `CLAUDE.md` → *Deployed*). Two `Program.cs` switches exist for it:
 `Database:MigrateOnStartup` (env `Database__MigrateOnStartup=true` there; off locally, where
@@ -329,8 +353,13 @@ Render rather than on the proxy's.
   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<value>" --project src/RichLife.Api
   ```
 - **Prod** — environment variables (`Jwt__Secret`, `ConnectionStrings__DefaultConnection`) or a
-  vault. `docker-compose.yml` reads them from `.env`, which is gitignored.
-- `Program.cs` fails fast at startup with a clear message if `Jwt:Secret` is missing.
+  vault. `docker-compose.yml` reads `JWT_SECRET`, `POSTGRES_PASSWORD` and `PGADMIN_PASSWORD`
+  from `.env` (gitignored) and builds `Jwt__Secret` and the connection string from them. It
+  also has an `api` service (Production, port 8080, **no** `Database__MigrateOnStartup` — so
+  against the empty compose database it does not migrate).
+- A missing `Jwt:Secret` throws an `InvalidOperationException` explaining how to set it — but
+  only when the JWT options are first built, i.e. on the **first request**, not at startup.
+  (A missing connection string, by contrast, fails at startup in `AddInfrastructure`.)
 
 ### Which connection string wins
 
@@ -536,15 +565,18 @@ before it can be built.
 
 - **The prestige multiplier hits passive income twice.** `Prestige` sets
   `PassiveIncomePerSecond = 3 × PrestigeMultiplier`, and `IncomePerSecond` /
-  `OfflineIncomePerSecond` multiply passive by `PrestigeMultiplier` again — 3 × 1.18 × 1.18
-  ≈ 4.18/s after one prestige instead of 3.54. Noticed 2026-10-08, not changed: pick one
+  `OfflineIncomePerSecondAt(now)` multiply passive by `PrestigeMultiplier` again — 3 × 1.18 ×
+  1.18 ≈ 4.18/s after one prestige instead of 3.54. Real money follows it: offline accrual
+  (`ApplyOfflineProgress`) and the sync ceiling (`MaxPlausibleCash`) use the same doubled rate. Noticed 2026-10-08, not changed: pick one
   place to apply the multiplier (and update the contract's `incomePerSecond` formula).
 - **`GameConstants.PassiveIncomeTiers` does not compose with prestige.** The tiers assume a
   passive rate of exactly 3/7/15/35/80/200, but prestige sets the rate to
   `3 * PrestigeMultiplier` (3.54 after one prestige), so "the next tier" is ambiguous.
-  `Company.UpgradePassiveIncome` is implemented and tested but deliberately not exposed.
-- **The marketplace is half-modelled.** `Business.ListForSale`/`AskingPrice` and
-  `Company.ListBusinessForSale` exist; there is no buyer side, no endpoints, no settlement.
+  `Company.UpgradePassiveIncome` (free `cost` / `newRate` arguments) is implemented and tested
+  but deliberately not exposed; `PassiveIncomeTiers` itself is not read by any code.
+- **The marketplace is half-modelled.** `Business.ListForSale` / `CancelSaleListing` /
+  `AskingPrice` and `Company.ListBusinessForSale` exist; there is no buyer side, no endpoints,
+  no settlement. `BusinessDto` still exposes `isForSale` / `askingPrice` (always `false` / `null`).
 - **`Asset` (company-level assets) is persisted but never created.** Table and eager loading
   are in place; no service creates one. `NetWorth` counts it. (`LuxuryAsset` is now used —
   see the luxury rule above.)
@@ -557,6 +589,10 @@ before it can be built.
 Last checked 2026-10-09, against the Aspire dev database (newest first).
 
 **Green.** `dotnet build RichLife.slnx` (0 warnings).
+2026-10-12: docs audited against the code (no code behaviour changed). Recounted, not re-run:
+185 test cases (162 `[Fact]` + 23 `[InlineData]`) in 8 files under `tests/RichLife.Tests/Domain`
+— `BankTests`, `BusinessCatalogueEntryTests`, `BusinessTests`, `CompanyTests`,
+`LuxuryCatalogueEntryTests`, `ResultTests`, `StoreTests`, `TaxTests`.
 2026-10-09: **185** tests green after business taxes (`TaxTests`, 14 cases); migration `BusinessTaxes`
 applied (existing businesses start their first period at the migration) and every tax route, error and
 the prestige/close blocks checked over HTTP.

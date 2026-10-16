@@ -15,7 +15,9 @@ public record BusinessCatalogueDetails(
     decimal MonthlySalaryCost,
     int BaseEmployeeCount,
     string Description,
-    int DisplayOrder);
+    int DisplayOrder,
+    int PlaceBaseCapacity = GameConstants.DefaultPlaceCapacity,
+    int PlaceCapacityPerLevel = GameConstants.DefaultPlaceCapacityPerLevel);
 
 /// <summary>
 /// A business players can open: game content, edited by admins and stored in the database.
@@ -28,6 +30,7 @@ public sealed partial class BusinessCatalogueEntry
     public const int MaxIdLength = 60;
     public const int MaxNameLength = 80;
     public const int MaxDescriptionLength = 500;
+    public const int MaxPlaceCapacity = 500;
 
     /// <summary>Slug (e.g. "food-cart"). Immutable: owned businesses reference it.</summary>
     public string Id { get; private set; } = string.Empty;
@@ -42,6 +45,10 @@ public sealed partial class BusinessCatalogueEntry
     public string Description { get; private set; } = string.Empty;
     public int DisplayOrder { get; private set; }
 
+    /// <summary>Units a new place holds at level 1, and how many more each place level adds.</summary>
+    public int PlaceBaseCapacity { get; private set; } = GameConstants.DefaultPlaceCapacity;
+    public int PlaceCapacityPerLevel { get; private set; } = GameConstants.DefaultPlaceCapacityPerLevel;
+
     /// <summary>
     /// Retired entries cannot be opened any more, but stay in the database because owned
     /// businesses still reference them. There is no delete.
@@ -55,6 +62,12 @@ public sealed partial class BusinessCatalogueEntry
 
     public IReadOnlyList<AssetCatalogueEntry> AvailableAssets =>
         _availableAssets.OrderBy(a => a.DisplayOrder).ThenBy(a => a.Id, StringComparer.Ordinal).ToList();
+
+    private readonly List<PlaceKindEntry> _placeKinds = [];
+
+    /// <summary>Where the business can open places; the first one is where it opens.</summary>
+    public IReadOnlyList<PlaceKindEntry> PlaceKinds =>
+        _placeKinds.OrderBy(k => k.DisplayOrder).ThenBy(k => k.Id, StringComparer.Ordinal).ToList();
 
     private BusinessCatalogueEntry() { }
 
@@ -123,10 +136,53 @@ public sealed partial class BusinessCatalogueEntry
         return Result.Ok();
     }
 
+    public Result AddPlaceKind(string kindId, PlaceKindDetails details)
+    {
+        if (!IsValidSlug(kindId)) return Result.Fail(InvalidSlugMessage("Place id"));
+        if (FindPlaceKind(kindId) is not null) return Result.Fail("Place already exists.");
+
+        var invalid = PlaceKindEntry.Validate(details);
+        if (invalid is not null) return Result.Fail(invalid);
+
+        _placeKinds.Add(PlaceKindEntry.Create(kindId, details));
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    public Result UpdatePlaceKind(string kindId, PlaceKindDetails details)
+    {
+        var kind = FindPlaceKind(kindId);
+        if (kind is null) return Result.Fail("Place not found.");
+
+        var invalid = PlaceKindEntry.Validate(details);
+        if (invalid is not null) return Result.Fail(invalid);
+
+        kind.Apply(details);
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>Safe for owners: a <see cref="BusinessPlace"/> keeps its own copy of the kind.</summary>
+    public Result RemovePlaceKind(string kindId)
+    {
+        var kind = FindPlaceKind(kindId);
+        if (kind is null) return Result.Fail("Place not found.");
+
+        _placeKinds.Remove(kind);
+        MarkUpdated();
+        return Result.Ok();
+    }
+
     // -- Game ---------------------------------------------------------------
 
     public AssetCatalogueEntry? FindAsset(string assetId)
         => _availableAssets.FirstOrDefault(a => a.Id == assetId);
+
+    public PlaceKindEntry? FindPlaceKind(string kindId)
+        => _placeKinds.FirstOrDefault(k => k.Id == kindId);
+
+    /// <summary>The numbers a new place of <paramref name="kind"/> copies.</summary>
+    public PlaceSpec SpecFor(PlaceKindEntry kind) => kind.ToSpec(PlaceBaseCapacity, PlaceCapacityPerLevel);
 
     /// <summary>
     /// Income per second an asset yields: its fixed value when set, otherwise derived from
@@ -138,11 +194,20 @@ public sealed partial class BusinessCatalogueEntry
                ? GameConstants.AssetIncomeRatio
                : GameConstants.RentalIncomeRatio);
 
-    /// <summary>A new business stamped with this entry's current numbers.</summary>
+    /// <summary>
+    /// A new business stamped with this entry's current numbers, with its first place: the
+    /// first place kind (or a quiet "Main" when the entry lists none), included in the opening cost.
+    /// </summary>
     public Business CreateBusiness(Guid companyId)
-        => Business.Create(
+    {
+        var first = PlaceKinds.FirstOrDefault();
+        var spec = first is null
+            ? PlaceSpec.Default(OpeningCost) with { BaseCapacity = PlaceBaseCapacity, CapacityPerLevel = PlaceCapacityPerLevel }
+            : SpecFor(first);
+        return Business.Create(
             companyId, Id, Name, Sector, RequiredPrestige,
-            OpeningCost, BaseIncomePerSecond, MonthlySalaryCost, BaseEmployeeCount);
+            OpeningCost, BaseIncomePerSecond, MonthlySalaryCost, BaseEmployeeCount, spec);
+    }
 
     // -- Internals ----------------------------------------------------------
 
@@ -157,6 +222,8 @@ public sealed partial class BusinessCatalogueEntry
         BaseEmployeeCount   = d.BaseEmployeeCount;
         Description         = d.Description.Trim();
         DisplayOrder        = d.DisplayOrder;
+        PlaceBaseCapacity   = d.PlaceBaseCapacity;
+        PlaceCapacityPerLevel = d.PlaceCapacityPerLevel;
     }
 
     private void MarkUpdated() => UpdatedAt = DateTime.UtcNow;
@@ -173,6 +240,10 @@ public sealed partial class BusinessCatalogueEntry
         if (d.BaseEmployeeCount < 0) return "Employee count cannot be negative.";
         if (d.Description is null || d.Description.Trim().Length > MaxDescriptionLength)
             return $"Description must be at most {MaxDescriptionLength} characters.";
+        if (d.PlaceBaseCapacity is < 1 or > MaxPlaceCapacity)
+            return $"Place capacity must be between 1 and {MaxPlaceCapacity}.";
+        if (d.PlaceCapacityPerLevel is < 0 or > MaxPlaceCapacity)
+            return $"Capacity per place level must be between 0 and {MaxPlaceCapacity}.";
         return null;
     }
 

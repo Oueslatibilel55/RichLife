@@ -1,0 +1,153 @@
+@if (business(); as biz) {
+  <div class="head">
+    <h3 class="title">{{ 'places.title' | t }}</h3>
+    <span class="badge badge--primary num">{{ biz.places.length }} / {{ biz.maxPlaces }}</span>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  }
+
+  <!-- Something is broken: one action fixes all of it at the standard price -->
+  @if (broken().length > 0) {
+    <div class="fix-all">
+      <span class="num">🔧 {{ (broken().length === 1 ? 'places.broken.one' : 'places.broken.other') | t: { n: broken().length } }}</span>
+      @if (cash() < repairAllPrice()) {
+        <span class="short num">{{ 'manage.need' | t: { amount: (repairAllPrice() - cash() | money) } }}</span>
+      } @else {
+        <button type="button" class="btn btn--danger btn--sm" [disabled]="busy() !== null" (click)="repairAll()">
+          {{ busy() === 'repair-all' ? ('places.repairing' | t) : ('places.repairAll' | t: { price: (repairAllPrice() | money) }) }}
+        </button>
+      }
+    </div>
+  }
+
+  @for (place of biz.places; track place.id) {
+    <article class="place">
+      <header class="place__head">
+        <span class="place__icon" aria-hidden="true">{{ tierIcons[place.tier] }}</span>
+        <div class="place__title">
+          <strong>{{ place.name }} · {{ place.street }}</strong>
+          <span class="num">{{ 'places.tier.' + place.tier | t }} · ×{{ place.multiplier.toFixed(2) }}</span>
+        </div>
+        <span class="place__income num">+{{ perDay(place) | money }}{{ 'places.perDay' | t }}</span>
+      </header>
+
+      <p class="place__meta num">
+        {{ 'places.meta' | t: { level: place.level, working: working(place), units: place.unitCount, capacity: place.capacity } }}
+      </p>
+      <div class="bar" role="img" [attr.aria-label]="'places.levelAria' | t: { n: place.level, max: place.maxLevel }">
+        @for (l of levels; track l) {
+          <i [class.on]="l <= place.level"></i>
+        }
+      </div>
+
+      @if (place.units.length > 0) {
+        <ul class="units">
+          @for (u of place.units; track u.id) {
+            @let s = status(u);
+            <li class="unit" [class.unit--broken]="s === 'Broken'">
+              <span class="unit__name">{{ u.name }}</span>
+              @switch (s) {
+                @case ('Working') { <span class="unit__ok">{{ 'places.ok' | t }}</span> }
+                @case ('Repairing') { <span class="unit__wait num">🔧 {{ 'places.backIn' | t: { time: backIn(u) } }}</span> }
+                @case ('Broken') { <span class="unit__fault">{{ faultLabel(u) }}</span> }
+              }
+            </li>
+            @if (s === 'Broken') {
+              <li class="fix">
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm"
+                  [disabled]="busy() !== null || cash() < u.repairCost"
+                  (click)="repair(u, false)"
+                >
+                  {{ 'places.repair' | t: { price: (u.repairCost | money), h: u.repairHours } }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--danger btn--sm"
+                  [disabled]="busy() !== null || cash() < u.fastRepairCost"
+                  (click)="repair(u, true)"
+                >
+                  ⚡ {{ 'places.fastRepair' | t: { price: (u.fastRepairCost | money) } }}
+                </button>
+              </li>
+            }
+          }
+        </ul>
+      } @else {
+        <p class="empty">{{ 'places.noUnits' | t }}</p>
+      }
+
+      <div class="place__actions">
+        @if (place.nextLevelCost !== null) {
+          <button
+            type="button"
+            class="btn btn--primary btn--sm"
+            [disabled]="busy() !== null || cash() < place.nextLevelCost"
+            (click)="levelUp(place)"
+          >
+            {{ busy() === 'level:' + place.id
+              ? ('places.upgrading' | t)
+              : ('places.upgrade' | t: { price: (place.nextLevelCost | money), n: (place.nextLevelCapacity ?? place.capacity) - place.capacity }) }}
+          </button>
+        } @else {
+          <span class="badge badge--success">{{ 'places.maxLevel' | t }} 🏆</span>
+        }
+        @if (place.unitCount < place.capacity) {
+          <button type="button" class="btn btn--soft btn--sm" (click)="togglePicker(place.id)" [attr.aria-expanded]="pickerFor() === place.id">
+            ＋ {{ 'places.addUnit' | t }}
+          </button>
+        } @else {
+          <span class="full">{{ 'places.full' | t }}</span>
+        }
+      </div>
+
+      <!-- What can go in this place: the catalogue's units -->
+      @if (pickerFor() === place.id && place.unitCount < place.capacity) {
+        <ul class="pick">
+          @for (a of entry()?.availableAssets ?? []; track a.id) {
+            <li class="pick__row" [class.pick__row--locked]="!a.isUnlocked">
+              <div class="pick__info">
+                <span class="pick__name">{{ a.name }}</span>
+                <span class="num">{{ a.price | money }} · +{{ (a.incomePerSecond * place.multiplier * 86400) | money }}{{ 'places.perDay' | t }}</span>
+              </div>
+              @if (!a.isUnlocked) {
+                <span class="short num">🔒 {{ 'places.unlockAt' | t: { n: a.unlockAtAssetCount } }}</span>
+              } @else if (cash() < a.price) {
+                <span class="short num">{{ 'manage.need' | t: { amount: (a.price - cash() | money) } }}</span>
+              } @else {
+                <button type="button" class="btn btn--primary btn--sm" [disabled]="busy() !== null" (click)="buyUnit(place, a.id, a.price)">
+                  {{ busy() === 'buy:' + place.id + ':' + a.id ? ('manage.assets.buying' | t) : ('manage.assets.buy' | t) }}
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </article>
+  }
+
+  <!-- Another place: busier areas earn more and cost more -->
+  @if (kinds().length > 0) {
+    <h4 class="sub">{{ 'places.open.title' | t }}</h4>
+    <ul class="pick">
+      @for (k of kinds(); track k.id) {
+        <li class="pick__row">
+          <div class="pick__info">
+            <span class="pick__name">{{ tierIcons[k.tier] }} {{ k.name }}</span>
+            <span class="num">{{ 'places.tier.' + k.tier | t }} · ×{{ k.incomeMultiplier }} · {{ k.price | money }}</span>
+          </div>
+          @if (cash() < k.price) {
+            <span class="short num">{{ 'manage.need' | t: { amount: (k.price - cash() | money) } }}</span>
+          } @else {
+            <button type="button" class="btn btn--primary btn--sm" [disabled]="busy() !== null" (click)="openPlace(k)">
+              {{ busy() === 'open:' + k.id ? ('places.opening' | t) : ('places.open.cta' | t) }}
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+}

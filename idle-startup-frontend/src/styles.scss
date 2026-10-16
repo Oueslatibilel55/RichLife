@@ -263,6 +263,7 @@ input, button, select, textarea { font: inherit; font-size: 16px; }
   &--success { background: var(--success-soft); color: var(--success); }
   &--violet  { background: var(--violet-soft); color: var(--violet); }
   &--money   { background: var(--money-soft); color: var(--money); }
+  &--danger  { background: var(--danger-soft); color: var(--danger); }
 }
 
 // ── Alerts ────────────────────────────────────────────────────────────────────

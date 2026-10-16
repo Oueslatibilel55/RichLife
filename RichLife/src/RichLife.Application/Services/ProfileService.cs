@@ -60,7 +60,7 @@ public class ProfileService(
         c.Cash,
         c.NetWorth,
         c.AllTimeEarnings,
-        c.IncomePerSecond,
+        c.IncomePerSecondAt(now),
         c.Businesses.Count,
         (int)c.AchievementMetricValue(AchievementMetric.AssetsOwned),
         c.Businesses.Count(b => b.HasManagerAt(now)),

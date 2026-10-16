@@ -114,6 +114,59 @@ public static class BusinessEndpoints
         .WithName("PayAllTaxes")
         .WithSummary("Pay every business's taxes at once");
 
+        // -- Places, units and repairs (features/014-business-places-and-equipment.md) --
+        // Every route here has at least two segments, so none shadows "/{catalogueId}".
+
+        // POST /api/game/businesses/{businessId}/places/{placeKindId}
+        group.MapPost("/{businessId:guid}/places/{placeKindId}", async Task<Results<Ok<BusinessDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            Guid businessId, string placeKindId, ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+            return ToResult(await svc.OpenPlaceAsync(playerId, businessId, placeKindId, ct));
+        })
+        .WithName("OpenPlace")
+        .WithSummary("Open another place of a business");
+
+        // POST /api/game/businesses/places/{placeId}/level-up
+        group.MapPost("/places/{placeId:guid}/level-up", async Task<Results<Ok<BusinessDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            Guid placeId, ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+            return ToResult(await svc.LevelUpPlaceAsync(playerId, placeId, ct));
+        })
+        .WithName("LevelUpPlace")
+        .WithSummary("Upgrade a place: more room and more income");
+
+        // POST /api/game/businesses/places/{placeId}/units/{assetCatalogueId}
+        group.MapPost("/places/{placeId:guid}/units/{assetCatalogueId}", async Task<Results<Ok<BusinessDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            Guid placeId, string assetCatalogueId, ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+            return ToResult(await svc.BuyUnitAsync(playerId, placeId, assetCatalogueId, ct));
+        })
+        .WithName("BuyUnit")
+        .WithSummary("Buy a unit into a place");
+
+        // POST /api/game/businesses/units/{unitId}/repair?fast=false
+        group.MapPost("/units/{unitId:guid}/repair", async Task<Results<Ok<BusinessDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            Guid unitId, bool? fast, ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+            return ToResult(await svc.RepairUnitAsync(playerId, unitId, fast ?? false, ct));
+        })
+        .WithName("RepairUnit")
+        .WithSummary("Repair a broken unit (fast=true: at once, for more)");
+
+        // POST /api/game/businesses/{businessId}/repair-all
+        group.MapPost("/{businessId:guid}/repair-all", async Task<Results<Ok<BusinessDto>, BadRequest<string>, UnauthorizedHttpResult>> (
+            Guid businessId, ClaimsPrincipal user, BusinessService svc, CancellationToken ct) =>
+        {
+            if (user.GetPlayerId() is not { } playerId) return TypedResults.Unauthorized();
+            return ToResult(await svc.RepairAllAsync(playerId, businessId, ct));
+        })
+        .WithName("RepairAllUnits")
+        .WithSummary("Repair every broken unit of a business at the standard price");
+
         // DELETE /api/game/businesses/{businessId}?emergency=false
         group.MapDelete("/{businessId:guid}", async Task<Results<Ok, BadRequest<string>, UnauthorizedHttpResult>> (
             Guid businessId, bool emergency,
@@ -129,4 +182,10 @@ public static class BusinessEndpoints
         .WithName("CloseBusiness")
         .WithSummary("Close a business and refund its value minus the closing fee");
     }
+
+    private static Results<Ok<BusinessDto>, BadRequest<string>, UnauthorizedHttpResult> ToResult(
+        RichLife.Domain.Common.Result<BusinessDto> result)
+        => result.IsSuccess
+            ? TypedResults.Ok(result.Value)
+            : TypedResults.BadRequest(result.Error!);
 }

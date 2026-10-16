@@ -46,15 +46,11 @@ To execute unit tests with the [Karma](https://karma-runner.github.io) test runn
 ng test
 ```
 
-## Running end-to-end tests
+There are no `.spec.ts` files yet, so the suite is empty (see `CLAUDE.md`).
 
-For end-to-end (e2e) testing, run:
+## End-to-end tests
 
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+No e2e target is configured in `angular.json`; `ng e2e` does nothing until one is added.
 
 ## Additional Resources
 

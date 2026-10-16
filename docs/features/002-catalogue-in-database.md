@@ -38,17 +38,19 @@ live game.
   `players.IsAdmin`, seeds the old static catalogue row for row via `InsertData` (not
   `HasData`, so the content does not stay in the model), then adds the FK.
 - **Auth** — `players.IsAdmin` → `role: "Admin"` claim on login and refresh; policy `admin`
-  on `/api/admin/*`. No endpoint grants admin.
+  on `/api/admin/*`. At the time no endpoint granted admin; since 006, admins promote others
+  with `PUT /api/admin/players/{id}/role`. (The claim is the full .NET role URI, not a short
+  `role` key — contract §7.)
 
-## Frontend changes (pending)
+## Frontend changes (done 2026-10-08 with 006)
 
 - No player-facing change is required: `BusinessCatalogueDto` is unchanged in shape and
   order. The client already reads everything from `/catalogue` — keep it that way; nothing
   about a business may be hardcoded.
-- Admin page (deferred): list from `GET /api/admin/catalogue`, edit form on `PUT`, an
-  asset sub-table on the asset routes, and an "active" toggle instead of a delete button.
-  Show the page only when the access token carries `role: "Admin"`; the server still
-  enforces it (`403`).
+- Admin page: `/admin/catalogue` (`features/admin/catalogue/`) — list from
+  `GET /api/admin/catalogue`, an editor dialog on `PUT`, assets on the asset routes, and a
+  retire/restore toggle instead of a delete button. Shown only to admins (the token's role
+  claim); the server still enforces it (`403`).
 
 ## Verification
 

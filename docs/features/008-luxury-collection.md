@@ -76,7 +76,7 @@ contract §6c list.
   the company for net worth).
 - Profile: **Collection** grid of owned photos with price and date, or an empty state
   linking to the shop. `.photo-credit` is a global style shared by both.
-- The player nav has 5 items (Dashboard, Businesses, Luxury, Leaderboard, Profile).
+- The player nav then had 5 items (Dashboard, Businesses, Luxury, Leaderboard, Profile); it has 7 since 011 (Dashboard, Businesses, Store, Bank, Luxury, Leaderboard, Profile — Luxury sits in the phone "More" sheet).
 
 ## Verification
 

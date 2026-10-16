@@ -65,15 +65,17 @@ An admin has **no company, no cash and no game**:
 
 - `AuthService.isAdmin` — read from the token's role claim (`core/http/jwt.ts`, accepts the
   full claim URI or a short `role`). UI only; the API re-checks every call.
-- Route `/admin` (child of the layout) with **`canMatch: [adminMatchGuard]`** — a non-admin
-  never matches it, never downloads the admin chunk, and falls through to `**` → dashboard —
-  plus `canActivateChild: [adminChildGuard]`.
-- "Admin" nav item (top nav + tab bar) only for admins.
+- Route `/admin` — **top-level**, with its own `AdminLayoutComponent` (see the second pass
+  above; the first pass made it a child of the game layout) — with
+  **`canMatch: [adminMatchGuard]`**: a non-admin never matches it, never downloads the admin
+  chunk, and falls through to `**` → dashboard — plus `canActivateChild: [adminChildGuard]`.
+- No "Admin" item in the game nav (the first pass had one): admins never see the game, since
+  `playerGuard` sends them to `/admin`.
 - Pages under `features/admin/`: **Overview** (tiles + prestige distribution + most-owned
   businesses), **Players** (search; set cash, reset, make/remove admin, delete — with
   confirmation dialogs), **Catalogue** (list by prestige, search, retired filter; editor
   dialog for entry fields, retire/restore, add/edit/remove assets), **Manager names** (add,
-  filter, delete unused).
+  filter, delete unused). **Loans** and **Luxury** were added by 010.
 - `GameService.syncNow` refreshes the company when the server answers `adjusted`, so a
   player reset by an admin sees it within one sync.
 
@@ -89,5 +91,6 @@ An admin has **no company, no cash and no game**:
   the nav item and all four pages with real data, no horizontal scroll at 390 px and
   1366 px, editor opens with assets; a normal player is sent from `/admin`,
   `/admin/players`, `/admin/catalogue` to `/dashboard` and has no Admin nav item.
-- Gotcha found on the way: the `game-actions` limit (20 requests / 10 s) is **per server,
-  not per user** — browsing admin pages very fast shows "Slow down — too many requests".
+- Gotcha found on the way: the `game-actions` limit (20 requests / 10 s) is **one budget per
+  user across every route** (per player token, else per IP — contract §1), so browsing admin
+  pages very fast shows "Slow down — too many requests".

@@ -8,7 +8,7 @@ A second, rare currency gives players short-term goals beyond cash, and a reason
 once ads exist. It is spent on things that save time or show status, so the leaderboard stays
 winnable without it (roadmap → "Diamonds (premium currency)").
 
-## Rules (all in code — `GameConstants`, `Domain/Store/BadgeCatalog`)
+## Rules (all in code — `GameConstants`, `Domain/Store/BadgeCatalog`, and `AvatarCatalog` since 012)
 
 - **Balance**: a whole number on the company. The server is the only source of truth; every gain
   and spend writes a line to `diamond_transactions` (amount, balance after, reason, detail).
@@ -25,10 +25,10 @@ winnable without it (roadmap → "Diamonds (premium currency)").
 - **Exchange**: n 💎 → n × `DiamondCashValue(prestige)` cash (250 · 2,000 · 20,000 · 200,000 ·
   2.5 M · 30 M · 300 M — 1 % of the next prestige price). **Not** earnings (leaderboard untouched).
 - **Badges**: 16 in four rarities (common 20, rare 50, epic 120, legendary 250 💎), one of each,
-  kept forever. The first bought becomes the featured badge, shown next to the name on the
+  kept forever. A badge bought while none is featured (the first, or after hiding) becomes the featured badge, shown next to the name on the
   profile and the leaderboard; the player can change or hide it. Badge ids are stored: never
   rename or reuse one.
-- **Admin reset** keeps diamonds and badges (they may one day be paid for) but stops a boost and
+- **Admin reset** keeps diamonds, badges (and the featured one) and, since 012, avatars (they may one day be paid for) but stops a boost and
   cancels the double offer.
 
 ## Backend

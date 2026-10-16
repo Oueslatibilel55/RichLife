@@ -28,8 +28,11 @@ A backend change that lands without a contract update is incomplete.
 - **JSON casing** — camelCase on the wire, both directions. Backend records stay
   PascalCase; the serializer converts.
 - **Enums** — always serialized as strings (`"SmallBusiness"`), never as numbers. Adding a
-  value means updating the contract and the string-keyed maps in
-  `dashboard.component.ts`, `layout.component.ts` and `businesses.component.ts`.
+  value means updating the contract, the union in `core/models/game.models.ts`, the maps in
+  `core/game/prestige.ts` / `core/game/sectors.ts` (luxury categories:
+  `features/luxury/luxury.models.ts`) and the matching i18n keys in en/fr/ar
+  (`prestige.<Level>`, `sector.<Sector>` in `dict/core.ts`; `luxury.cat.<Category>` in
+  `dict/luxury.ts`) — all under `idle-startup-frontend/src/app/`.
 - **Dates** — UTC only, ISO-8601 with `Z`. `TimeSpan` serializes as `"hh:mm:ss"`.
 - **Money** — `decimal` server-side, JSON number on the wire. Never `double`/`float`.
 - **Errors** — no ProblemDetails envelope. A business failure is a `400` whose body is a
@@ -40,12 +43,16 @@ A backend change that lands without a contract update is incomplete.
 - **Pagination** — none. Lists are bare JSON arrays. The only limiter is
   `/api/leaderboard?take=` (1..100, default 50).
 - **Auth** — `Authorization: Bearer <accessToken>`; access token 1 h, refresh token 7 days
-  and rotated on every refresh (store both halves of the response).
+  and rotated on every refresh (store both halves of the response). One refresh token per
+  player: a new login on another device invalidates the old one.
+- **Rate limits** — per player when a valid token is present, otherwise per client IP
+  (contract §1).
 
 ## Running it
 
 ```bash
-# Backend — everything (Postgres + pgAdmin + API) via Aspire
+# Backend — Postgres + API via Aspire (the dashboard also links to pgAdmin, which
+# comes from docker-compose: `docker compose up pgadmin -d`)
 cd RichLife && dotnet run --project src/RichLife.AppHost
 
 # Backend — API alone, against a docker Postgres
@@ -89,19 +96,21 @@ Code: `https://github.com/Oueslatibilel55/RichLife` (public — never commit sec
 | Database | **Neon** Postgres 17, `eu-central-1` | Seeded 2026-10-08 with a `pg_dump` of the local Aspire database (catalogue edits made through the admin API are data, not migrations, so a fresh database would lack them). |
 
 Render environment variables (values live only in Render): `ASPNETCORE_ENVIRONMENT=Production`,
-`PORT=8080`, `Jwt__Secret`, `ConnectionStrings__DefaultConnection` (Npgsql key=value form,
+`PORT=8080` (read by Render to route traffic, not by the app — the .NET base image already
+listens on 8080), `Jwt__Secret`, `ConnectionStrings__DefaultConnection` (Npgsql key=value form,
 Neon's **direct** host — not `-pooler` — with `SSL Mode=Require`), and
 `Database__MigrateOnStartup=true` (applies pending EF migrations on boot; off locally).
 Behind Netlify + Render the API reads the client IP from `X-Forwarded-For`
-(`ForwardLimit = 2`) so rate limits stay per visitor.
+(`ForwardLimit = 2`), so anonymous rate limits stay per visitor (signed-in callers are
+limited per player). `/health` and `/alive` answer in production too.
 
 ### Sharing the dev app (phone, colleague)
 
 Because the browser only ever talks to port 4200, forwarding **that one port** is enough —
 VS Code *Ports → Forward a Port → 4200* (Dev Tunnels), `cloudflared tunnel --url
 http://localhost:4200`, or ngrok. The dev server only answers hostnames listed in
-`allowedHosts` (`angular.json` → serve → development): `*.devtunnels.ms`,
-`*.trycloudflare.com`, `*.ngrok-free.app`. Add a domain there for any other tunnel. The
+`allowedHosts` (`angular.json` → serve → development): `.devtunnels.ms`,
+`.trycloudflare.com`, `.ngrok-free.app` (a leading dot matches every subdomain). Add a domain there for any other tunnel. The
 API itself is never exposed, and CORS is not involved (same origin).
 
 From a shell, the Microsoft `devtunnel` CLI (installed via `winget install Microsoft.devtunnel`,

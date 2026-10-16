@@ -31,6 +31,19 @@ public class BusinessCatalogueEntryConfiguration : IEntityTypeConfiguration<Busi
             a.Property(x => x.FixedIncomePerSecond).HasPrecision(20, 6);
         });
 
+        // Place kinds: owned like assets, keyed within their business.
+        b.OwnsMany(x => x.PlaceKinds, k =>
+        {
+            k.ToTable("catalogue_place_kinds");
+            k.WithOwner().HasForeignKey("BusinessCatalogueId");
+            k.HasKey("BusinessCatalogueId", nameof(PlaceKindEntry.Id));
+            k.Property(x => x.Id).HasMaxLength(BusinessCatalogueEntry.MaxIdLength);
+            k.Property(x => x.Name).HasMaxLength(BusinessCatalogueEntry.MaxNameLength).IsRequired();
+            k.Property(x => x.Price).HasPrecision(20, 4);
+        });
+        b.Navigation(x => x.PlaceKinds).HasField("_placeKinds")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // The property returns a sorted copy; EF must read and write the backing list.
         b.Navigation(x => x.AvailableAssets).HasField("_availableAssets")
             .UsePropertyAccessMode(PropertyAccessMode.Field);

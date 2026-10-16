@@ -72,6 +72,27 @@ public static class AdminCatalogueEndpoints
             ToResult(await svc.RemoveAssetAsync(id, assetId, ct)))
         .WithName("AdminRemoveCatalogueAsset")
         .WithSummary("Remove an asset from sale; copies players already bought are untouched");
+
+        // POST /api/admin/catalogue/{id}/places
+        group.MapPost("/{id}/places", async Task<Results<Ok<AdminCatalogueEntryDto>, BadRequest<string>>> (
+            string id, CreatePlaceKindRequest req, CatalogueAdminService svc, CancellationToken ct) =>
+            ToResult(await svc.AddPlaceKindAsync(id, req, ct)))
+        .WithName("AdminAddCataloguePlace")
+        .WithSummary("Add a place kind to a catalogue business");
+
+        // PUT /api/admin/catalogue/{id}/places/{placeId}
+        group.MapPut("/{id}/places/{placeId}", async Task<Results<Ok<AdminCatalogueEntryDto>, BadRequest<string>>> (
+            string id, string placeId, UpdatePlaceKindRequest req, CatalogueAdminService svc, CancellationToken ct) =>
+            ToResult(await svc.UpdatePlaceKindAsync(id, placeId, req, ct)))
+        .WithName("AdminUpdateCataloguePlace")
+        .WithSummary("Replace a place kind's fields");
+
+        // DELETE /api/admin/catalogue/{id}/places/{placeId}
+        group.MapDelete("/{id}/places/{placeId}", async Task<Results<Ok<AdminCatalogueEntryDto>, BadRequest<string>>> (
+            string id, string placeId, CatalogueAdminService svc, CancellationToken ct) =>
+            ToResult(await svc.RemovePlaceKindAsync(id, placeId, ct)))
+        .WithName("AdminRemoveCataloguePlace")
+        .WithSummary("Stop offering a place kind; places players already opened are untouched");
     }
 
     private static Results<Ok<AdminCatalogueEntryDto>, BadRequest<string>> ToResult(

@@ -127,6 +127,41 @@ public static class GameConstants
         _                                 => (2_000_000_000m, 25_000_000_000m),
     };
 
+    // Places and breakdowns (features/014-business-places-and-equipment.md)
+
+    /// <summary>A business can run at most this many places.</summary>
+    public const int MaxPlacesPerBusiness = 10;
+
+    public const int MaxPlaceLevel = 10;
+
+    /// <summary>Capacity of a place when the catalogue entry does not say.</summary>
+    public const int DefaultPlaceCapacity = 4;
+    public const int DefaultPlaceCapacityPerLevel = 2;
+
+    /// <summary>Income bonus per place level above 1, on that place's income.</summary>
+    public const decimal PlaceLevelIncomeBonus = 0.05m;
+
+    /// <summary>Place level 1 → 2 costs the place's price; each next level costs this much more.</summary>
+    public const decimal PlaceLevelCostGrowth = 1.6m;
+
+    /// <summary>Income multiplier of a place by how busy it is.</summary>
+    public static decimal PlaceTierMultiplier(Enums.PlaceTier tier) => tier switch
+    {
+        Enums.PlaceTier.Busy  => 1.5m,
+        Enums.PlaceTier.Prime => 2.2m,
+        _                     => 1m,
+    };
+
+    /// <summary>Mean time between failures of a unit when the catalogue does not say.</summary>
+    public const int DefaultMtbfHours = 48;
+
+    /// <summary>A unit's next failure comes after its MTBF × a uniform draw in [min, max).</summary>
+    public const decimal BreakdownDrawMin = 0.5m;
+    public const decimal BreakdownDrawMax = 1.5m;
+
+    /// <summary>A fast repair costs this many times the standard price and is done at once.</summary>
+    public const decimal FastRepairMultiplier = 2.5m;
+
     // Marketplace closing fees
     public const decimal GracefulCloseFeeRate  = 0.10m;
     public const decimal EmergencyCloseFeeRate = 0.25m;

@@ -6,6 +6,8 @@ import { taxMsLeft } from '../../../core/game/taxes';
 import { MoneyPipe, RatePipe } from '../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { PlacesComponent } from '../places/places.component';
+import { businessIncomeNow } from '../../../core/game/units';
 
 /**
  * Asset management for one owned business. Split out of DashboardComponent so the
@@ -18,7 +20,7 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 @Component({
   selector: 'app-manage-business',
   standalone: true,
-  imports: [MoneyPipe, RatePipe, IconComponent, TranslatePipe],
+  imports: [MoneyPipe, RatePipe, IconComponent, TranslatePipe, PlacesComponent],
   templateUrl: './manage-business.component.html',
   styleUrl: './manage-business.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,7 +31,6 @@ export class ManageBusinessComponent {
   readonly businessId = input.required<string>();
   readonly closed = output<void>();
 
-  readonly busyAssetId = signal<string | null>(null);
   readonly closing = signal(false);
   readonly error = signal('');
   readonly confirmingClose = signal(false);
@@ -143,9 +144,16 @@ export class ManageBusinessComponent {
   readonly shiftLeftLabel = computed(() => formatShiftLeft(this.shiftLeft()));
 
   /** Offline income this business would add once managed — what the player is buying. */
-  readonly offlineGain = computed(
-    () => (this.business()?.netIncomePerSecond ?? 0) * (this.game.company()?.prestigeMultiplier ?? 1),
-  );
+  readonly offlineGain = computed(() => {
+    const biz = this.business();
+    return (biz ? businessIncomeNow(biz, this.game.now()) : 0) * (this.game.company()?.prestigeMultiplier ?? 1);
+  });
+
+  /** This business's income now — units that broke since the response no longer count. */
+  readonly incomeNow = computed(() => {
+    const biz = this.business();
+    return biz ? businessIncomeNow(biz, this.game.now()) : 0;
+  });
 
   hireManager(): void {
     const biz = this.business();
@@ -163,27 +171,6 @@ export class ManageBusinessComponent {
       error: (err: unknown) => {
         this.error.set(toErrorMessage(err, 'manage.error.hire'));
         this.hiring.set(false);
-      },
-    });
-  }
-
-  buyAsset(assetId: string, price: number): void {
-    const biz = this.business();
-    if (!biz || this.busyAssetId()) return;
-
-    this.busyAssetId.set(assetId);
-    this.error.set('');
-
-    this.game.buyAsset(biz.id, assetId, price).subscribe({
-      next: () => {
-        // Refresh both: assetCount and the per-asset `isUnlocked` flags are server-computed.
-        this.game.refreshCompany().subscribe({ error: () => void 0 });
-        this.game.loadCatalogue().subscribe({ error: () => void 0 });
-        this.busyAssetId.set(null);
-      },
-      error: (err: unknown) => {
-        this.error.set(toErrorMessage(err, 'manage.error.buyAsset'));
-        this.busyAssetId.set(null);
       },
     });
   }

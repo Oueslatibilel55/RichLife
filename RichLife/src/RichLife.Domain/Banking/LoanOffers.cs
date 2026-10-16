@@ -1,4 +1,5 @@
 using System.Globalization;
+using RichLife.Domain.Common;
 using RichLife.Domain.Enums;
 
 namespace RichLife.Domain.Banking;
@@ -89,26 +90,4 @@ public static class LoanOffers
     /// <summary>Half a percent steps: 0.0637 → 0.065.</summary>
     private static decimal RoundRate(decimal rate) => decimal.Round(rate * 200m, 0) / 200m;
 
-    /// <summary>
-    /// SplitMix64. <see cref="Random"/>'s seeded sequence is not guaranteed to stay the same
-    /// across .NET versions, and offers must not change when the runtime is upgraded mid-window.
-    /// </summary>
-    private sealed class SeededRandom(ulong seed)
-    {
-        private ulong _state = seed;
-
-        private ulong NextULong()
-        {
-            var z = _state += 0x9E3779B97F4A7C15UL;
-            z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
-            z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
-            return z ^ (z >> 31);
-        }
-
-        /// <summary>0 ≤ n &lt; <paramref name="maxExclusive"/>.</summary>
-        public int Next(int maxExclusive) => (int)(NextULong() % (ulong)maxExclusive);
-
-        /// <summary>0 ≤ x &lt; 1.</summary>
-        public decimal NextUnit() => (decimal)(NextULong() >> 11) / (1UL << 53);
-    }
 }

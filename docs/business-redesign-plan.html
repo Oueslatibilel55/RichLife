@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Redesign Plan</title>
+<style>
+  :root {
+    --canvas: #F7F5F0; --surface: #FFFFFF; --sunken: #F3F0EA; --line: #E7E2D8;
+    --fg: #1C1917; --fg2: #57534E; --fg3: #78716C; --brand: #0F766E; --brand-soft: #F0FDFA;
+    --warn: #B45309; --warn-bg: #FFFBEB; --brk: #BE123C; --brk-bg: #FFF1F2; --ok: #047857; --ok-bg: #ECFDF5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #12100E; --surface: #1C1917; --sunken: #26221F; --line: #34302C;
+      --fg: #F5F5F4; --fg2: #D6D3D1; --fg3: #A8A29E; --brand: #2DD4BF; --brand-soft: #13302C;
+      --warn: #FCD34D; --warn-bg: #2E2410; --brk: #FDA4AF; --brk-bg: #331820; --ok: #6EE7B7; --ok-bg: #0F2A21;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { font-size: clamp(26px, 5vw, 38px); margin: 0 0 8px; line-height: 1.15; }
+  h2 { font-size: 21px; margin: 44px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  p, li { color: var(--fg2); } b, strong { color: var(--fg); }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
+  .lead { font-size: 16px; max-width: 760px; }
+  code { background: var(--sunken); padding: 1px 5px; border-radius: 6px; font-size: 13px; }
+  pre { background: var(--sunken); padding: 14px; border-radius: 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin: 12px 0; }
+  .note { background: var(--warn-bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--fg); }
+  .note b { color: var(--warn); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--sunken); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg3); }
+  tr:last-child td { border-bottom: 0; }
+  td { color: var(--fg2); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .p-new { background: var(--ok-bg); color: var(--ok); } .p-chg { background: var(--warn-bg); color: var(--warn); }
+  .p-out { background: var(--brk-bg); color: var(--brk); }
+  .phases { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .phase { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .phase .n { font-weight: 700; color: var(--brand); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .phase ul { padding-left: 18px; margin: 6px 0 0; font-size: 14px; }
+  .q { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+  .q p { margin: 4px 0 0; font-size: 14px; }
+  .q .rec { color: var(--brand); font-weight: 600; }
+  footer { margin-top: 56px; color: var(--fg3); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">RichLife · plan · 2026-10-16 · phases 1–2 shipped — see docs/features/014-business-places-and-equipment.md</p>
+  <h1>Business redesign — places, equipment, breakdowns</h1>
+  <p class="lead">
+    Source: <code>Desktop/Demo/features/ideas.html</code> (the "Business design book"). This page says what I will
+    change in RichLife to get there, in what order, and what I need you to decide first.
+    <b>Phases 1 and 2 are built</b> with the recommended answers to §9; Gas Stations became the existing <code>fuel-station</code> entry (see the spec).
+  </p>
+
+  <h2>1. What the design book asks for</h2>
+  <p>Five rules every business follows, applied to the 17 existing catalogue businesses plus a new one:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Rule</th><th>Book</th><th>RichLife today</th></tr>
+    <tr><td><b>Buy</b></td><td>Real things earn — scooters, washers, treadmills, rooms, real car models.</td><td>Generic assets (<code>"Menu item"</code>, <code>"Standard washer"</code>), bought per business, income fixed or price × 0.0003.</td></tr>
+    <tr><td><b>Places</b></td><td>Open the same business in many places; each place has a street/area, its own level; busy areas earn and cost more.</td><td>One business per catalogue entry, no location at all.</td></tr>
+    <tr><td><b>Upgrade</b></td><td>Upgrade the place (size, capacity) <i>and</i> its equipment.</td><td>One level per business (1–100, ×2 at 10/25/50).</td></tr>
+    <tr><td><b>Breaks</b></td><td>A broken unit earns nothing until repaired. Repair, Fast repair, Repair all.</td><td>Nothing ever breaks.</td></tr>
+    <tr><td><b>Staff</b></td><td>Workers per place; a manager keeps it running — and repairing — while away.</td><td>A salary number and an employee count copied from the catalogue; manager = 4-hour offline shift.</td></tr>
+  </table></div>
+  <p>Plus <b>Gas Stations</b> (Energy · Business Mogul · opens at $300,000) — new. The book also mentions weather,
+    events, theft, inspections, stock-outs and mileage; see §8 for what I propose to leave for later.</p>
+
+  <h2>2. The new model</h2>
+  <pre>Company
+ └─ Business            (one per catalogue entry, as today — keeps level, manager, taxes)
+     └─ Place           NEW  "24 Oak Street" · district tier · place level · capacity
+         └─ Unit        NEW  "Bay 4 · Self-service bay" · income/s · OK | broken (what, since, repair price)</pre>
+  <p>A <b>Business</b> stays the thing you open from the catalogue, so taxes, managers, business levels, the
+    leaderboard and achievements keep working. Inside it, money is now made by <b>units</b> sitting in <b>places</b>.</p>
+
+  <h3>Income</h3>
+  <pre>place income/s   = Σ (working units' income/s) × district multiplier × place-level multiplier
+business gross/s = Σ place income/s                      ← replaces "base + assets"
+netIncomePerSecond = gross × business levelMultiplier − salary/s   (unchanged formula after this line)</pre>
+  <p>Everything above <code>netIncomePerSecond</code> — prestige multiplier, boost, offline, taxes — is untouched.</p>
+
+  <h3>Districts</h3>
+  <p>Each business type lists the place kinds it can open (park/beach/stadium for a food cart, downtown/station/airport
+    for parking…). Each kind has a <b>tier</b> that sets cost and income:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Tier</th><th>Place price</th><th>Income ×</th><th>Example</th></tr>
+    <tr><td>Quiet</td><td>× 1</td><td>× 1.0</td><td>Suburb street, park</td></tr>
+    <tr><td>Busy</td><td>× 2</td><td>× 1.5</td><td>Downtown, university, train station</td></tr>
+    <tr><td>Prime</td><td>× 4</td><td>× 2.2</td><td>Airport, stadium, highway exit</td></tr>
+  </table></div>
+  <p>Street names come from a server list (like manager names) — flavour only.</p>
+
+  <h3>Place level</h3>
+  <p>Level 1 → 10. Each level adds <b>capacity</b> (how many units the place holds: 1 → 6 bays, 20 → 200 spaces,
+    30 → 120 rooms…) and +5 % income. Price grows ×1.6 per level. Capacity is the real reason to upgrade: you cannot
+    buy a 5th washer into a place that holds 4.</p>
+
+  <h3>Breakdowns</h3>
+  <ul>
+    <li>Each unit type has a <b>mean time between failures</b> (e.g. a bike ~18 h, a WashTec tunnel ~60 h) and a list
+      of named faults with a cost share and repair time — the same shape as Road to Rich's <code>breakdowns.ts</code>.</li>
+    <li>The server draws the next failure time <code>breaksAt</code> when a unit is bought or repaired, and sends it.
+      <b>The client never rolls dice</b>: at <code>breaksAt</code> its ticker drops that unit's income, with no call needed.
+      Offline income is integrated piece by piece the same way. The sync ceiling stays valid (breaks only lower income).</li>
+    <li>When the server sees a <code>breaksAt</code> in the past it picks the fault (seeded by unit id, so it is
+      repeatable) and the unit shows <code>"Pump failure · Repair $180"</code>.</li>
+    <li><b>Repair</b>: pays the fault price, the unit is back after the repair time (1–36 h).
+      <b>Fast repair</b>: × 2.5 price, back at once. <b>Repair all</b>: standard repair of every broken unit of the
+      business in one call (one sync, one spend).</li>
+    <li>Repair money is a spend: not counted against <code>allTimeEarnings</code>, not part of <code>totalValue</code>.</li>
+  </ul>
+
+  <h3>Staff</h3>
+  <p>Workers are <b>derived</b>, not hired one by one: each unit type says how many workers it needs (a hand-wash bay 2,
+    an automatic tunnel 0.5, a taxi 1 per shift), and a place's salary = workers × the sector wage. That replaces the
+    flat <code>monthlySalaryCost</code> and shows on the card as "4 workers". The <b>manager</b> keeps its 4-hour
+    shift and gains one job: during the shift, a broken unit is <b>repaired automatically</b> (standard repair, paid
+    from cash if cash covers it).</p>
+
+  <h2>3. Contract changes (<code>docs/api-contract.md</code>, first)</h2>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>What</th></tr>
+    <tr><td><span class="pill p-chg">changed</span></td><td><code>BusinessDto</code> gains <code>places: PlaceDto[]</code>, <code>brokenUnits</code>, <code>workers</code>. <code>assetCount</code> becomes the unit count. Old fields stay.</td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td><code>PlaceDto</code> { id, kind, tier, street, level, capacity, unitCount, incomePerSecond, nextLevelCost, units[] }</td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td><code>UnitDto</code> { id, catalogueId, name, incomePerSecond, workers, status: "Working" | "Broken" | "Repairing", breaksAt, fault, repairCost, fastRepairCost, backAt }</td></tr>
+    <tr><td><span class="pill p-chg">changed</span></td><td><code>BusinessCatalogueDto</code>: <code>availableAssets</code> → unit types with <code>workers</code>, <code>mtbfHours</code>; new <code>placeKinds[]</code> { id, name, tier, price }.</td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td><code>POST /api/game/businesses/{id}/places/{placeKind}</code> — open a place</td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td><code>POST /api/game/places/{placeId}/level-up</code></td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td><code>POST /api/game/places/{placeId}/units/{unitCatalogueId}</code> — buy a unit into a place</td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td><code>POST /api/game/units/{unitId}/repair?fast={bool}</code>, <code>POST /api/game/businesses/{id}/repair-all</code></td></tr>
+    <tr><td><span class="pill p-chg">changed</span></td><td><code>POST /businesses/{id}/assets/{assetId}</code> kept as an alias: buys into the first place with room (so nothing breaks mid-deploy).</td></tr>
+    <tr><td><span class="pill p-chg">changed</span></td><td><code>SyncResultDto</code> / <code>OfflineEarningsDto</code>: <code>newBreakdowns</code> (count + business names) and <code>autoRepairs</code> for a toast.</td></tr>
+    <tr><td><span class="pill p-new">new</span></td><td>Admin §7: edit place kinds, unit types, faults; new error strings with fr/ar lines in <code>dict/server.ts</code>.</td></tr>
+  </table></div>
+
+  <h2>4. Backend (<code>RichLife/</code>)</h2>
+  <ul>
+    <li><b>Domain</b>: <code>Place</code> and <code>BusinessUnit</code> entities inside the <code>Company</code> aggregate (under <code>Business</code>); <code>BusinessAsset</code> is replaced by <code>BusinessUnit</code>.
+      Catalogue: <code>PlaceKindEntry</code>, <code>UnitTypeEntry</code> (evolves <code>AssetCatalogueEntry</code>), <code>FaultEntry</code>. New constants in <code>GameConstants</code> (tiers, place level growth, fast-repair ×2.5).</li>
+    <li><b>Income</b>: <code>Business.GrossIncomePerSecond</code> becomes computed from places; offline accrual in <code>Company</code> integrates per unit between <code>breaksAt</code> boundaries and the manager shift; manager auto-repair runs there too.</li>
+    <li><b>Application</b>: <code>BusinessService</code> gets open-place / level-place / buy-unit / repair / repair-all; DTO + mapper updates; achievements gain "first place", "10 places", "fix it" if you want them.</li>
+    <li><b>Infrastructure</b>: EF configs, one migration — tables <code>business_places</code>, <code>business_units</code>, <code>catalogue_place_kinds</code>, <code>catalogue_faults</code>; data migration of every existing business (§6); new seed content (§5).</li>
+    <li><b>Tests</b>: domain tests for income with broken units, piecewise offline accrual, capacity, repair/fast repair, auto-repair; endpoint tests for the new routes.</li>
+  </ul>
+
+  <h2>5. Content — the 18 businesses</h2>
+  <p>Names, sectors, prestige and opening costs stay as in the book (= today's seed). Units and places come from the book.
+    Prices of new real-model units follow the book (e.g. Toyota Prius $28,000, Volvo VNL 860 $165,000);
+    income per unit is tuned so each business keeps roughly today's payback time.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Units (examples)</th><th>Place kinds</th></tr>
+    <tr><td>Food Cart</td><td>Hot-dog cart · coffee bike · Ford E-450 truck</td><td>Park · beach · university · stadium</td></tr>
+    <tr><td>Bike Courier</td><td>City bike · e-bike · R&amp;M cargo bike · Honda PCX</td><td>District hub · downtown hub</td></tr>
+    <tr><td>Car Wash</td><td>Hand bay · self-service bay · WashTec automatic</td><td>Street · next to supermarket · highway</td></tr>
+    <tr><td>Parking Lot</td><td>Block of 20 spaces · ticket machine · EV charger</td><td>Downtown · station · stadium · hospital · airport</td></tr>
+    <tr><td>Vending</td><td>Snack · cold drinks · coffee machine</td><td>Office · school · station · hospital · gym</td></tr>
+    <tr><td>Mini-Market</td><td>Fridge · freezer · checkout · bakery corner</td><td>Neighbourhood · near school · near station</td></tr>
+    <tr><td>Laundromat</td><td>Speed Queen washer · dryer · Electrolux industrial</td><td>Student area · apartment blocks</td></tr>
+    <tr><td>Taxi Fleet</td><td>Prius · Camry Hybrid · Model Y · E-Class</td><td>Depot · airport permit</td></tr>
+    <tr><td>Gym</td><td>Technogym treadmill · bike · rack · rower</td><td>Club (suburb · city · prime)</td></tr>
+    <tr><td>Transport Company</td><td>Ford Transit · Isuzu NPR-HD · Actros · Volvo VNL</td><td>Depot per city</td></tr>
+    <tr><td>Rent-A-Car</td><td>Sandero → Porsche 911 (8 models)</td><td>City centre · station · airport</td></tr>
+    <tr><td>Restaurant Chain</td><td>Burger joint · pizzeria · sushi bar · steakhouse (kitchen = unit)</td><td>Street · downtown</td></tr>
+    <tr><td>Small Hotel</td><td>Room · suite</td><td>City · beach · mountains</td></tr>
+    <tr><td>Gas Stations <span class="pill p-new">new</span></td><td>Pump · shop · car wash · EV fast charger · café</td><td>Street · town · highway service area</td></tr>
+    <tr><td>Real Estate</td><td>Apartment</td><td>Cheap · mid · prime district</td></tr>
+    <tr><td>Shopping Mall</td><td>Shop unit · food court · cinema</td><td>Mall (one tier per city)</td></tr>
+    <tr><td>Office Tower</td><td>Floor</td><td>CBD · business park</td></tr>
+    <tr><td>Airport</td><td>Gate · lounge · duty-free · cargo terminal</td><td>One site</td></tr>
+  </table></div>
+  <div class="note"><b>Check first:</b> catalogue edits made through the admin panel are data, not migrations. Before
+    writing the seed I will read the live catalogue (local Aspire DB and Neon) and keep any admin change.</div>
+
+  <h2>6. Existing players — nothing lost</h2>
+  <ul>
+    <li>Every owned business gets one place, <b>"Main"</b>, Quiet tier, place level 1, with a capacity big enough for what it already owns.</li>
+    <li>Every owned asset becomes a unit in it with its current income and price, <b>working</b>, <code>breaksAt</code> drawn from deploy time
+      (first failures land hours after deploy, not at once).</li>
+    <li>Today's base income (<code>BaseIncomePerSecond</code>) becomes a built-in unit of that place, so <code>netIncomePerSecond</code> is identical the minute after deploy.</li>
+    <li>Business level, manager, taxes, <code>totalValue</code> are untouched.</li>
+  </ul>
+
+  <h2>7. Frontend (<code>idle-startup-frontend/</code>)</h2>
+  <ul>
+    <li>Models in <code>core/models/game.models.ts</code>; <code>GameService</code>: new calls (sync first, as for every spend) and a ticker that
+      drops a unit's income at its <code>breaksAt</code>.</li>
+    <li><b>Place card</b> exactly like the book's mock: street + $/day, level bar, workers, units with OK / fault, one Repair button,
+      one Upgrade button. Used in the manage-business dialog (which becomes a page per business: places list + "Open a new place").</li>
+    <li>Badges on the dashboard: "3 broken" per business; a "Repair all" action; toasts for new breakdowns and auto-repairs.</li>
+    <li>i18n en/fr/ar for every unit, place kind, fault and new server message; admin catalogue editor for places/units/faults.</li>
+  </ul>
+
+  <h2>8. Phases</h2>
+  <div class="phases">
+    <div class="phase"><div class="n">Phase 1 — core</div><ul>
+      <li>Places, districts, place levels, capacity</li><li>Units with real names</li><li>Data migration</li><li>Content for all 18</li></ul></div>
+    <div class="phase"><div class="n">Phase 2 — breaks</div><ul>
+      <li>Faults, breaksAt, broken = no income</li><li>Repair / fast / repair all</li><li>Manager auto-repair</li><li>Toasts</li></ul></div>
+    <div class="phase"><div class="n">Phase 3 — staff</div><ul>
+      <li>Workers derived per unit</li><li>Salary per place replaces the flat salary</li></ul></div>
+    <div class="phase"><div class="n">Later — not in this plan</div><ul>
+      <li>Weather, match days, events</li><li>Theft, inspections, fines, stock-outs</li><li>Vehicle mileage / 1,000,000 km scrap</li><li>New vs used vehicles</li><li>Airport ↔ parking links</li></ul></div>
+  </div>
+  <p>Each phase is: contract → backend + tests → frontend → spec <code>014</code> marked done, then one commit.</p>
+
+  <h2>9. Decisions I need from you</h2>
+  <div class="q"><b>1. Business level vs place level.</b>
+    <p>Keep today's business level (players paid for it) <i>and</i> add place levels, or fold business level into places?</p>
+    <p class="rec">My pick: keep both — business level = brand multiplier, place level = capacity.</p></div>
+  <div class="q"><b>2. Auto-repair while away.</b>
+    <p>During a manager shift, may the game spend the player's cash on repairs? (Taxes never auto-charge; the bank does.)</p>
+    <p class="rec">My pick: yes, standard price, only if cash covers it — otherwise the unit stays broken.</p></div>
+  <div class="q"><b>3. How hard breakdowns bite.</b>
+    <p>A player who opens once a day would find most units broken. Mean time between failures 12–72 h?
+      Or a softer rule: broken units earn 50 % instead of 0?</p>
+    <p class="rec">My pick: 0 % as the book says, MTBF 24–96 h, and the manager repairs.</p></div>
+  <div class="q"><b>4. Scope of the first delivery.</b>
+    <p>All three phases in one go, or Phase 1 + 2 first and look at it on the dev tunnel?</p>
+    <p class="rec">My pick: Phase 1 + 2, then playtest.</p></div>
+  <div class="q"><b>5. Gas Station numbers.</b>
+    <p>The book opens it at $300,000 but its cheapest station is $650,000. Fine as "licence $300k, then buy stations as places"?</p></div>
+
+  <footer>Plan only — <code>docs/business-redesign-plan.html</code>. Once you answer §9 I will turn it into
+    <code>docs/features/014-business-places-and-equipment.md</code>, update the contract, and start Phase 1.</footer>
+</div>
+</body>
+</html>

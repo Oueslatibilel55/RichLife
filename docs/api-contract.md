@@ -26,7 +26,7 @@ backend, then the frontend.
 | Durations | `TimeSpan` serializes as `"hh:mm:ss(.fffffff)"` — e.g. `"04:00:00"`. Only `OfflineEarningsDto.elapsed` uses it. |
 | Money / rates | JSON numbers, backed by `decimal` server-side. Do not round-trip through a float where precision matters. |
 | Ids | `Guid` as a lowercase dashed string. Catalogue ids are **slug strings** (`"food-cart"`, `"menu-item"`), not Guids. |
-| Auth | `Authorization: Bearer <accessToken>` on everything except `/api/auth/*` and `/api/leaderboard`. Access token lives **1 hour**; refresh token **7 days**, rotated on every use. `/api/admin/*` additionally needs the `Admin` role claim (see §7). **Admins are staff, not players**: an admin token is refused (`403`) on `/api/game/*` (§4, §5). |
+| Auth | `Authorization: Bearer <accessToken>` on everything except `/api/auth/*` and `/api/leaderboard`. Access token lives **1 hour** (validated with the default 5-minute clock skew); refresh token **7 days**, rotated on every use. `/api/admin/*` additionally needs the `Admin` role claim (see §7). **Admins are staff, not players**: an admin token is refused (`403`) on `/api/game/*` and `/api/profile` (§4, §5, §6b). |
 | Pagination | None. The only list that limits is `/api/leaderboard` via `?take=` (default 50, clamped to 1..100). Lists are **bare JSON arrays**, never wrapped in an envelope. |
 | Content type | `application/json` for every request with a body, except `/api/game/sync-beacon` (see its note). |
 
@@ -47,33 +47,41 @@ Angular's `HttpClient` parses that into a plain `string`, so `err.error` *is* th
 | Status | Body | When |
 |---|---|---|
 | `400` | JSON string | A business rule rejected the command (`Result.Fail`). |
-| `401` | *empty* | Missing / expired / invalid bearer token, bad credentials, or a token whose `nameid` claim is absent or not a Guid. |
+| `401` | *empty* | Missing / expired / invalid bearer token, bad credentials, or a token whose NameIdentifier claim (`http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier`) is absent or not a Guid. |
 | `403` | *empty* | Valid token without the `Admin` role on `/api/admin/*`, or **with** it on `/api/game/*` (admins do not play). |
 | `404` | JSON string | `GET /api/game/state` and `GET /api/game/company` when the player has no company; `GET /api/admin/catalogue/{id}` for an unknown id. |
-| `429` | *empty* | Rate limit exceeded. |
-| `400` | *empty* | Framework-level binding failure (malformed JSON body, required query parameter missing). Not the `Result` path — there is no message to display. |
+| `429` | *empty* | Rate limit exceeded. No `Retry-After` header. |
+| `400` | *empty* | Framework-level binding failure (malformed JSON body, required query parameter missing). Not the `Result` path — there is no message to display. Empty in production; in Development the developer exception page renders it. |
 | `500` | dev page / empty | Unhandled. There is no global exception handler. See *Known gaps*. |
 
 ### Rate limits
 
-Sliding window, applied per server (not per user).
+Sliding window, **partitioned per caller**: per player (the token's NameIdentifier) when a
+valid bearer token is present, otherwise per client IP (from `X-Forwarded-For` when
+deployed, see the root `CLAUDE.md`). Each policy has its own budget; one player shares a
+single `game-actions` budget across every route below. Requests that end in `401`/`403`
+still count.
 
 | Policy | Applies to | Limit |
 |---|---|---|
 | `auth` | `/api/auth/*` | 10 requests / 60 s |
-| `game-actions` | `/api/game/*`, `/api/game/businesses/*`, `/api/leaderboard`, `/api/admin/*` | 20 requests / 10 s |
+| `game-actions` | `/api/game/*` (businesses, luxury, bank and store included), `/api/profile`, `/api/leaderboard`, `/api/admin/*` | 20 requests / 10 s |
+
+`/health`, `/alive`, `/openapi` and `/scalar` are not rate-limited.
 
 ### Known gaps (documented, not endorsed)
 
-- **No input validation on `/api/auth/register`.** A blank `username` or `email` reaches
-  `Player.Create`, which throws `ArgumentException` → **500**, not 400. The client must
-  validate `username` (≤ 30 chars), `email` (≤ 254) and `country` (exactly 2 chars)
-  itself. There is no server-side password policy.
+- **No input validation on `/api/auth/register` or `/login`.** A null or blank `username`,
+  `email` or `password`, or an over-length field (`username` > 30, `email` > 254,
+  `country` > 2 — database limits), is a **500**, not 400. The server does not require
+  `country` to be exactly 2 characters (0–2 are accepted). Username uniqueness is
+  case-sensitive (`"Bilel"` and `"bilel"` can both register). There is no password policy.
+  The client must validate all of this itself.
+- **No validation on `POST /api/game/company`.** A blank `companyName` throws in
+  `Company.Create`, and one over 50 characters fails the database limit — both **500**.
 - `nextPrestigeThreshold` is `decimal.MaxValue` (`7.922816251426434e+28`) at
   `GlobalEmpire`. Prefer testing `prestigeLevel === "GlobalEmpire"` over comparing against
   that number.
-- `GET /api/leaderboard` is registered with a trailing slash — the exact path is
-  **`/api/leaderboard/`**.
 
 ---
 
@@ -113,10 +121,10 @@ Sliding window, applied per server (not per user).
 | `taxRate` | Share of each business's earnings billed as tax every 24 h — `0.07`. |
 | `avatar` | The player's chosen avatar (§6e) — an emoji on a gradient from `from` to `to` (CSS colours) — or `null` for none (clients show the username's initial). Same `AvatarDto` on the profile and the leaderboard. |
 | `boostUntil` | End of the running **income boost** (§6e), `null` if none was ever bought. While `now < boostUntil` every income — online and offline — is × `boostMultiplier`. **`incomePerSecond` and `offlineIncomePerSecond` never include the boost**: the client multiplies its ticker rate itself and drops back when `boostUntil` passes. |
-| `incomePerSecond` | **Online** rate: `(passiveIncomePerSecond + Σ business.netIncomePerSecond) × prestigeMultiplier`. This is the number the client ticker must simulate — the multiplier is **already applied**. |
+| `incomePerSecond` | **Online** rate **at response time**: `(passiveIncomePerSecond + Σ business.netIncomePerSecond) × prestigeMultiplier`. This is the number the client ticker must simulate — the multiplier is **already applied**. Units break and come back on a schedule the client already has (`UnitDto.breaksAt` / `workingFrom`, §5 *Places and breakdowns*): from then on the client adds or removes `contributionPerSecond × prestigeMultiplier` per unit itself. |
 | `offlineIncomePerSecond` | Same formula, but counting only businesses whose manager shift is running at response time (`isAutomated: true`). The rate actually paid while away also depends on when each shift ends — see `GET /api/game/state`. |
 | `netWorth` | `cash` + company assets + Σ `business.totalValue` + Σ luxury items bought (at their price, §6c) **−** what is still owed on an active bank loan (`outstanding`, §6d) **−** `taxesDue`. |
-| `allTimeEarnings` | Every dollar income has ever produced, cumulative. Never decreases; **survives prestige**; refunds from closing a business do not count. This is what ranks `/api/leaderboard`. Shown on the dashboard — see `features/001-all-time-earnings-on-company.md`. |
+| `allTimeEarnings` | Every dollar income has ever produced, cumulative. Never decreases through play (only an admin reset, §7b, zeroes it); **survives prestige**; refunds from closing a business do not count. This is what ranks `/api/leaderboard`. Shown on the dashboard — see `features/001-all-time-earnings-on-company.md`. |
 | `prestigeMultiplier` | `1 + 0.18 × prestigeCount`. |
 | `nextPrestigeThreshold` | **Cash price** of the **next** prestige (see §4 `/prestige`). Compare against `cash`, not `netWorth` — business value cannot pay for it. |
 | `lastSyncAt` | Server watermark. Offline accrual and the `/sync` ceiling are both measured from it. |
@@ -146,13 +154,37 @@ Sliding window, applied per server (not per user).
   "nextLevelIncomePerSecond": 30.493981,
   "taxDue": 1240.5,
   "taxAccruing": 312.75,
-  "taxPeriodEndsAt": "2026-10-10T08:00:00Z"
+  "taxPeriodEndsAt": "2026-10-10T08:00:00Z",
+  "brokenUnits": 1,
+  "maxPlaces": 10,
+  "places": [
+    {
+      "id": "8d0c…", "kindId": "depot", "name": "Depot", "street": "24 Oak Street", "tier": "Quiet",
+      "level": 2, "maxLevel": 10, "multiplier": 1.05, "capacity": 4, "unitCount": 1,
+      "baseIncomePerSecond": 30, "incomePerSecond": 40.32, "nextLevelCost": 80000, "nextLevelCapacity": 6,
+      "units": [
+        {
+          "id": "5f1e…", "catalogueId": "toyota-prius", "name": "Toyota Prius", "price": 28000,
+          "incomePerSecond": 8.4, "contributionPerSecond": 10.584, "status": "Broken",
+          "workingFrom": "2026-10-09T08:00:00Z", "breaksAt": "2026-10-10T06:12:44Z",
+          "fault": "brakes", "faultName": "Worn-out brakes",
+          "repairCost": 9800, "fastRepairCost": 24500, "repairHours": 3
+        }
+      ]
+    }
+  ]
 }
 ```
 
 `catalogueId` is the join key back to the catalogue — **match on it, never on `name`**.
-`netIncomePerSecond` is gross income (base + assets) **× `levelMultiplier`**, minus the
-amortized salary (`monthlySalaryCost / 2592000`), **before** the prestige multiplier.
+Since 2026-10-16 (`features/014-business-places-and-equipment.md`) a business earns through
+**places** and the **units** in them — see §5 *Places and breakdowns*. `netIncomePerSecond`,
+`nextLevelIncomePerSecond`, `brokenUnits` and every unit's `status` are **as of the response**;
+`assetCount` is the number of units, whatever their state.
+`isForSale` / `askingPrice` belong to a marketplace that is not built: always `false` / `null`.
+`netIncomePerSecond` is gross income **× `levelMultiplier`**, minus the
+amortized salary (`monthlySalaryCost / 2592000`), **before** the prestige multiplier. Gross
+income is, for each place, `(baseIncomePerSecond + Σ working units' incomePerSecond) × multiplier`.
 `level` starts at 1 (max 100). `levelMultiplier` = `(1 + 0.10 × (level − 1)) × 2^milestones`,
 where each of levels **10, 25 and 50** reached doubles it. `nextLevelCost` is the price of
 the next level-up (`openingCost × 1.25^(level − 1)`) and `nextLevelIncomePerSecond` what
@@ -171,6 +203,20 @@ hire. A company's running shifts never share a name while unused names remain.
 bill the current 24-hour period would produce if it ended now; `taxPeriodEndsAt` when that period
 is billed. See *Taxes* in §5.
 
+`PlaceDto`: `tier` is `Quiet` | `Busy` | `Prime`; `multiplier` = tier (× 1 / 1.5 / 2.2) ×
+`(1 + 0.05 × (level − 1))`; `capacity` is how many units it holds (`unitCount` of them are
+there); `incomePerSecond` is what the place adds to `netIncomePerSecond` now (its own income and
+its working units, × its multiplier × the business's `levelMultiplier`, before salaries);
+`nextLevelCost` / `nextLevelCapacity` are `null` at `maxLevel`. Places come in opening order.
+
+`UnitDto`: `incomePerSecond` is the unit's own income; `contributionPerSecond` what it adds to
+`netIncomePerSecond` **while it works** (× place multiplier × `levelMultiplier`, before prestige).
+A unit **works while `workingFrom ≤ now < breaksAt`**: `status` is `Working`, `Broken` (from
+`breaksAt`, until repaired) or `Repairing` (before `workingFrom`). `fault`, `faultName`,
+`repairCost`, `fastRepairCost` and `repairHours` describe the failure due at `breaksAt` — sent
+ahead of time so the client can show it the moment the unit breaks. `fault` is a stable id the
+client translates (`fault.<id>`); `faultName` is the English fallback.
+
 ### `BusinessCatalogueDto`
 
 ```json
@@ -187,11 +233,23 @@ is billed. See *Taxes* in §5.
   "canAfford": true,
   "isOwned": false,
   "availableAssets": [
-    { "id": "menu-item",   "name": "Menu item",    "price": 200, "incomePerSecond": 0.5, "unlockAtAssetCount": 0, "isUnlocked": true  },
-    { "id": "menu-item-2", "name": "Premium dish", "price": 500, "incomePerSecond": 1.5, "unlockAtAssetCount": 5, "isUnlocked": false }
+    { "id": "hot-dog-cart", "name": "Hot-dog cart", "price": 500,  "incomePerSecond": 0.5, "unlockAtAssetCount": 0, "isUnlocked": true,  "mtbfHours": 48 },
+    { "id": "coffee-bike",  "name": "Coffee bike",  "price": 1800, "incomePerSecond": 1.8, "unlockAtAssetCount": 2, "isUnlocked": false, "mtbfHours": 36 }
+  ],
+  "placeBaseCapacity": 1,
+  "placeCapacityPerLevel": 1,
+  "placeKinds": [
+    { "id": "park",    "name": "Park",    "tier": "Quiet", "price": 500,  "incomeMultiplier": 1,   "canAfford": true },
+    { "id": "stadium", "name": "Stadium", "tier": "Prime", "price": 2000, "incomeMultiplier": 2.2, "canAfford": false }
   ]
 }
 ```
+
+`availableAssets` are the **units** a place can hold; `mtbfHours` is the unit's mean time
+between failures. `placeKinds` are where the business can open places — the first one is the
+place it opens with; an entry with none opens a quiet place named "Main" and cannot open more.
+`placeBaseCapacity` / `placeCapacityPerLevel`: units a new place holds, and how many more each
+place level adds. Added 2026-10-16.
 
 `canAfford`, `isOwned` and per-asset `isUnlocked` are **computed server-side against the
 caller's company**. The client must not recompute them. `unlockAtAssetCount` (added
@@ -255,6 +313,9 @@ distinguish unknown email from wrong password)* · `429`.
 **Both** tokens in the response are new: the refresh token rotates and the old one stops
 working. Store both.
 
+Each player has **one** refresh token: login and register replace it too, so logging in on a
+second device ends the first device's ability to refresh (its next refresh is a `401`).
+
 ---
 
 ## 4. Game — `/api/game`
@@ -267,7 +328,8 @@ working. Store both.
 { "companyName": "Oueslati Holdings" }
 ```
 
-→ `200` `CompanyDto` · `400` JSON string · `401`.
+→ `200` `CompanyDto` · `401` · `400` *(empty)* on a malformed body · `500` on a blank
+`companyName` or one over 50 characters (no validation — see *Known gaps*).
 
 Idempotent: if the player already has a company it is returned unchanged and
 `companyName` is ignored. `name` is capped at 50 characters by the database.
@@ -292,20 +354,28 @@ Read-only snapshot. **Does not accrue offline income and does not move `lastSync
   "loanPayment": null,
   "doubleOffer": { "amount": 60508.8, "price": 15, "until": "2026-10-01T09:44:22Z" },
   "taxBilled": 0,
+  "autoRepairs": 2,
+  "repairsPaid": 1240,
   "company": { "id": "6f1f4b4e-...", "cash": 78929.3, "businesses": [] }
 }
 ```
 
+Within each business's managed window, **each unit earns only while it works**, and a unit that
+breaks during the shift is **repaired by the manager** at the standard price when cash covers it
+(it earns again once fixed) — §5 *Places and breakdowns*. Then managers still on shift repair
+whatever is broken now. `autoRepairs` / `repairsPaid` count both; `cashAfter` is net of them.
+
 The only endpoint that credits time spent away. The paid window is `lastSyncAt` →
 `lastSyncAt + min(elapsed, 4 h)` (`capped: true` means `elapsed` exceeded the cap). Within
 it, **base income** is paid for the whole window, and **each business** only for the part
-of the window its manager's shift covers (`lastSyncAt` → `min(window end, managerUntil)`),
+of the window its manager's shift covers (`max(lastSyncAt, managerUntil − 4 h)` →
+`min(window end, managerUntil)`),
 all × `prestigeMultiplier` (and × `boostMultiplier` for the part of the window an income boost covers, §6e). Example: hire at 11:00 (shift until 15:00), leave at 12:00, back
 at 18:00 → window 12:00–16:00: base 4 h, that business 3 h.
 It advances `lastSyncAt` to now, so it cannot double-credit with `/sync`.
 After crediting, it collects every **bank installment** that fell due while away (§6d);
 `loanPayment` sums them (`null` when none was due) and `cashAfter` is net of them.
-`doubleOffer` (`null` when nothing was earned) lets the player pay `price` diamonds to receive
+`doubleOffer` (`null` when no offer is pending — one is set whenever something was earned) lets the player pay `price` diamonds to receive
 `amount` again, until `until` — see `POST /api/game/store/double-offline` (§6e). A later
 `/state` that earns something replaces the offer.
 `taxBilled` is the tax newly billed by this call for periods that ended while away (§5 *Taxes*) —
@@ -322,7 +392,7 @@ comes back. `elapsed` is a .NET `TimeSpan`: past 24 hours it gains a day prefix 
 { "cash": 18420 }
 ```
 
-→ `200` `SyncResultDto` · `400` `"Cash cannot be negative."` · `401`.
+→ `200` `SyncResultDto` · `400` `"Cash cannot be negative."` | `"Company not found."` · `401`.
 
 ```json
 {
@@ -331,12 +401,20 @@ comes back. `elapsed` is a .NET `TimeSpan`: past 24 hours it gains a day prefix 
   "loanPayment": null,
   "diamonds": 95,
   "taxesDue": 1240.5,
-  "taxBilled": 0
+  "taxBilled": 0,
+  "autoRepairs": 0,
+  "repairsPaid": 0
 }
 ```
 
 The client simulates cash locally and reports it. The server clamps it to
-`lastRecordedCash + incomePerSecond × elapsedSeconds × 1.05`. `adjusted: true` means the
+`lastRecordedCash + incomePerSecond × elapsedSeconds × 1.05`, where `incomePerSecond` counts
+**every unit as working** (a breakdown only ever lowers income, so the ceiling stays a ceiling).
+
+After clamping, managers on shift repair every broken unit of their business at the standard
+price, as far as cash allows (§5 *Places and breakdowns*): `autoRepairs` / `repairsPaid` say so,
+and `acceptedCash` is net of it (`adjusted` is `true`) — the client announces the repair and
+refreshes the company to see the units back in repair. `adjusted: true` means the
 figure was clamped — the client **must** adopt `acceptedCash` as its new truth.
 `lastSyncAt` moves to now on every call.
 
@@ -346,8 +424,9 @@ collected, `loanPayment` describes it and `acceptedCash` is net of it — so `ad
 than a generic "balance corrected").
 
 Every sync also checks achievements (§6b): `newAchievements` lists the ones unlocked by this
-call — usually `[]` — so the client can announce them. Each is reported exactly once, with the
-diamonds it paid (§6e). `diamonds` is the balance after the call.
+call — usually `[]` — so the client can announce them. Each is reported at most once, with the
+diamonds it paid (§6e). One first met while `GET /api/profile` runs is recorded (and paid)
+there and never appears in `newAchievements`. `diamonds` is the balance after the call.
 
 Every sync also bills the **taxes** of any business whose 24-hour period has ended (§5 *Taxes*):
 `taxBilled` is what this call billed (usually 0), `taxesDue` the total now unpaid. Cash is never
@@ -360,12 +439,12 @@ The sync ceiling includes a running income boost (§6e): seconds of the window b
 
 Same body as `/sync`, intended for `navigator.sendBeacon` on tab close.
 
-→ `200` *(empty body)* · `400` `"Malformed sync payload."` | `"Empty sync payload."` ·
-`401`.
+→ `200` *(empty body)* · `401` · `400` `"Malformed sync payload."` (unparseable body) |
+`"Empty sync payload."` (a JSON `null`) | `"Cash cannot be negative."` | `"Company not found."`.
 
 The body is deserialized manually (case-insensitive property names), so **any content
-type is accepted**. The endpoint still sits behind `RequireAuthorization()` and therefore
-still needs a bearer token — which `sendBeacon` cannot attach. See mismatch **M1**.
+type is accepted**. The endpoint still requires a player token — which `sendBeacon` cannot
+attach. The frontend does not call it (**M1**, resolved — see §9).
 
 ### `POST /api/game/prestige`
 
@@ -408,7 +487,8 @@ reduce `allTimeEarnings`. Each prestige also gives **diamonds** (§6e). Like any
 
 Returns only **active** entries at or below the caller's current prestige level, each
 already flagged with `canAfford` / `isOwned` and per-asset `isUnlocked`. Ordered by
-`requiredPrestige`, then the admin-set display order; assets likewise.
+`requiredPrestige`, then the admin-set display order, then `id`; assets by display order,
+then `id`.
 
 The catalogue is **content stored in the database** and editable through §7, so the client
 must never hardcode a business, an asset or a price. It may change between two calls (the
@@ -440,10 +520,69 @@ index on `(CompanyId, CatalogueId)`. A **retired** entry answers
 `totalValue`) · `401` · `400` with one of:
 `"Company not found."`, `"Business not found."`, `"Business not found in catalogue."`,
 `"Asset not available for this business."`, `"Need {n} assets to unlock this."`,
-`"Insufficient funds."`.
+`"This place is full. Upgrade it or open another place."`, `"Insufficient funds."`.
 
 An asset belongs to a business *type* — only assets listed in that business's
-`availableAssets` can be bought for it.
+`availableAssets` can be bought for it. Since places exist this route puts the unit in the
+**first place with room**; `POST /places/{placeId}/units/{assetCatalogueId}` chooses the place.
+
+### Places and breakdowns
+
+Added 2026-10-16 — see `features/014-business-places-and-equipment.md`.
+
+- **Places.** Every business has at least one place: opening it opens the first `placeKinds`
+  entry at no extra price. More places (up to `maxPlaces`, 10) cost the kind's `price`; each earns
+  the catalogue's `baseIncomePerSecond` on its own, × its tier: **Quiet × 1, Busy × 1.5, Prime × 2.2**.
+- **Place levels** 1–10: level 1 → 2 costs the kind's price, each next level × 1.6. A level adds
+  `placeCapacityPerLevel` room and **+5 %** to everything in that place. Business levels (above)
+  still apply to the whole business.
+- **Units** stand in a place, which holds at most `capacity` of them. A unit earns its
+  `incomePerSecond` × its place's multiplier (× business level, × prestige) **only while it works**.
+- **Breakdowns.** When a unit is bought or repaired the server draws its next failure,
+  `breaksAt` = from then + `mtbfHours` × a draw in [0.5, 1.5), and which fault it will be. Both are
+  fixed — the client knows them in advance and stops counting the unit at `breaksAt`. A broken
+  unit earns **nothing** until repaired. Faults are rules in code (per business type), each with
+  a repair price (a share of the unit's price, with a minimum) and a repair time (1–24 h).
+- **Repair** (`repairCost`): the unit works again after `repairHours`. **Fast repair**
+  (`fastRepairCost` = 2.5 × the price): at once. **Repair all**: the standard repair of every
+  broken unit of a business, paid in one go.
+- **Managers repair.** During a shift, a unit that breaks is repaired at the standard price from
+  cash — while away (`/state`) at the moment it broke, online on the next `/sync` — **only when
+  cash covers it**; otherwise it stays broken. Cash never goes negative.
+- Places and units count in `totalValue` (and so `netWorth`) at what was paid — the first place,
+  included in the opening cost, counts 0. Repairs are spending: not part of `totalValue`, and they
+  do not reduce `allTimeEarnings`.
+- Every route below is a spend: the client syncs first, deducts the price locally and refreshes
+  the company (the rates are server-computed). Each answers the business as `BusinessDto`.
+
+### `POST /api/game/businesses/{businessId}/places/{placeKindId}` — open a place
+
+→ `200` `BusinessDto` · `401` · `400` `"Company not found."` | `"Business not found."` |
+`"Business not found in catalogue."` | `"Place not available for this business."` |
+`"A business can have at most 10 places."` | `"Insufficient funds."`
+
+### `POST /api/game/businesses/places/{placeId}/level-up`
+
+→ `200` `BusinessDto` · `401` · `400` `"Company not found."` | `"Place not found."` |
+`"Place is already at max level."` | `"Insufficient funds."`
+
+### `POST /api/game/businesses/places/{placeId}/units/{assetCatalogueId}` — buy a unit into a place
+
+→ `200` `BusinessDto` · `401` · `400` `"Company not found."` | `"Place not found."` |
+`"Business not found in catalogue."` | `"Asset not available for this business."` |
+`"Need {n} assets to unlock this."` | `"This place is full. Upgrade it or open another place."` |
+`"Insufficient funds."`
+
+### `POST /api/game/businesses/units/{unitId}/repair?fast={bool}`
+
+`fast` is optional (default `false`). → `200` `BusinessDto` · `401` · `400`
+`"Company not found."` | `"Unit not found."` | `"This unit is working."` |
+`"Already being repaired."` | `"Insufficient funds."`
+
+### `POST /api/game/businesses/{businessId}/repair-all`
+
+→ `200` `BusinessDto` · `401` · `400` `"Company not found."` | `"Business not found."` |
+`"Nothing to repair."` | `"Insufficient funds."` (all or nothing)
 
 ### `POST /api/game/businesses/{businessId}/automate` — hire a manager
 
@@ -452,7 +591,9 @@ An asset belongs to a business *type* — only assets listed in that business's
 
 → `200` `BusinessDto` (`isAutomated: true`, a new `managerName`, `managerUntil` = now + 4 h)
 · `401` · `400` with one of: `"Company not found."`, `"Business not found."`,
-`"Business already has a manager."` (a shift is still running), `"Insufficient funds."`.
+`"Business already has a manager."` (a shift is still running), `"Insufficient funds."`,
+`"No managers are available right now."` (the `manager_names` table is empty — the name is
+picked before the business is looked up, so this can answer even for an unknown id).
 
 Starts a **4-hour shift** for `managerCost` (`2 × openingCost`) in cash. The shift runs on
 the clock whether the player is online or not; while online every business earns anyway,
@@ -499,6 +640,7 @@ Added 2026-10-09 — see `features/013-business-taxes.md`.
   pay routes, whichever comes first; several periods missed make one bill).
 - **Nothing is ever taken automatically**, so cash never goes negative. Unpaid bills **add up**.
 - Unpaid taxes **block prestige** and closing that business, and count against `netWorth`.
+  (Closing checks only the bill already in `taxDue` — it does not bill an ended period first.)
 - Paying is a spend: the client syncs first, then adopts `cash` and `company` from the answer.
 
 ### `POST /api/game/businesses/{businessId}/pay-taxes` — pay one business's taxes
@@ -520,11 +662,11 @@ No body → `200` `TaxPaymentDto` · `401` · `400` `"Company not found."` | `"N
 
 ---
 
-## 6. Leaderboard — `/api/leaderboard/`
+## 6. Leaderboard — `/api/leaderboard`
 
-Anonymous. Rate limit `game-actions`. Note the **trailing slash**.
+Anonymous. Rate limit `game-actions`. A trailing slash (`/api/leaderboard/`) is also accepted.
 
-### `GET /api/leaderboard/?take=50`
+### `GET /api/leaderboard?take=50`
 
 `take` is optional, defaults to 50, clamped server-side to 1..100.
 
@@ -589,7 +731,7 @@ Added 2026-10-08 — see `features/007-player-profile.md`. **Bearer required, fr
 
 - `company` is `null` (and `rank` `null`) until the player creates one.
 - `rank` is the position on the all-time-earnings leaderboard among `rankedPlayers` (players
-  with a company; admins excluded).
+  with a company; admins excluded): 1 + the number earning strictly more, so ties share a rank.
 - `avatar` is the avatar chosen in the store (§6e), `null` for none (show the initial).
 - `badges` are the badges bought in the store (§6e), newest first; `featuredBadgeId` the one shown
   next to the name (also on the leaderboard), `null` if none.
@@ -617,7 +759,7 @@ the database (`luxury_catalogue`), seeded with 76 items in 16 categories from P2
 ### `GET /api/game/luxury` → `200` `LuxuryItemDto[]` · `400` `"Company not found."` · `401` · `403`
 
 Every active item (locked ones included, so players see what they are working toward),
-ordered by required prestige then price.
+ordered by required prestige, then the admin-set display order, then price.
 
 ```json
 {
@@ -680,15 +822,19 @@ Rules:
 - **One loan at a time.** A new one can be taken once the current one is fully repaid.
 - Taking a loan adds `amount` to cash. It is borrowed, not earned: `allTimeEarnings` is
   untouched, and `netWorth` subtracts what is still owed.
-- The loan costs `totalRepay = amount × (1 + interestRate)`, paid in `installments` equal
-  payments of `installmentAmount`, **one every 6 hours** from the moment it is taken. The
+- The loan costs `totalRepay = amount × (1 + interestRate)`, paid in `installments`
+  payments of `installmentAmount` (rounded up to the cent, so the last one may be smaller),
+  **one every 6 hours** from the moment it is taken. The
   bank collects them itself, on the next `/sync` or `/state` after each falls due
   (several at once after time away).
 - **Cash never goes negative.** If cash cannot cover an installment, the bank takes what is
   there (cash → 0), the unpaid part stays owed, and a **penalty of 10 %** of that unpaid part
   is added to the debt (`missedPayments` + 1). Installments then continue every 6 hours
   until `outstanding` reaches 0.
-- **Repay all** pays `outstanding` at once from cash (no early-repayment discount).
+- **Repay all** first collects any installment already due, then pays `outstanding` at once
+  from cash (no early-repayment discount). If that collection alone finishes the loan, the
+  call answers `"You have no loan to repay."` and nothing is saved; the next `/sync` or
+  `/state` collects it.
 - The loan survives prestige; an admin reset deletes the company's loans.
 - Like every spend, the client syncs first. The take and repay responses carry the
   server's `cash`, which the client adopts. The `cash` in `GET /api/game/bank` is the last
@@ -705,7 +851,7 @@ Rules:
   "penaltyRate": 0.10,
   "offers": [
     {
-      "id": "81974-1-0", "bankId": "carthage-credit", "bankName": "Carthage Credit", "bankIcon": "🏺",
+      "id": "2959589-1-0", "bankId": "carthage-credit", "bankName": "Carthage Credit", "bankIcon": "🏺",
       "amount": 100000, "interestRate": 0.05, "totalRepay": 105000,
       "installments": 8, "installmentAmount": 13125
     }
@@ -716,7 +862,7 @@ Rules:
 ```
 
 `offers` always has 5 entries, for the caller's **current** prestige level. An offer `id` is
-only valid until `offersRefreshAt`.
+only valid until `offersRefreshAt`; its format is `{6-hour window}-{prestige level 1..7}-{slot}`, but treat it as opaque. Terms run 4–16 installments in steps of 2, within each bank's band; rates 3–15 % in half-percent steps.
 
 `LoanDto` (`activeLoan`, and each `history` entry — the last 10 repaid loans, newest first):
 
@@ -731,7 +877,7 @@ only valid until `offersRefreshAt`.
 }
 ```
 
-`outstanding = totalRepay + penalties − paid`. `nextPaymentAt` is `null` and `repaidAt` set
+`outstanding = totalRepay + penalties − paid − forgiven amount`. `nextPaymentAt` is `null` and `repaidAt` set
 once closed — repaid, or **forgiven** by an admin (`forgiven: true`, §7b; `outstanding` is
 then 0 and `paid` is what was actually paid).
 
@@ -772,7 +918,7 @@ the client never simulates them, and every gain and spend is a row in a ledger.
 | An admin (§7b) | any |
 
 Ads will be a source later; diamonds cannot be bought, and **cash cannot be turned into
-diamonds**. Everything priced in diamonds below is a rule in code (`GameConstants`, `BadgeCatalog`).
+diamonds**. Everything priced in diamonds below is a rule in code (`GameConstants`, `BadgeCatalog`, `AvatarCatalog`).
 
 | Spend | Price | Effect |
 |---|---|---|
@@ -844,8 +990,8 @@ No body → `200` `StoreDto` (cash includes the bonus) · `400` `"Company not fo
 ### `POST /api/game/store/badges/{badgeId}` — buy a badge
 
 No body → `200` `StoreDto` · `400` `"Company not found."` | `"Badge not found."` |
-`"You already own this badge."` | `"Not enough diamonds."`. The first badge bought becomes
-the featured one.
+`"You already own this badge."` | `"Not enough diamonds."`. A badge bought while none is featured (the first one, or after
+choosing `null`) becomes the featured one.
 
 ### `PUT /api/game/store/featured-badge` — choose the badge shown next to the name
 
@@ -861,7 +1007,8 @@ avatar is put on at once.
 ### `PUT /api/game/store/avatar` — choose the avatar in use
 
 `{ "avatarId": "fox" }` (or `null` for none — the initial) → `200` `StoreDto` · `400`
-`"Company not found."` | `"You do not own this avatar."` (any free avatar is allowed). Moves no
+`"Company not found."` | `"Avatar not found."` | `"You do not own this avatar."` (any free
+avatar is allowed). Moves no
 money, so the client does not sync first and does not adopt the answer's `cash`.
 
 ---
@@ -905,8 +1052,13 @@ Every edit applies to businesses opened **after** it (see §5).
   "createdAt": "2026-10-02T00:00:00Z",
   "updatedAt": "2026-10-02T00:00:00Z",
   "availableAssets": [
-    { "id": "menu-item", "name": "Menu item", "price": 200, "unlockAtAssetCount": 0,
-      "fixedIncomePerSecond": 0.5, "incomePerSecond": 0.5, "displayOrder": 10 }
+    { "id": "hot-dog-cart", "name": "Hot-dog cart", "price": 500, "unlockAtAssetCount": 0,
+      "fixedIncomePerSecond": 0.5, "incomePerSecond": 0.5, "displayOrder": 10, "mtbfHours": 48 }
+  ],
+  "placeBaseCapacity": 1,
+  "placeCapacityPerLevel": 1,
+  "placeKinds": [
+    { "id": "park", "name": "Park", "tier": "Quiet", "price": 500, "displayOrder": 10 }
   ]
 }
 ```
@@ -918,10 +1070,17 @@ Every edit applies to businesses opened **after** it (see §5).
 | `isActive` | `false` = retired: hidden from players and cannot be opened; existing owners keep it. There is **no delete** — a database foreign key forbids removing an entry somebody owns. |
 | `fixedIncomePerSecond` | `null` means income is derived from price: `price × 0.0003` (both ratios, Transport and the rest, currently `0.0003`). |
 | `incomePerSecond` | Read-only, computed: what a player buying this asset now would get. |
+| `mtbfHours` | An asset's mean time between failures (§5 *Places and breakdowns*), 1–10,000. Optional in requests: a new asset defaults to 48, an update keeps the current value. |
+| `placeBaseCapacity` / `placeCapacityPerLevel` | Units a new place holds, and how many more each place level adds (1–500 / 0–500). Optional in requests: a new entry defaults to 4 / 2, an update keeps the current values. |
+| `placeKinds` | Where the business can open places, by `displayOrder`; the first is where it opens. `tier` is `Quiet` \| `Busy` \| `Prime` (× 1 / 1.5 / 2.2). Places players already opened keep their own copy. Faults are rules in code, not editable here. |
 
-**Validation** (each a `400` JSON string): `name` required, ≤ 80 chars;
-`description` ≤ 500; `openingCost` and asset `price` **> 0**; incomes, salary, employee
-count and `unlockAtAssetCount` **≥ 0**; `sector` / `requiredPrestige` must be a known enum
+**Validation** (each a `400` JSON string): `id` a slug (else `"Catalogue id must be lowercase
+letters, digits and single dashes, at most 60 characters."`, `"Asset id …"` for an asset,
+`"Place id …"` for a place kind);
+`name` required, ≤ 80 chars (`"Place name is required and must be at most 80 characters."`); `description` ≤ 500 (optional — omitted or `null` becomes `""`); `openingCost`, asset `price` and place `price` **> 0** (`"Place price must be positive."`); incomes, salary, employee
+count and `unlockAtAssetCount` **≥ 0**; `"Time between failures must be between 1 and 10000 hours."`;
+`"Place capacity must be between 1 and 500."`; `"Capacity per place level must be between 0 and 500."`;
+`sector` / `requiredPrestige` / `tier` must be a known enum
 value. An unknown enum *string* is a framework `400` with an empty body.
 
 ### `GET /api/admin/catalogue`
@@ -977,6 +1136,17 @@ Takes the asset off sale. Copies players already bought are untouched — a boug
 does not reference the catalogue. → `200` `AdminCatalogueEntryDto` · `400`
 `"Catalogue entry not found."` | `"Asset not found."`
 
+### Place kinds — `/api/admin/catalogue/{id}/places`
+
+Added 2026-10-16. Each answers the whole `AdminCatalogueEntryDto`.
+
+- `POST` body `{ "id": "stadium", "name": "Stadium", "tier": "Prime", "price": 2000, "displayOrder": 40 }`
+  → `200` · `400` `"Catalogue entry not found."` | `"Place already exists."` | a validation message.
+- `PUT /{placeId}` body: the same without `id` → `200` · `400` `"Catalogue entry not found."` |
+  `"Place not found."` | a validation message.
+- `DELETE /{placeId}` → `200` · `400` `"Catalogue entry not found."` | `"Place not found."`.
+  Players' places of that kind are untouched.
+
 ---
 
 ## 7b. Admin — stats, players, manager names — `/api/admin`
@@ -1008,7 +1178,8 @@ Added 2026-10-08 — see `features/006-admin-panel.md`. Same gate as §7: bearer
 }
 ```
 
-Every player figure excludes admins (`admins` counts them): `players`, `newPlayers*`, `companies`, cash, earnings, businesses, managers, levels and both lists. `activePlayers24h` = player companies whose `lastSyncAt` is within 24 h. `prestigeDistribution`
+Every player figure excludes admins (`admins` counts them) — everything except `catalogue*`,
+`luxuryCatalogue*` and `managerNames`, which count content. `activePlayers24h` = player companies whose `lastSyncAt` is within 24 h. `prestigeDistribution`
 lists all 7 levels in order (zeros included). `topBusinesses` = the 5 most-owned catalogue
 entries. `achievementDistribution` lists every achievement in display order with how many
 player companies unlocked it (zeros included). `activeLoans` / `loansOutstanding` /
@@ -1061,8 +1232,11 @@ touch `allTimeEarnings`.
 
 No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has no company."`.
 Fresh start: cash 0, every business removed, `TheHustle`, multiplier ×1, base income 3/s,
-`allTimeEarnings` 0, achievements cleared, bank loans deleted, taxes gone with the businesses (`taxesPaid` 0), a running boost and the double
-offer cancelled. Account, company name, **diamonds and badges** are kept.
+`prestigeCount` 0, `allTimeEarnings` 0, achievements cleared, luxury collection cleared, bank
+loans deleted, taxes gone with the businesses (`taxesPaid` 0), a running boost and the double
+offer cancelled; offline time not yet credited is dropped (`lastSyncAt` = now). Account,
+company name, **diamonds (and their history), badges (and the featured one) and avatars (and
+the one in use)** are kept.
 
 **Online players:** a cash change or reset marks the company *overridden*; the player's
 next `POST /api/game/sync` ignores the client figure, answers `adjusted: true` with the
@@ -1071,7 +1245,9 @@ admin's value, and clears the mark. The client adopts it and refreshes the compa
 ### `DELETE /api/admin/players/{id}`
 
 → `200` (empty) · `400` `"Player not found."` | `"You cannot delete your own account."`.
-Deletes the player, their company, businesses and assets.
+Deletes the player and their company with everything it owns (database cascade): businesses
+and their assets, luxury items, loans, achievements, badges, avatars and the diamond ledger.
+Another admin can be deleted; only your own account is refused.
 
 ### `POST /api/admin/players/{id}/forgive-loan`
 
@@ -1085,15 +1261,17 @@ Added 2026-10-09.
 `{ "amount": 50, "reason": "Compensation for the outage" }` → `200` `AdminPlayerDto` · `400`
 `"Player not found."` | `"Player has no company."` | `"Amount cannot be zero."` |
 `"Diamonds cannot go below zero."` | `"Reason must be at most 200 characters."`. A positive
-`amount` gives, a negative one takes away; the reason is written to the player's ledger
-(`reason: "admin"`). Added 2026-10-09.
+`amount` gives, a negative one takes away; the reason is optional (trimmed; blank = no note)
+and is written to the player's ledger (`reason: "admin"`). Added 2026-10-09.
 
 ### Manager names — `/api/admin/manager-names`
 
 - `GET` → `200` `[ { "id": 1, "name": "Lucy", "inUse": 3 } ]` — `inUse` = businesses
-  referencing the name (current or past manager). Alphabetical.
+  whose current or most recent manager has this name (a rehire replaces it, so earlier
+  managers of a business are not counted). Alphabetical.
 - `POST` body `{ "name": "Biscotte" }` → `201` the new row · `400`
-  `"Name is required and must be at most 40 characters."` | `"Name already exists."`.
+  `"Name is required and must be at most 40 characters."` | `"Name already exists."`
+  (case-insensitive).
 - `DELETE /{id}` → `200` (empty) · `400` `"Name not found."` |
   `"Name is used by a business."` (a database foreign key protects it).
 
@@ -1168,7 +1346,7 @@ can point at it. Keep the credit and source with the photo — the licenses requ
 dashes, ≤ 60); `name` required, ≤ 80; `description` ≤ 300; `price` > 0; `imageUrl`
 required, ≤ 300, starting with `/` or `https://`; `imageCredit` ≤ 200; `imageSourceUrl` ≤ 500;
 `category` (the 16 values in §6c) and `requiredPrestige` must be known — an unknown enum
-*string* is a framework `400` with an empty body.
+*string* is a framework `400` with an empty body, and an out-of-range numeric value answers `"Unknown category."` / `"Unknown prestige level."`.
 
 ### `GET /api/admin/luxury` → `200` `AdminLuxuryItemDto[]`
 
@@ -1191,13 +1369,16 @@ validation message.
 ## 8. Health — not part of the game API
 
 `GET /health` (all checks) and `GET /alive` (liveness only), both plain text
-`Healthy` / `Unhealthy`. Used by Aspire; the frontend does not call them.
+`Healthy` / `Unhealthy`. Mapped in every environment (production included), anonymous and
+not rate-limited. The only registered check is the `self` liveness check — there is no
+database check — so both currently return the same result. Neither the AppHost nor the
+frontend calls them.
 
 ---
 
 ## 9. Frontend conformance
 
-Status as of 2026-10-09, checked against `idle-startup-frontend/src/app/core/` and the
+Status as of 2026-10-16, checked against `idle-startup-frontend/src/app/core/` and the
 feature components.
 
 ### Resolved
@@ -1235,6 +1416,11 @@ None.
   `"Insufficient funds."`. `isOwned` and `isUnlocked` are used verbatim.
 - **Bank (§6d).** Take and repay sync first and adopt the response `cash`; a `/sync` carrying
   `loanPayment` adopts `acceptedCash` and shows a bank toast instead of "balance corrected".
+- **Places and breakdowns (§5).** The ticker rate is `incomePerSecond` plus, for every unit whose
+  state changed since the response, `± contributionPerSecond × prestigeMultiplier` (a unit works while
+  `workingFrom ≤ now < breaksAt`), re-evaluated every second — so a breakdown lowers income without a
+  request. Place, unit and repair calls sync first, deduct the price locally and refresh the company.
+  A `/sync` or `/state` with `autoRepairs > 0` shows a "managers repaired" toast instead of "balance corrected".
 - **Taxes (§5).** Paying syncs first and adopts `cash` and `company` from `TaxPaymentDto`; a `/sync`
   with `taxBilled > 0` shows a "new tax bill" toast and updates `taxesDue`. Prestige stays disabled
   while `taxesDue > 0`.

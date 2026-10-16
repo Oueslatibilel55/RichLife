@@ -32,7 +32,7 @@ bank comes to collect.
   | P6 Billionaire | 200M – 2.5B |
   | P7 Global Empire | 2B – 25B |
 
-- Interest 3–15 % (half-percent steps, per bank band); 4–16 installments.
+- Interest 3–15 % (half-percent steps, per bank band); 4–16 installments in steps of 2 (per bank band).
 - **One loan at a time** (aggregate check + filtered unique index
   `IX_loans_CompanyId_active` on `CompanyId WHERE RepaidAt IS NULL`).
 - Taking a loan adds the amount to cash — borrowed, not earned: `AllTimeEarnings` is
@@ -68,7 +68,7 @@ bank comes to collect.
 
 ## Frontend
 
-- `/bank` page (`features/bank/`), in the nav after Luxury (`bank` icon): active loan with
+- `/bank` page (`features/bank/`), in the nav (`bank` icon; since 011 before Luxury, and a phone tab-bar item): active loan with
   progress and a next-payment countdown, **Repay all** with confirmation, the 5 offers with
   a "new offers in …" countdown (auto-reload at rotation), take-loan confirmation stating the
   schedule and the penalty rule, and the history of repaid loans.
