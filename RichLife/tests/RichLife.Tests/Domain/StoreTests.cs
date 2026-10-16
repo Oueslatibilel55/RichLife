@@ -8,7 +8,7 @@ public class StoreTests
 {
     private static readonly DateTime T0 = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>Base income only: 3/s, no businesses, prestige ×1.</summary>
+    /// <summary>Base income only (GameConstants.BasePassiveIncomePerSecond), no businesses, prestige ×1.</summary>
     private static Company NewCompany(decimal cash = 0m)
     {
         var company = Company.Create(Guid.NewGuid(), "Acme");
@@ -52,7 +52,8 @@ public class StoreTests
     [Fact]
     public void Prestige_PaysDiamondsByNewLevel()
     {
-        var company = NewCompany(25_000m);
+        var company = NewCompany();
+        company.AddCash(company.GetPrestigeThreshold());
 
         Assert.True(company.Prestige(T0).IsSuccess);
 
@@ -118,8 +119,8 @@ public class StoreTests
 
         var earned = company.AccrueOffline(T0.AddHours(2));
 
-        // 3/s for 2 h, plus another 3/s for the boosted hour.
-        Assert.Equal(3m * (7_200 + 3_600), earned);
+        // Base income for 2 h, plus the base income again for the boosted hour.
+        Assert.Equal(GameConstants.BasePassiveIncomePerSecond * (7_200 + 3_600), earned);
     }
 
     [Fact]
@@ -128,7 +129,7 @@ public class StoreTests
         var company = WithDiamonds(25);
         company.BuyBoost(1, T0);
 
-        Assert.Equal(3m * 20 * GameConstants.SyncTolerance, company.MaxPlausibleCash(T0.AddSeconds(10)));
+        Assert.Equal(GameConstants.BasePassiveIncomePerSecond * 20 * GameConstants.SyncTolerance, company.MaxPlausibleCash(T0.AddSeconds(10)));
     }
 
     // -- Offline double ---------------------------------------------------------------

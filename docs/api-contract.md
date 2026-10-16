@@ -188,7 +188,8 @@ amortized salary (`monthlySalaryCost / 2592000`), **before** the prestige multip
 income is, for each place, `(baseIncomePerSecond + Σ working units' incomePerSecond) × multiplier`.
 `level` starts at 1 (max 100). `levelMultiplier` = `(1 + 0.10 × (level − 1)) × 2^milestones`,
 where each of levels **10, 25 and 50** reached doubles it. `nextLevelCost` is the price of
-the next level-up (`openingCost × 1.25^(level − 1)`) and `nextLevelIncomePerSecond` what
+the next level-up — since 2026-10-16 (`features/016-pacing.md`) `max(openingCost, 25 % of
+totalValue) × 1.25^(level − 1)`, so a level costs in proportion to what it boosts — and `nextLevelIncomePerSecond` what
 `netIncomePerSecond` becomes after it — both `null` at max level. See
 `/level-up` in §5. `totalValue` is the
 liquidation value (opening cost + assets) — what a close refunds, minus the fee.
@@ -341,7 +342,9 @@ second device ends the first device's ability to refresh (its next refresh is a 
 `companyName` or one over 50 characters (no validation — see *Known gaps*).
 
 Idempotent: if the player already has a company it is returned unchanged and
-`companyName` is ignored. `name` is capped at 50 characters by the database.
+`companyName` is ignored. `name` is capped at 50 characters by the database. A new company
+starts with **$1,000** cash (a gift, not earnings: `allTimeEarnings` stays 0), 25 diamonds and
+`passiveIncomePerSecond` 0.1.
 
 ### `GET /api/game/company`
 
@@ -461,7 +464,7 @@ No request body.
 
 → `200` `CompanyDto` (after the purchase) · `401` ·
 `400` `"Company not found."` | `"Already at maximum prestige."` |
-`"Pay your taxes before prestige."` | `"Prestige costs $200,000 in cash."`
+`"Pay your taxes before prestige."` | `"Prestige costs $100,000 in cash."` (the price of the next level)
 
 **Every tax must be paid first** (`taxesDue` = 0, §5 *Taxes*); a period that ends during the call is
 billed before the check.
@@ -471,18 +474,21 @@ Prestige is a **purchase**, not a reset (changed 2026-10-08 — see
 first, then **cash** is measured against `nextPrestigeThreshold` — the price. On success
 the price is deducted from `cash`; the remaining cash and **every business and asset are
 kept**. `prestigeLevel` and `prestigeCount` are incremented (so `prestigeMultiplier` rises)
-and `passiveIncomePerSecond` → `3 × newPrestigeMultiplier`. Spending the price does not
+and `passiveIncomePerSecond` → `0.1 × newPrestigeMultiplier`. Spending the price does not
 reduce `allTimeEarnings`. Each prestige also gives **diamonds** (§6e). Like any spend, the client syncs first, then adopts the returned
 `CompanyDto` as its new truth (cash and rate).
 
 | From → to | Price (`nextPrestigeThreshold`) |
 |---|---|
-| `TheHustle` → `SmallBusiness` | 25,000 |
-| `SmallBusiness` → `Entrepreneur` | 200,000 |
-| `Entrepreneur` → `BusinessMogul` | 2,000,000 |
-| `BusinessMogul` → `Tycoon` | 20,000,000 |
-| `Tycoon` → `Billionaire` | 250,000,000 |
-| `Billionaire` → `GlobalEmpire` | 3,000,000,000 |
+| `TheHustle` → `SmallBusiness` | 100,000 |
+| `SmallBusiness` → `Entrepreneur` | 500,000,000 |
+| `Entrepreneur` → `BusinessMogul` | 2,200,000,000 |
+| `BusinessMogul` → `Tycoon` | 9,000,000,000 |
+| `Tycoon` → `Billionaire` | 30,000,000,000 |
+| `Billionaire` → `GlobalEmpire` | 120,000,000,000 |
+
+Prices since 2026-10-16 (`features/016-pacing.md`), tuned with a pacing simulator: an active
+player reaches P2 in about 4.5 days and P7 in about 60.
 
 ---
 
@@ -540,12 +546,17 @@ An asset belongs to a business *type* — only assets listed in that business's
 Added 2026-10-16 — see `features/014-business-places-and-equipment.md`.
 
 - **Places.** Every business has at least one place: opening it opens the first `placeKinds`
-  entry at no extra price. More places (up to `maxPlaces`, 10) cost the kind's `price`; each earns
+  entry at no extra price. More places (up to `maxPlaces`, 10) cost the kind's price **× 1.4 per
+  extra place already owned** (the catalogue's `placeKinds[].price` is already that figure for the
+  caller); each earns
   its kind's `baseIncomePerSecond` on its own (the catalogue's when the kind has none), × its tier:
   **Quiet × 1, Busy × 1.5, Prime × 2.2**.
 - **Place levels** 1–10 (Road to Rich's rule since 2026-10-16): level n → n+1 costs **25 % of the
-  kind's price × 1.35^(n−1)**. A level adds `placeCapacityPerLevel` room and **+25 %** to everything
+  place's price and the units in it × 1.35^(n−1)** (`PlaceDto.nextLevelCost`). A level adds `placeCapacityPerLevel` room and **+25 %** to everything
   in that place. Business levels (above) still apply to the whole business.
+- **Unit prices rise**: each further unit of the same asset in a business costs **× 1.2** the last
+  (the catalogue's `availableAssets[].price` is what the caller's next one costs). A unit's `price`
+  is what was paid for it — `totalValue`, the close refund and its repair prices follow it.
 - **Units** stand in a place, which holds at most `capacity` of them. A unit earns its
   `incomePerSecond` × its place's multiplier (× business level, × prestige) **only while it works**.
 - **Breakdowns.** When a unit is bought or repaired the server draws its next failure,
@@ -820,12 +831,14 @@ scale with prestige, like businesses:
 | Prestige | Loan amounts |
 |---|---|
 | `TheHustle` | 5,000 – 40,000 |
-| `SmallBusiness` | 30,000 – 250,000 |
-| `Entrepreneur` | 200,000 – 2,000,000 |
-| `BusinessMogul` | 2,000,000 – 20,000,000 |
-| `Tycoon` | 20,000,000 – 200,000,000 |
-| `Billionaire` | 200,000,000 – 2,500,000,000 |
-| `GlobalEmpire` | 2,000,000,000 – 25,000,000,000 |
+| `SmallBusiness` | 25,000,000 – 200,000,000 |
+| `Entrepreneur` | 100,000,000 – 900,000,000 |
+| `BusinessMogul` | 400,000,000 – 3,500,000,000 |
+| `Tycoon` | 1,500,000,000 – 12,000,000,000 |
+| `Billionaire` | 6,000,000,000 – 48,000,000,000 |
+| `GlobalEmpire` | 10,000,000,000 – 100,000,000,000 |
+
+(About 5–40 % of the next prestige price, since 2026-10-16.)
 
 Rules:
 
@@ -938,8 +951,8 @@ diamonds**. Everything priced in diamonds below is a rule in code (`GameConstant
 | Badge | 20–250 | Owned for good; shown on the profile; one can be featured next to the name. |
 | Avatar | 0–250 | The profile picture: shown in the top bar, on the profile and on the leaderboard. 4 are free; the rest are bought once and kept. |
 
-`diamondValue` (cash per diamond) follows prestige: 250 · 2,000 · 20,000 · 200,000 · 2,500,000 ·
-30,000,000 · 300,000,000 (P1 → P7).
+`diamondValue` (cash per diamond) follows prestige — about 1 % of the next prestige price: 1,000 · 5,000,000 · 22,000,000 ·
+90,000,000 · 300,000,000 · 1,200,000,000 · 1,200,000,000 (P1 → P7).
 
 Like every spend, the client **syncs first**; each POST answers a fresh `StoreDto` whose `cash`,
 `diamonds` and `boostUntil` the client adopts. The `cash` in `GET /api/game/store` is the last
@@ -1243,7 +1256,7 @@ touch `allTimeEarnings`.
 ### `POST /api/admin/players/{id}/reset`
 
 No body → `200` `AdminPlayerDto` · `400` `"Player not found."` | `"Player has no company."`.
-Fresh start: cash 0, every business removed, `TheHustle`, multiplier ×1, base income 3/s,
+Fresh start: cash $1,000 (like a new company), every business removed, `TheHustle`, multiplier ×1, base income 0.1/s,
 `prestigeCount` 0, `allTimeEarnings` 0, achievements cleared, luxury collection cleared, bank
 loans deleted, taxes gone with the businesses (`taxesPaid` 0), a running boost and the double
 offer cancelled; offline time not yet credited is dropped (`lastSyncAt` = now). Account,

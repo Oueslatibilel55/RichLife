@@ -6,8 +6,14 @@ namespace RichLife.Tests.Domain;
 
 public class TaxTests
 {
+    /// <summary>Base income plus the business's 5/s: what the company earns per second online.</summary>
+    private const decimal Rate = 5m + GameConstants.BasePassiveIncomePerSecond;
+
+    /// <summary>What a 100-second sync at <see cref="Rate"/> reports — under the ceiling, so accepted as is.</summary>
+    private const decimal HundredSeconds = Rate * 100m;
+
     /// <summary>
-    /// A company with one business earning 5/s next to the 3/s base income, anchored at the
+    /// A company with one business earning 5/s next to the base income, anchored at the
     /// business's tax period start (stamped from the system clock when it is opened).
     /// </summary>
     private static (Company Company, Business Business, DateTime T) Setup(decimal cashAfterOpening = 0m)
@@ -36,9 +42,9 @@ public class TaxTests
     {
         var (company, business, t) = Setup();
 
-        company.Sync(800m, t.AddSeconds(100));   // 8/s for 100 s, under the ceiling
+        company.Sync(HundredSeconds, t.AddSeconds(100));   // Rate for 100 s, under the ceiling
 
-        Assert.Equal(500m, business.TaxableEarnings);          // 5 of every 8
+        Assert.Equal(500m, business.TaxableEarnings);          // its 5/s share, for 100 s
         Assert.Equal(35m, business.TaxAccruing);               // 7 %
         Assert.Equal(0m, business.TaxDue);
     }
@@ -47,7 +53,7 @@ public class TaxTests
     public void AssessTaxes_BeforeThePeriodEnds_BillsNothing()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
 
         Assert.Equal(0m, company.AssessTaxes(t.AddHours(23)));
         Assert.Equal(0m, business.TaxDue);
@@ -57,7 +63,7 @@ public class TaxTests
     public void AssessTaxes_AfterThePeriod_BillsSevenPercentAndStartsANewPeriod()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
 
         var billed = company.AssessTaxes(t.AddHours(24));
 
@@ -65,14 +71,14 @@ public class TaxTests
         Assert.Equal(35m, business.TaxDue);
         Assert.Equal(0m, business.TaxableEarnings);
         Assert.Equal(t.AddHours(24), business.TaxPeriodStart);
-        Assert.Equal(800m, company.Cash);   // billed, never taken
+        Assert.Equal(HundredSeconds, company.Cash);   // billed, never taken
     }
 
     [Fact]
     public void AssessTaxes_AfterSeveralPeriods_BillsOnceAndJumpsToTheCurrentPeriod()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
 
         company.AssessTaxes(t.AddHours(50));
 
@@ -84,13 +90,14 @@ public class TaxTests
     public void UnpaidBills_AddUp()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
         company.AssessTaxes(t.AddHours(24));
 
-        var now = EarnOnline(company, t.AddHours(30), 100);   // ceiling: 8/s × 100 s × 1.05 = 840
+        var now = EarnOnline(company, t.AddHours(30), 100);   // the ceiling: Rate × 100 s × tolerance
         company.AssessTaxes(t.AddHours(48));
 
-        var secondBill = Math.Round(840m * 5m / 8m * GameConstants.TaxRate, 2);
+        // The business's share of that ceiling is its 5/s × 100 s × tolerance.
+        var secondBill = Math.Round(5m * 100m * GameConstants.SyncTolerance * GameConstants.TaxRate, 2);
         Assert.True(now < t.AddHours(48));
         Assert.Equal(35m + secondBill, business.TaxDue);
         Assert.Equal(35m + secondBill, company.TaxesDue);
@@ -121,14 +128,14 @@ public class TaxTests
     public void PayBusinessTaxes_TakesTheBillFromCash()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
         company.AssessTaxes(t.AddHours(24));
 
         var paid = company.PayBusinessTaxes(business.Id);
 
         Assert.True(paid.IsSuccess);
         Assert.Equal(35m, paid.Value);
-        Assert.Equal(765m, company.Cash);
+        Assert.Equal(HundredSeconds - 35m, company.Cash);
         Assert.Equal(0m, business.TaxDue);
         Assert.Equal(35m, company.TaxesPaid);
     }
@@ -140,7 +147,7 @@ public class TaxTests
         Assert.Equal("No taxes due.", company.PayBusinessTaxes(business.Id).Error);
         Assert.Equal("Business not found.", company.PayBusinessTaxes(Guid.NewGuid()).Error);
 
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
         company.AssessTaxes(t.AddHours(24));
         company.AdminSetCash(10m);
 
@@ -182,9 +189,9 @@ public class TaxTests
     public void Prestige_WaitsUntilEveryTaxIsPaid()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
         company.AssessTaxes(t.AddHours(24));
-        company.AdminSetCash(30_000m);
+        company.AdminSetCash(company.GetPrestigeThreshold() + 35m);   // the price plus the bill
 
         Assert.Equal("Pay your taxes before prestige.", company.Prestige(t.AddHours(24)).Error);
 
@@ -196,7 +203,7 @@ public class TaxTests
     public void CloseBusiness_WithTaxDue_IsRefused()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
         company.AssessTaxes(t.AddHours(24));
 
         Assert.Equal("Pay this business's taxes before closing it.", company.CloseBusiness(business.Id).Error);
@@ -209,7 +216,7 @@ public class TaxTests
     public void NetWorth_SubtractsTaxesDue()
     {
         var (company, business, t) = Setup();
-        company.Sync(800m, t.AddSeconds(100));
+        company.Sync(HundredSeconds, t.AddSeconds(100));
         var before = company.NetWorth;
 
         company.AssessTaxes(t.AddHours(24));

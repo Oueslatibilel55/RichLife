@@ -203,6 +203,11 @@ runtime failure that no domain test can catch.
   25 % of the kind's price × 1.35^(n−1). The catalogue's incomes were generated from a payback
   table per prestige level (in migration `CatalogueLikeRoadToRich`) — keep new content on the
   same curve (P1 30 min … P7 15 h). That migration also **wiped every player's progress** once.
+- **Pacing** (2026-10-16, `features/016-pacing.md`): tuned with `tools/pacing/sim.mjs` (greedy
+  active player on the real catalogue) — re-run it before changing any price, income or level rule.
+  Level costs follow what is invested (never only the opening price: that let a $500 licence
+  boost millions of trucks); units × 1.2 and places × 1.4 per one already owned; passive 0.1/s;
+  new companies get `StartingCash` from `CompanyService`. Migration `Pacing` reset all players again.
 - **Business taxes** (2026-10-09, `features/013-business-taxes.md`): every 24 h from its opening
   (`Business.TaxPeriodStart`), a business is billed `GameConstants.TaxRate` (7 %) of what it earned
   in that period (`TaxableEarnings`, recorded by `Company.Sync` — the online total split by

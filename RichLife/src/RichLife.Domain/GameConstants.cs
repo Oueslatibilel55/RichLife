@@ -2,8 +2,22 @@ namespace RichLife.Domain;
 
 public static class GameConstants
 {
-    /// <summary>Passive income every company starts with, before the prestige multiplier.</summary>
-    public const decimal BasePassiveIncomePerSecond = 3m;
+    /// <summary>Passive income every company starts with, before the prestige multiplier (features/016: was 3).</summary>
+    public const decimal BasePassiveIncomePerSecond = 0.1m;
+
+    /// <summary>Cash a new company starts with, so the first business opens at once (features/016).</summary>
+    public const decimal StartingCash = 1_000m;
+
+    // Pacing (features/016-pacing.md)
+
+    /// <summary>Each further unit of the same type in a business costs this much more than the last.</summary>
+    public const decimal UnitPriceGrowth = 1.2m;
+
+    /// <summary>Each further place of a business costs this much more than the last.</summary>
+    public const decimal PlacePriceGrowth = 1.4m;
+
+    /// <summary>A business level costs at least this share of everything invested in the business.</summary>
+    public const decimal BusinessLevelValueShare = 0.25m;
 
     /// <summary>Permanent income bonus granted per completed prestige.</summary>
     public const decimal PrestigeMultiplierPerLevel = 0.18m;
@@ -85,13 +99,13 @@ public static class GameConstants
     /// <summary>Cash one diamond exchanges for — scales with prestige (1 % of the next prestige price).</summary>
     public static decimal DiamondCashValue(Enums.PrestigeLevel level) => level switch
     {
-        Enums.PrestigeLevel.TheHustle     => 250m,
-        Enums.PrestigeLevel.SmallBusiness => 2_000m,
-        Enums.PrestigeLevel.Entrepreneur  => 20_000m,
-        Enums.PrestigeLevel.BusinessMogul => 200_000m,
-        Enums.PrestigeLevel.Tycoon        => 2_500_000m,
-        Enums.PrestigeLevel.Billionaire   => 30_000_000m,
-        _                                 => 300_000_000m,
+        Enums.PrestigeLevel.TheHustle     => 1_000m,
+        Enums.PrestigeLevel.SmallBusiness => 5_000_000m,
+        Enums.PrestigeLevel.Entrepreneur  => 22_000_000m,
+        Enums.PrestigeLevel.BusinessMogul => 90_000_000m,
+        Enums.PrestigeLevel.Tycoon        => 300_000_000m,
+        Enums.PrestigeLevel.Billionaire   => 1_200_000_000m,
+        _                                 => 1_200_000_000m,
     };
 
     // Business taxes (features/013-business-taxes.md)
@@ -118,13 +132,14 @@ public static class GameConstants
     /// <summary>What a bank lends at each prestige level — like businesses, bigger loans unlock with prestige.</summary>
     public static (decimal Min, decimal Max) LoanAmountRange(Enums.PrestigeLevel level) => level switch
     {
+        // About 5–40 % of the next prestige price (features/016).
         Enums.PrestigeLevel.TheHustle     => (5_000m, 40_000m),
-        Enums.PrestigeLevel.SmallBusiness => (30_000m, 250_000m),
-        Enums.PrestigeLevel.Entrepreneur  => (200_000m, 2_000_000m),
-        Enums.PrestigeLevel.BusinessMogul => (2_000_000m, 20_000_000m),
-        Enums.PrestigeLevel.Tycoon        => (20_000_000m, 200_000_000m),
-        Enums.PrestigeLevel.Billionaire   => (200_000_000m, 2_500_000_000m),
-        _                                 => (2_000_000_000m, 25_000_000_000m),
+        Enums.PrestigeLevel.SmallBusiness => (25_000_000m, 200_000_000m),
+        Enums.PrestigeLevel.Entrepreneur  => (100_000_000m, 900_000_000m),
+        Enums.PrestigeLevel.BusinessMogul => (400_000_000m, 3_500_000_000m),
+        Enums.PrestigeLevel.Tycoon        => (1_500_000_000m, 12_000_000_000m),
+        Enums.PrestigeLevel.Billionaire   => (6_000_000_000m, 48_000_000_000m),
+        _                                 => (10_000_000_000m, 100_000_000_000m),
     };
 
     // Places and breakdowns (features/014-business-places-and-equipment.md)

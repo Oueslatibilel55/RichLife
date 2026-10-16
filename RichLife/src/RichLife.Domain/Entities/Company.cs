@@ -116,10 +116,15 @@ public class Company : AggregateRoot
 
     private Company() { }
 
-    public static Company Create(Guid playerId, string name)
+    /// <param name="startingCash">
+    /// What the company starts with — the game gives <see cref="GameConstants.StartingCash"/>.
+    /// A gift, not earnings: <see cref="AllTimeEarnings"/> stays 0.
+    /// </param>
+    public static Company Create(Guid playerId, string name, decimal startingCash = 0m)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var company = new Company { PlayerId = playerId, Name = name };
+        ArgumentOutOfRangeException.ThrowIfNegative(startingCash);
+        var company = new Company { PlayerId = playerId, Name = name, Cash = startingCash };
         company.GrantDiamonds(GameConstants.StartingDiamonds, DiamondReasons.Welcome, null, company.CreatedAt);
         return company;
     }
@@ -340,11 +345,12 @@ public class Company : AggregateRoot
         if (business.UnitCountIn(place) >= place.Capacity)
             return Result.Fail<Business>("This place is full. Upgrade it or open another place.");
 
-        var deduct = DeductCash(asset.Price);
+        var price = business.NextUnitPrice(asset);
+        var deduct = DeductCash(price);
         if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
 
         business.AddAsset(BusinessAsset.Create(
-            business.Id, place.Id, asset.Id, asset.Name, asset.Price, entry.IncomeFor(asset), asset.MtbfHours, nowUtc));
+            business.Id, place.Id, asset.Id, asset.Name, price, entry.IncomeFor(asset), asset.MtbfHours, nowUtc));
         MarkUpdated();
         return Result.Ok(business);
     }
@@ -365,20 +371,21 @@ public class Company : AggregateRoot
             return Result.Fail<Business>(string.Create(CultureInfo.InvariantCulture,
                 $"A business can have at most {GameConstants.MaxPlacesPerBusiness} places."));
 
-        var deduct = DeductCash(kind.Price);
+        var price = business.NextPlacePrice(kind);
+        var deduct = DeductCash(price);
         if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
 
-        business.AddPlace(entry.SpecFor(kind), entry.BaseIncomePerSecond);
+        business.AddPlace(entry.SpecFor(kind), entry.BaseIncomePerSecond, price);
         MarkUpdated();
         return Result.Ok(business);
     }
 
-    /// <summary>Pays <see cref="BusinessPlace.NextLevelCost"/>: more room and +5 % income for that place.</summary>
+    /// <summary>Pays <see cref="Business.NextLevelCostOf"/>: more room and +25 % income for that place.</summary>
     public Result<Business> LevelUpPlace(Guid placeId)
     {
         var (business, place) = FindPlace(placeId);
         if (business is null || place is null) return Result.Fail<Business>("Place not found.");
-        if (place.NextLevelCost is not { } cost) return Result.Fail<Business>("Place is already at max level.");
+        if (business.NextLevelCostOf(place) is not { } cost) return Result.Fail<Business>("Place is already at max level.");
 
         var deduct = DeductCash(cost);
         if (!deduct.IsSuccess) return Result.Fail<Business>(deduct.Error!);
@@ -849,7 +856,7 @@ public class Company : AggregateRoot
     }
 
     /// <summary>
-    /// Admin: a fresh start — no cash, no businesses, first prestige level, base income,
+    /// Admin: a fresh start — starting cash only, no businesses, first prestige level, base income,
     /// earnings (and so leaderboard rank) back to zero. The company itself and its name stay.
     /// </summary>
     public void AdminReset(DateTime nowUtc)
@@ -858,7 +865,7 @@ public class Company : AggregateRoot
         _achievements.Clear();
         _luxuryAssets.Clear();
         _loans.Clear();
-        Cash = 0m;
+        Cash = GameConstants.StartingCash;   // like a new company
         AllTimeEarnings = 0m;
         TaxesPaid = 0m;   // the businesses, and their bills, are gone too
         PrestigeLevel = PrestigeLevel.TheHustle;
@@ -977,12 +984,14 @@ public class Company : AggregateRoot
 
     public decimal GetPrestigeThreshold() => PrestigeLevel switch
     {
-        PrestigeLevel.TheHustle => 25_000m,
-        PrestigeLevel.SmallBusiness => 200_000m,
-        PrestigeLevel.Entrepreneur => 2_000_000m,
-        PrestigeLevel.BusinessMogul => 20_000_000m,
-        PrestigeLevel.Tycoon => 250_000_000m,
-        PrestigeLevel.Billionaire => 3_000_000_000m,
+        // Tuned with the pacing simulator (features/016-pacing.md): P2 in ~4.5 days for an
+        // active player, each next level a bit longer, P7 in ~60 days.
+        PrestigeLevel.TheHustle => 100_000m,
+        PrestigeLevel.SmallBusiness => 500_000_000m,
+        PrestigeLevel.Entrepreneur => 2_200_000_000m,
+        PrestigeLevel.BusinessMogul => 9_000_000_000m,
+        PrestigeLevel.Tycoon => 30_000_000_000m,
+        PrestigeLevel.Billionaire => 120_000_000_000m,
         _ => decimal.MaxValue
     };
 }

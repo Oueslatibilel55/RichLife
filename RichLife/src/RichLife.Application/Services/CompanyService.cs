@@ -21,7 +21,7 @@ public class CompanyService(
 
         if (company is null)
         {
-            company = Company.Create(playerId, companyName);
+            company = Company.Create(playerId, companyName, GameConstants.StartingCash);
             await companyRepo.AddAsync(company, ct);
             await uow.CommitAsync(ct);
         }

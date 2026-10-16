@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RichLife Launch Review</title>
+<style>
+  :root {
+    --canvas: #F7F5F0; --surface: #FFFFFF; --sunken: #F3F0EA; --line: #E7E2D8;
+    --fg: #1C1917; --fg2: #57534E; --fg3: #78716C; --brand: #0F766E; --brand-soft: #F0FDFA;
+    --good: #047857; --good-bg: #ECFDF5; --bad: #BE123C; --bad-bg: #FFF1F2; --warn: #B45309; --warn-bg: #FFFBEB;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #12100E; --surface: #1C1917; --sunken: #26221F; --line: #34302C;
+      --fg: #F5F5F4; --fg2: #D6D3D1; --fg3: #A8A29E; --brand: #2DD4BF; --brand-soft: #13302C;
+      --good: #6EE7B7; --good-bg: #0F2A21; --bad: #FDA4AF; --bad-bg: #331820; --warn: #FCD34D; --warn-bg: #2E2410;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 36px 16px 64px; }
+  h1 { font-size: clamp(26px, 5vw, 36px); margin: 0 0 6px; line-height: 1.15; }
+  h2 { font-size: 19px; margin: 36px 0 10px; }
+  p, li { color: var(--fg2); } b { color: var(--fg); }
+  ul { padding-left: 18px; margin: 6px 0; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
+  .verdict { background: var(--brand-soft); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin-top: 18px; }
+  .verdict p { margin: 0; color: var(--fg); }
+  .two { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 4px; font-size: 15px; }
+  .good h3 { color: var(--good); } .bad h3 { color: var(--bad); }
+  ol { padding-left: 20px; margin: 0; }
+  ol li { margin: 6px 0; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 4px; vertical-align: 1px; }
+  .must { background: var(--bad-bg); color: var(--bad); } .soon { background: var(--warn-bg); color: var(--warn); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--sunken); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg3); }
+  tr:last-child td { border-bottom: 0; }
+  td { color: var(--fg2); }
+  footer { margin-top: 40px; color: var(--fg3); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">RichLife · honest review · 2026-10-16</p>
+  <h1>Can RichLife succeed — and how a solo dev gets it known</h1>
+
+  <div class="verdict"><p>
+    <b>Short answer:</b> yes in Tunisia and the Maghreb, as a niche hit, if it feels <b>local</b> and is easy to share.
+    Worldwide it is hard — idle tycoons are a crowded genre (AdVenture Capitalist, Idle Miner Tycoon) — but web
+    game portals give a solo dev real reach for free. The game itself is solid; what is missing is
+    <b>retention tools, sharing and distribution</b>, not more businesses.
+  </p></div>
+
+  <h2>Where it stands</h2>
+  <div class="two">
+    <div class="card good"><h3>Strengths</h3><ul>
+      <li>English, French <b>and Arabic</b> (RTL) — rare for this genre</li>
+      <li>Plays in the browser: no install, works on any phone</li>
+      <li>Real cars, planes and brands — easy to understand and show</li>
+      <li>Deep loop already: places, levels, breakdowns, managers, bank, taxes, prestige, store</li>
+      <li>Leaderboard with countries — a ready-made rivalry hook</li>
+    </ul></div>
+    <div class="card bad"><h3>What blocks growth today</h3><ul>
+      <li>Free server <b>sleeps</b>: a new player waits 30–60 s on the first visit and leaves</li>
+      <li>Must register before playing; no tutorial</li>
+      <li>No notifications — idle games live on "your manager finished" pings</li>
+      <li>Nothing to share, no invites, no reason to tell a friend</li>
+      <li>No income and no analytics (you cannot see who stays)</li>
+      <li>Generic name: "RichLife" is hard to find in search and stores</li>
+    </ul></div>
+  </div>
+
+  <h2>What to build before marketing (in order)</h2>
+  <ol>
+    <li><b>Server that never sleeps</b> <span class="tag must">must</span> — Render paid (~$7/month) or similar. First impression is everything.</li>
+    <li><b>Play as guest</b>, register later to save <span class="tag must">must</span> — remove the wall before the fun.</li>
+    <li><b>60-second tutorial</b>: open a food cart, buy a unit, hire a manager <span class="tag must">must</span></li>
+    <li><b>Install as an app (PWA) + push notifications</b> — "shift ended", "3 units broken", "daily reward ready" <span class="tag must">must</span></li>
+    <li><b>Daily reward + daily contracts</b> (phase 2 of spec 015) <span class="tag soon">soon</span></li>
+    <li><b>Invite a friend</b>: both get diamonds when the friend reaches P2 <span class="tag soon">soon</span></li>
+    <li><b>Share cards</b>: one tap makes an image "I reached Billionaire in 9 days 🇹🇳" for WhatsApp/Instagram stories <span class="tag soon">soon</span></li>
+    <li><b>Analytics</b> (PostHog or Plausible, free tier): D1 / D7 retention, where players quit <span class="tag soon">soon</span></li>
+    <li><b>Money</b>: rewarded ads for diamonds (watch an ad → 5 💎), later the Play Store through a TWA/Capacitor wrapper <span class="tag soon">soon</span></li>
+  </ol>
+
+  <h2>Making it viral in Tunisia</h2>
+  <ul>
+    <li><b>Local businesses</b> next to the global ones: lablabi stand, louage line, harissa factory, olive-oil press,
+      Djerba resort, Sousse hotel. Tunisians share what looks like them.</li>
+    <li><b>Country battles</b>: weekly "Tunisia vs Algeria vs Morocco vs France" leaderboard — national pride spreads by itself.</li>
+    <li><b>Seasons</b>: a 4-week race with a badge for the top 100 — a reason to start, and to come back.</li>
+    <li><b>Darija</b> in videos and posts, even if the game stays EN/FR/AR.</li>
+  </ul>
+
+  <h2>Marketing plan — solo, 90 days, small budget</h2>
+  <div class="tablewrap"><table>
+    <tr><th>When</th><th>Do</th><th>Where</th></tr>
+    <tr><td>Weeks 1–3</td><td>Items 1–4 above. A one-page site with a 20 s gameplay video. Pick a searchable name/domain.</td><td>—</td></tr>
+    <tr><td>Weeks 3–6</td><td>Soft launch: 3 short videos a week ("$0 → first million", "my taxi fleet broke down 😭"), in Darija. Post in student and gaming groups. Fix what testers hit.</td><td>TikTok, Instagram Reels, Facebook groups, university clubs (ESPRIT, INSAT, ENIT…)</td></tr>
+    <tr><td>Weeks 6–9</td><td>First season + country battle. 3–5 <b>micro-influencers</b> (10–50K followers, gaming/humour) paid a little each to play live. Invite rewards on.</td><td>TikTok, Instagram, YouTube Shorts</td></tr>
+    <tr><td>Weeks 9–12</td><td>Go global: post on r/incremental_games (the core idle audience), itch.io, and submit to <b>CrazyGames / Poki</b> (web portals with millions of players and revenue share). Play Store listing.</td><td>Reddit, itch.io, CrazyGames, Poki, Play Store</td></tr>
+  </table></div>
+
+  <h2>Numbers to watch</h2>
+  <ul>
+    <li><b>D1 retention ≥ 35 %</b>, <b>D7 ≥ 12 %</b> — below that, fix the game before buying traffic.</li>
+    <li>Invites per player ≥ 0.3 — the start of organic growth.</li>
+    <li>Cost: ~$7–20/month hosting, ~$12/year domain, $50–150 for a first influencer and ads test.</li>
+  </ul>
+
+  <h2>Solo-dev rules</h2>
+  <ul>
+    <li>One feature a week, one video a week — consistency beats bursts.</li>
+    <li>Talk to 10 real players before each big feature; build what they ask for twice.</li>
+    <li>Don't spend on ads until D7 retention is good — paid players leave as fast as they come.</li>
+  </ul>
+
+  <footer><code>docs/review-and-marketing.html</code> — a starting plan, not a guarantee; numbers are industry rules of thumb for casual web/idle games.</footer>
+</div>
+</body>
+</html>

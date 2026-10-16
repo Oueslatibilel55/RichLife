@@ -16,18 +16,20 @@ public static class CatalogueMapper
         CanAfford: playerCash >= e.OpeningCost,
         IsOwned: owned is not null,
         e.AvailableAssets
+            // What the caller's next one costs: each unit of a type owned makes the next dearer (features/016).
             .Select(a => new AssetCatalogueDto(
-                a.Id, a.Name, a.Price, e.IncomeFor(a), a.UnlockAtAssetCount,
+                a.Id, a.Name, owned?.NextUnitPrice(a) ?? a.Price, e.IncomeFor(a), a.UnlockAtAssetCount,
                 IsUnlocked: (owned?.Assets.Count ?? 0) >= a.UnlockAtAssetCount,
                 a.MtbfHours))
             .ToList(),
         e.PlaceBaseCapacity,
         e.PlaceCapacityPerLevel,
         e.PlaceKinds
-            .Select(k => new PlaceKindDto(
-                k.Id, k.Name, k.Tier.ToString(), k.Price, GameConstants.PlaceTierMultiplier(k.Tier),
-                CanAfford: playerCash >= k.Price,
-                BaseIncomePerSecond: k.BaseIncomePerSecond ?? e.BaseIncomePerSecond))
+            .Select(k => (k, price: owned?.NextPlacePrice(k) ?? k.Price))
+            .Select(x => new PlaceKindDto(
+                x.k.Id, x.k.Name, x.k.Tier.ToString(), x.price, GameConstants.PlaceTierMultiplier(x.k.Tier),
+                CanAfford: playerCash >= x.price,
+                BaseIncomePerSecond: x.k.BaseIncomePerSecond ?? e.BaseIncomePerSecond))
             .ToList(),
         e.Kind.ToString());
 

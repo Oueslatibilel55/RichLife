@@ -53,7 +53,7 @@ public static class CompanyMapper
         b.UnitCountIn(p),
         p.BaseIncomePerSecond,
         b.PlaceIncomePerSecondAt(p, nowUtc),
-        p.NextLevelCost,
+        b.NextLevelCostOf(p),
         p.IsMaxLevel ? null : p.CapacityAt(p.Level + 1),
         b.UnitsIn(p).Select(u => ToDto(b, u, nowUtc)).ToList());
 

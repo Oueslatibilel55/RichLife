@@ -106,16 +106,39 @@ public class Business : BaseEntity
 
     public bool IsMaxLevel => Level >= GameConstants.MaxBusinessLevel;
 
-    /// <summary>Price of the next level: opening cost × growth^(level − 1). Null at max.</summary>
+    /// <summary>
+    /// Price of the next level: the larger of the opening cost and
+    /// <see cref="GameConstants.BusinessLevelValueShare"/> of everything invested (<see cref="TotalValue"/>),
+    /// × growth^(level − 1). Null at max. Priced from what is invested because a level multiplies
+    /// every unit — from the opening cost alone, a $500 licence boosted millions of trucks (features/016).
+    /// </summary>
     public decimal? NextLevelCost
     {
         get
         {
             if (IsMaxLevel) return null;
-            var cost = OpeningCost;
+            var cost = Math.Max(OpeningCost, TotalValue * GameConstants.BusinessLevelValueShare);
             for (var i = 1; i < Level; i++) cost *= GameConstants.LevelCostGrowth;
-            return cost;
+            return Math.Round(cost, 2, MidpointRounding.AwayFromZero);
         }
+    }
+
+    /// <summary>Price of a place's next level, from the place and the units in it. Null at max.</summary>
+    public decimal? NextLevelCostOf(BusinessPlace place) =>
+        place.NextLevelCostFor(_assets.Where(a => a.PlaceId == place.Id).Sum(a => a.CurrentValue));
+
+    /// <summary>What the next unit of <paramref name="asset"/> costs: × <see cref="GameConstants.UnitPriceGrowth"/> per one already owned.</summary>
+    public decimal NextUnitPrice(Catalogue.AssetCatalogueEntry asset) =>
+        Grow(asset.Price, GameConstants.UnitPriceGrowth, _assets.Count(a => a.CatalogueId == asset.Id));
+
+    /// <summary>What another place of <paramref name="kind"/> costs: × <see cref="GameConstants.PlacePriceGrowth"/> per extra place owned.</summary>
+    public decimal NextPlacePrice(Catalogue.PlaceKindEntry kind) =>
+        Grow(kind.Price, GameConstants.PlacePriceGrowth, Math.Max(0, _places.Count - 1));
+
+    private static decimal Grow(decimal price, decimal growth, int times)
+    {
+        for (var i = 0; i < times; i++) price *= growth;
+        return Math.Round(price, 2, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>What <see cref="NetIncomePerSecondAt"/> becomes after the next level. Null at max.</summary>
@@ -228,10 +251,10 @@ public class Business : BaseEntity
     }
 
     /// <summary>A further place; price and the place limit are checked by the aggregate.</summary>
-    internal BusinessPlace AddPlace(PlaceSpec spec, decimal baseIncomePerSecond)
+    internal BusinessPlace AddPlace(PlaceSpec spec, decimal baseIncomePerSecond, decimal paid)
     {
         var place = BusinessPlace.Create(
-            Id, spec.KindId, spec.Name, spec.Tier, spec.Price, purchasePrice: spec.Price,
+            Id, spec.KindId, spec.Name, spec.Tier, spec.Price, purchasePrice: paid,
             spec.BaseIncomePerSecond ?? baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel);
         _places.Add(place);
         MarkUpdated();

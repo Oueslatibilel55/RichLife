@@ -81,15 +81,17 @@ public class BusinessPlace : BaseEntity
 
     public bool IsMaxLevel => Level >= GameConstants.MaxPlaceLevel;
 
-    public decimal? NextLevelCost
+    /// <summary>
+    /// Next level's price: <see cref="GameConstants.PlaceLevelCostShare"/> of the place and the units
+    /// in it (<paramref name="unitsValue"/>), × growth^(level − 1). Null at max. Use
+    /// <see cref="Business.NextLevelCostOf"/>, which knows the units.
+    /// </summary>
+    internal decimal? NextLevelCostFor(decimal unitsValue)
     {
-        get
-        {
-            if (IsMaxLevel) return null;
-            var cost = Price * GameConstants.PlaceLevelCostShare;
-            for (var i = 1; i < Level; i++) cost *= GameConstants.PlaceLevelCostGrowth;
-            return Math.Round(cost, 2, MidpointRounding.AwayFromZero);
-        }
+        if (IsMaxLevel) return null;
+        var cost = (Price + unitsValue) * GameConstants.PlaceLevelCostShare;
+        for (var i = 1; i < Level; i++) cost *= GameConstants.PlaceLevelCostGrowth;
+        return Math.Round(cost, 2, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>Price and the max are checked by the aggregate.</summary>

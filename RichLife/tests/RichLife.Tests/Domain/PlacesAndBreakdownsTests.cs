@@ -113,9 +113,9 @@ public class PlacesAndBreakdownsTests
 
         var cashBefore = company.Cash;
         Assert.True(company.LevelUpPlace(place.Id).IsSuccess);
-        Assert.Equal(cashBefore - 125m, company.Cash);       // level 1 → 2 costs 25 % of the kind's price
+        Assert.Equal(cashBefore - 400m, company.Cash);       // 25 % of the place (500) and its units (500 + 600)
         Assert.Equal(3, place.Capacity);
-        Assert.Equal(168.75m, place.NextLevelCost);           // × 1.35 (Road to Rich)
+        Assert.Equal(540m, business.NextLevelCostOf(place));  // × 1.35 (Road to Rich)
         Assert.True(company.BuyUnit(place.Id, entry, "washer", T0).IsSuccess);
     }
 

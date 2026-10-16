@@ -12,6 +12,9 @@ public class CompanyTests
     /// <summary>Fixed instant the fixtures pin LastSyncAt to, so accrual is deterministic.</summary>
     private static readonly DateTime T0 = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+    /// <summary>Base income per second at prestige ×1.</summary>
+    private const decimal Base = GameConstants.BasePassiveIncomePerSecond;
+
     private static readonly ManagerName Lucy = ManagerName.Create(1, "Lucy");
 
     private static Company NewCompany()
@@ -77,8 +80,8 @@ public class CompanyTests
 
         var earned = company.ApplyOfflineProgress(TimeSpan.FromHours(10));
 
-        // Capped at 4h, at the $3/s base rate with a 1x multiplier.
-        Assert.Equal(3m * (decimal)GameConstants.OfflineCap.TotalSeconds, earned);
+        // Capped at 4h, at the base rate with a 1x multiplier.
+        Assert.Equal(Base * (decimal)GameConstants.OfflineCap.TotalSeconds, earned);
         Assert.Equal(earned, company.Cash);
     }
 
@@ -89,7 +92,7 @@ public class CompanyTests
 
         company.ApplyOfflineProgress(TimeSpan.FromMinutes(30));
 
-        Assert.Equal(3m * 1_800m, company.Cash);
+        Assert.Equal(Base * 1_800m, company.Cash);
     }
 
     [Fact]
@@ -101,14 +104,14 @@ public class CompanyTests
 
         var manual = company.ApplyOfflineProgress(TimeSpan.FromMinutes(1));
 
-        // Only the $3/s passive income runs while away.
-        Assert.Equal(3m * 60m, manual);
+        // Only the passive income runs while away.
+        Assert.Equal(Base * 60m, manual);
 
         business.HireManager(Lucy, T0);
         var automated = company.ApplyOfflineProgress(TimeSpan.FromMinutes(1));
 
         // Now the business's $5/s contributes too.
-        Assert.Equal(8m * 60m, automated);
+        Assert.Equal((Base + 5m) * 60m, automated);
     }
 
     [Fact]
@@ -119,7 +122,7 @@ public class CompanyTests
         var first = company.AccrueOffline(T0.AddHours(1));
         var second = company.AccrueOffline(T0.AddHours(1));
 
-        Assert.Equal(3m * 3_600m, first);
+        Assert.Equal(Base * 3_600m, first);
         Assert.Equal(0m, second);
         Assert.Equal(first, company.Cash);
         Assert.Equal(T0.AddHours(1), company.LastSyncAt);
@@ -134,8 +137,8 @@ public class CompanyTests
 
         var result = company.Sync(999_999_999m, T0.AddSeconds(10));
 
-        // 10s at $3/s, plus the tolerance factor.
-        var ceiling = 3m * 10m * GameConstants.SyncTolerance;
+        // 10s at the base rate, plus the tolerance factor.
+        var ceiling = Base * 10m * GameConstants.SyncTolerance;
         Assert.True(result.IsSuccess);
         Assert.Equal(ceiling, company.Cash);
     }
@@ -145,10 +148,11 @@ public class CompanyTests
     {
         var company = NewCompany();
 
-        company.Sync(25m, T0.AddSeconds(10));
+        var plausible = Base * 10m;   // exactly what 10 s at the base rate earns
+        company.Sync(plausible, T0.AddSeconds(10));
 
-        Assert.Equal(25m, company.Cash);
-        Assert.Equal(25m, company.AllTimeEarnings);
+        Assert.Equal(plausible, company.Cash);
+        Assert.Equal(plausible, company.AllTimeEarnings);
         Assert.Equal(T0.AddSeconds(10), company.LastSyncAt);
     }
 
@@ -444,7 +448,7 @@ public class CompanyTests
         company.AutomateBusiness(business.Id, Lucy, T0);
         var earned = company.ApplyOfflineProgress(TimeSpan.FromMinutes(1));
 
-        Assert.Equal(8m * 60m, earned); // $3/s passive + $5/s business
+        Assert.Equal((Base + 5m) * 60m, earned); // passive + $5/s business
     }
 
     [Fact]
@@ -700,21 +704,22 @@ public class CompanyTests
         Assert.False(company.CashOverridePending);
 
         // The override is spent: normal clamping applies again.
-        company.Sync(50_010m, T0.AddSeconds(10));
-        Assert.Equal(50_010m, company.Cash);
+        var plausible = 50_000m + Base * 5m;   // 5 s at the base rate since the last sync
+        company.Sync(plausible, T0.AddSeconds(10));
+        Assert.Equal(plausible, company.Cash);
     }
 
     [Fact]
     public void AdminReset_GivesAFreshStart_AndKeepsTheCompany()
     {
         var company = NewCompany();
-        company.AddCash(40_000m);
+        company.AddCash(company.GetPrestigeThreshold() + 1_000m);
         company.OpenBusiness(NewEntry(openingCost: 1_000m));
-        company.Prestige(T0);
+        Assert.True(company.Prestige(T0).IsSuccess);
 
         company.AdminReset(T0.AddHours(1));
 
-        Assert.Equal(0m, company.Cash);
+        Assert.Equal(GameConstants.StartingCash, company.Cash);
         Assert.Equal(0m, company.AllTimeEarnings);
         Assert.Empty(company.Businesses);
         Assert.Equal(PrestigeLevel.TheHustle, company.PrestigeLevel);
@@ -751,7 +756,7 @@ public class CompanyTests
 
         var earned = company.ApplyOfflineProgress(TimeSpan.FromHours(6));
 
-        Assert.Equal(3m * 4 * 3_600 + 5m * 3 * 3_600, earned); // base 4 h + business 3 h
+        Assert.Equal(Base * 4 * 3_600 + 5m * 3 * 3_600, earned); // base 4 h + business 3 h
         Assert.Equal(cashBefore + earned, company.Cash);
     }
 
@@ -765,7 +770,7 @@ public class CompanyTests
 
         var earned = company.ApplyOfflineProgress(TimeSpan.FromHours(2));
 
-        Assert.Equal(3m * 2 * 3_600, earned);
+        Assert.Equal(Base * 2 * 3_600, earned);
         Assert.False(business.HasManagerAt(T0));
     }
 
@@ -779,7 +784,7 @@ public class CompanyTests
 
         var earned = company.ApplyOfflineProgress(TimeSpan.FromHours(1));
 
-        Assert.Equal(8m * 3_600, earned); // (3 + 5) × 1 h
+        Assert.Equal((Base + 5m) * 3_600, earned); // (base + 5) × 1 h
     }
 
     [Fact]
@@ -822,8 +827,8 @@ public class CompanyTests
         var business = company.OpenBusiness(NewEntry(openingCost: 1_000m, grossIncomePerSecond: 5m)).Value;
         company.AutomateBusiness(business.Id, Lucy, T0);
 
-        Assert.Equal(8m, company.OfflineIncomePerSecondAt(T0.AddHours(1)));
-        Assert.Equal(3m, company.OfflineIncomePerSecondAt(T0.AddHours(5)));
+        Assert.Equal(Base + 5m, company.OfflineIncomePerSecondAt(T0.AddHours(1)));
+        Assert.Equal(Base, company.OfflineIncomePerSecondAt(T0.AddHours(5)));
     }
 
     // -- Business levels ----------------------------------------------------
@@ -965,33 +970,35 @@ public class CompanyTests
     public void CanPrestige_DoesNotCountBusinessValue()
     {
         var company = NewCompany();
-        company.AddCash(25_000m);
+        var price = company.GetPrestigeThreshold();
+        company.AddCash(price);
         company.OpenBusiness(NewEntry(openingCost: 1_000m));
 
-        // Net worth is still 25,000, but prestige is paid in cash and only 24,000 is left.
-        Assert.Equal(25_000m, company.NetWorth);
+        // Net worth still equals the price, but prestige is paid in cash and 1,000 of it is now a business.
+        Assert.Equal(price, company.NetWorth);
         var result = company.CanPrestige();
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("Prestige costs $25,000 in cash.", result.Error);
+        Assert.Equal(100_000m, price);
+        Assert.Equal("Prestige costs $100,000 in cash.", result.Error);
     }
 
     [Fact]
     public void Prestige_DeductsThePrice_KeepsTheRest_AdvancesLevel_AndRaisesEvent()
     {
         var company = NewCompany();
-        company.AddCash(31_000m);
+        company.AddCash(company.GetPrestigeThreshold() + 6_000m);
         company.OpenBusiness(NewEntry(openingCost: 1_000m));
 
         var result = company.Prestige(T0.AddHours(2));
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(5_000m, company.Cash); // 31,000 − 1,000 business − 25,000 price
+        Assert.Equal(5_000m, company.Cash); // price + 6,000 − 1,000 business − price
         Assert.Single(company.Businesses);
         Assert.Equal(PrestigeLevel.SmallBusiness, company.PrestigeLevel);
         Assert.Equal(1, company.PrestigeCount);
         Assert.Equal(1.18m, company.PrestigeMultiplier);
-        Assert.Equal(3m * 1.18m, company.PassiveIncomePerSecond);
+        Assert.Equal(Base * 1.18m, company.PassiveIncomePerSecond);
         Assert.Contains(company.DomainEvents, e => e is PrestigeTriggeredEvent);
     }
 
@@ -999,12 +1006,12 @@ public class CompanyTests
     public void Prestige_KeepsBusinessesAndTheirAssets()
     {
         var company = NewCompany();
-        company.AddCash(40_000m);
+        company.AddCash(company.GetPrestigeThreshold() + 1_000m);
         company.OpenBusiness(NewEntry(openingCost: 1_000m));
         var before = company.Businesses.Single();
         var valueBefore = before.TotalValue;
 
-        company.Prestige(T0.AddHours(2));
+        Assert.True(company.Prestige(T0.AddHours(2)).IsSuccess);
 
         var after = company.Businesses.Single();
         Assert.Equal(before.Id, after.Id);
@@ -1015,14 +1022,15 @@ public class CompanyTests
     public void Prestige_PreservesAllTimeEarnings()
     {
         var company = NewCompany();
-        company.AddCash(30_000m);
+        var earned = company.GetPrestigeThreshold() + 5_000m;
+        company.AddCash(earned);
 
         var result = company.Prestige(T0.AddHours(2));
 
         Assert.True(result.IsSuccess);
         // Paying the price is spending, not losing earnings — rank must survive it.
         Assert.Equal(5_000m, company.Cash);
-        Assert.Equal(30_000m, company.AllTimeEarnings);
+        Assert.Equal(earned, company.AllTimeEarnings);
     }
 
     [Fact]
@@ -1046,11 +1054,11 @@ public class CompanyTests
         var company = NewCompany();
         company.AddCash(50_000m);
 
-        var result = company.UpgradePassiveIncome(cost: 20_000m, newRate: 2m);
+        var result = company.UpgradePassiveIncome(cost: 20_000m, newRate: Base / 2);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(50_000m, company.Cash);
-        Assert.Equal(3m, company.PassiveIncomePerSecond);
+        Assert.Equal(Base, company.PassiveIncomePerSecond);
     }
 
     [Fact]

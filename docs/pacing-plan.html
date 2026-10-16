@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pacing Plan</title>
+<style>
+  :root {
+    --canvas: #F7F5F0; --surface: #FFFFFF; --sunken: #F3F0EA; --line: #E7E2D8;
+    --fg: #1C1917; --fg2: #57534E; --fg3: #78716C; --brand: #0F766E; --brand-soft: #F0FDFA;
+    --bad: #BE123C; --bad-bg: #FFF1F2; --good: #047857;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #12100E; --surface: #1C1917; --sunken: #26221F; --line: #34302C;
+      --fg: #F5F5F4; --fg2: #D6D3D1; --fg3: #A8A29E; --brand: #2DD4BF; --brand-soft: #13302C;
+      --bad: #FDA4AF; --bad-bg: #331820; --good: #6EE7B7;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 36px 16px 64px; }
+  h1 { font-size: clamp(26px, 5vw, 34px); margin: 0 0 6px; line-height: 1.15; }
+  h2 { font-size: 19px; margin: 32px 0 10px; }
+  p, li { color: var(--fg2); } b { color: var(--fg); }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
+  .bug { background: var(--bad-bg); border-radius: 14px; padding: 12px 16px; color: var(--fg); }
+  .bug b { color: var(--bad); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: var(--sunken); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg3); }
+  tr:last-child td { border-bottom: 0; }
+  td { color: var(--fg2); font-variant-numeric: tabular-nums; }
+  td.now { color: var(--bad); } td.new { color: var(--good); font-weight: 600; }
+  .q { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+  .q p { margin: 4px 0 0; font-size: 14px; }
+  footer { margin-top: 36px; color: var(--fg3); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">RichLife · plan · 2026-10-16 · built — see docs/features/016-pacing.md</p>
+  <h1>Slower game: P2 in 3–5 days, each level a bit longer</h1>
+  <p>Numbers come from a simulator that plays the real catalogue like an <b>active player</b> (4 short sessions a day,
+    managers rehired, 4-hour offline cap, saving for prestige, always buying the best deal). Real players are less
+    optimal, so expect them to take <b>a bit longer</b> than this table.</p>
+
+  <div class="bug"><b>Bug found (live now):</b> business and place level-ups are priced from the <i>opening</i> price
+    ($500 for a Delivery Company depot) but boost every vehicle inside — a $125 upgrade on 21 trucks pays back in
+    seconds. An optimal player can reach P7 in about <b>1.5 days</b> today. Fixed in this plan.</div>
+
+  <h2>Result</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Reach</th><th>Today</th><th>New — active player</th><th>New — casual (2 × 15 min a day)</th></tr>
+    <tr><td>P2 Small Business</td><td class="now">½ day</td><td class="new">day 4.5</td><td>day 10</td></tr>
+    <tr><td>P3 Entrepreneur</td><td class="now">½ day</td><td class="new">day 10</td><td>day 31</td></tr>
+    <tr><td>P4 Business Mogul</td><td class="now">1 day</td><td class="new">day 17</td><td>day 46</td></tr>
+    <tr><td>P5 Tycoon</td><td class="now">1 day</td><td class="new">day 28</td><td>day 72</td></tr>
+    <tr><td>P6 Billionaire</td><td class="now">1.3 days</td><td class="new">day 44</td><td>day 110</td></tr>
+    <tr><td>P7 Global Empire</td><td class="now">1.5 days</td><td class="new">day 60</td><td>day 156</td></tr>
+  </table></div>
+  <p>Each level takes 4.5 → 6 → 6.5 → 11.5 → 15.5 → 16 days for an active player: longer each time, never double.</p>
+
+  <h2>What changes</h2>
+  <ol>
+    <li><b>Level-ups priced from what is invested</b> (the bug fix): a business level costs the larger of its opening price
+      and 25 % of everything put into it, × 1.25 per level; a place level costs 25 % of the place and its units, × 1.35 per level.</li>
+    <li><b>Each extra unit of the same type costs 20 % more</b> than the last one in that business (the classic idle-game rule),
+      and each extra place 40 % more. The first truck pays back fast; the 20th does not — so growth slows by itself.</li>
+    <li><b>Lower incomes</b>: the first unit of a type pays back in about 3 h at P1, 14–17 h at P2–P3, 1–4 days at P4–P7.</li>
+    <li><b>Passive income</b> 3/s → <b>0.1/s</b>, and every new company starts with <b>$1,000</b> so the first business opens at once.</li>
+    <li><b>Prestige prices</b>: P2 $100K · P3 $500M · P4 $2.2B · P5 $9B · P6 $30B · P7 $120B.</li>
+  </ol>
+  <p>Money still counts every second. Managers, breakdowns, taxes, store and bank are unchanged.</p>
+
+  <h2>Before I build it</h2>
+  <div class="q"><b>1. Another reset?</b>
+    <p>New prices and incomes make old progress meaningless again. Players are a few hours into the new game, so I recommend
+      one more reset (same rule as before: logins and company names kept).</p></div>
+  <div class="q"><b>2. The jump from $100K to $500M</b>
+    <p>The simulator needs a big P3 price because P1 businesses keep growing fast after P2. It works, but the number looks odd
+      on screen. Fine as is, or should I rescale the P2 business prices so the prices grow more evenly (more work)?</p></div>
+
+  <footer>Plan only — <code>docs/pacing-plan.html</code>. Simulator: catalogue exported from the database, greedy player,
+    minute steps. Once you say go: spec 016, contract, backend, frontend, tests.</footer>
+</div>
+</body>
+</html>

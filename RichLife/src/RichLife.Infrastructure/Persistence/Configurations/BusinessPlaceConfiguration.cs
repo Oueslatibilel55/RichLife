@@ -22,6 +22,5 @@ public class BusinessPlaceConfiguration : IEntityTypeConfiguration<BusinessPlace
         b.Ignore(x => x.Multiplier);
         b.Ignore(x => x.Capacity);
         b.Ignore(x => x.IsMaxLevel);
-        b.Ignore(x => x.NextLevelCost);
     }
 }
