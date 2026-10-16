@@ -1,0 +1,112 @@
+<div class="page">
+  <header class="page-header">
+    <h1>{{ 'market.title' | t }}</h1>
+    <p class="sub">{{ 'market.sub' | t }}</p>
+  </header>
+
+  @if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
+
+  @if (data(); as d) {
+    <!-- Portfolio -->
+    <section class="card folio">
+      <div class="folio__main">
+        <span class="stat__label">{{ 'market.portfolio' | t }}</span>
+        <span class="folio__value num">{{ d.portfolioValue | money }}</span>
+        <span class="folio__pl num" [class.up]="profit() >= 0" [class.down]="profit() < 0">
+          {{ profit() >= 0 ? '▲' : '▼' }} {{ (profit() < 0 ? -profit() : profit()) | money }}
+        </span>
+      </div>
+      <div class="folio__limit">
+        <span class="num">{{ 'market.limit' | t: { used: (d.invested | money), max: (d.investLimit | money) } }}</span>
+        <div class="bar"><i [style.width.%]="limitUsed()"></i></div>
+      </div>
+    </section>
+
+    <!-- Every stock -->
+    <ul class="stocks">
+      @for (s of d.stocks; track s.ticker) {
+        <li>
+          <button type="button" class="stock" (click)="open(s)">
+            <span class="stock__icon" aria-hidden="true">{{ s.icon }}</span>
+            <span class="stock__id">
+              <strong>{{ s.name }}</strong>
+              <small class="num">{{ s.ticker }}@if (s.shares > 0) { · {{ 'market.owned' | t: { n: s.shares } }} }</small>
+            </span>
+            <svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none" aria-hidden="true"
+                 [class.up]="s.change24h >= 0" [class.down]="s.change24h < 0">
+              <path [attr.d]="linePath(s.spark, 80, 28)" />
+            </svg>
+            <span class="stock__px">
+              <span class="num">{{ s.price | rate }}</span>
+              <span class="chg num" [class.up]="s.change24h >= 0" [class.down]="s.change24h < 0">{{ percent(s.change24h) }}</span>
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+  } @else if (!error()) {
+    <div class="loading-screen"><span class="spinner"></span></div>
+  }
+</div>
+
+<!-- Trade sheet -->
+@if (selected(); as s) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="trade-title" (click)="close()">
+    <div class="modal modal--panel" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h2 id="trade-title">{{ s.icon }} {{ s.name }} <small class="num">{{ s.ticker }}</small></h2>
+        <button type="button" class="icon-btn" [attr.aria-label]="'layout.dismiss' | t" (click)="close()"><app-icon name="close" /></button>
+      </div>
+      <div class="modal__body">
+        <div class="quote">
+          <span class="quote__px num">{{ s.price | rate }}</span>
+          <span class="chg num" [class.up]="s.change24h >= 0" [class.down]="s.change24h < 0">{{ percent(s.change24h) }} · 24h</span>
+        </div>
+
+        <div class="segmented" role="group" [attr.aria-label]="'market.range' | t">
+          @for (r of ranges; track r) {
+            <button type="button" [class.on]="range() === r" (click)="setRange(r)">{{ 'market.range.' + r | t }}</button>
+          }
+        </div>
+        <svg class="chart" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true"
+             [class.up]="chartUp()" [class.down]="!chartUp()">
+          @if (chart().length > 1) {
+            <path class="chart__area" [attr.d]="linePath(chart(), 300, 120) + ' L300,120 L0,120 Z'" />
+            <path class="chart__line" [attr.d]="linePath(chart(), 300, 120)" />
+          }
+        </svg>
+
+        @if (s.shares > 0) {
+          <div class="holding num">
+            <span>{{ 'market.youHold' | t: { n: s.shares, value: (s.value | money) } }}</span>
+            <span [class.up]="s.value >= s.costBasis" [class.down]="s.value < s.costBasis">
+              {{ s.value >= s.costBasis ? '+' : '−' }}{{ (s.value >= s.costBasis ? s.value - s.costBasis : s.costBasis - s.value) | money }}
+            </span>
+          </div>
+        }
+
+        <div class="segmented" role="group">
+          <button type="button" [class.on]="side() === 'buy'" (click)="side.set('buy')">{{ 'market.buy' | t }}</button>
+          <button type="button" [class.on]="side() === 'sell'" [disabled]="s.shares === 0" (click)="side.set('sell')">{{ 'market.sell' | t }}</button>
+        </div>
+
+        <div class="qty">
+          <button type="button" class="icon-btn" (click)="setShares(shares - 1)" [attr.aria-label]="'market.less' | t">−</button>
+          <input class="form-input num" type="number" min="1" [(ngModel)]="shares" [attr.aria-label]="'market.shares' | t" />
+          <button type="button" class="icon-btn" (click)="setShares(shares + 1)" [attr.aria-label]="'market.more' | t">+</button>
+          <button type="button" class="btn btn--soft btn--sm" (click)="setShares(side() === 'buy' ? maxBuy(s) : s.shares)">{{ 'market.max' | t }}</button>
+        </div>
+
+        <p class="estimate num">
+          {{ (side() === 'buy' ? 'market.cost' : 'market.proceeds') | t: { amount: (estimate(s) | money), fee: ((data()?.feeRate ?? 0) * 100) } }}
+        </p>
+        @if (tradeError()) { <div class="alert alert--error" role="alert">{{ tradeError() }}</div> }
+
+        <button type="button" class="btn btn--full btn--lg" [class.btn--success]="side() === 'buy'" [class.btn--danger]="side() === 'sell'"
+                [disabled]="trading() || shares < 1" (click)="trade()">
+          {{ trading() ? ('market.working' | t) : ((side() === 'buy' ? 'market.buyN' : 'market.sellN') | t: { n: shares }) }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

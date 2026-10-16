@@ -40,7 +40,7 @@
   --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.16);
 
   --topbar-h: 64px;
-  --tabbar-h: 64px;
+  --tabbar-h: 88px; // room kept under the content for the floating menu button (phones)
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -560,32 +560,6 @@ input, button, select, textarea { font: inherit; font-size: 16px; }
   @media (min-width: 600px) { display: inline-flex; }
 }
 
-.more-sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-
-  &__who { display: flex; align-items: center; gap: 12px; }
-  &__names { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  &__names strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  &__gems { align-self: flex-start; font-size: 13px; font-weight: 800; color: var(--violet); text-decoration: none; }
-
-  &__links { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  &__link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    color: var(--text);
-    font-weight: 600;
-    text-decoration: none;
-    & + & { border-top: 1px solid var(--border); }
-    &.active { color: var(--primary); background: var(--primary-soft); }
-  }
-  &__chev { margin-inline-start: auto; color: var(--text-3); font-size: 20px; line-height: 1; }
-  &__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; }
-}
-
 .offline-double { margin-bottom: 8px; }
 .offline-doubled { margin: 0 0 12px; text-align: center; font-weight: 700; color: var(--violet); }
 .offline-hint { margin: -2px 0 10px; text-align: center; font-size: 13px; color: var(--text-3); }
@@ -621,25 +595,11 @@ input, button, select, textarea { font: inherit; font-size: 16px; }
   &__icon { font-size: 18px; }
 }
 
-// Game shell navigation (layout budget): 7 pages on desktop, 5 tabs + "More" on phones.
+// Game shell navigation (layout budget): every page in the top bar on desktop, a floating menu on phones.
 .topnav__label { display: none; @media (min-width: 1280px) { display: inline; } }
 .desk-only { display: none !important; @media (min-width: 900px) { display: flex !important; } }
 @media (min-width: 900px) and (max-width: 1279px) { .topbar .brand__name { display: none !important; } }
 .hud__rate--boost { background: #FEF3C7 !important; color: #B45309 !important; }
-button.tabbar__link { border: 0; background: none; font-family: inherit; cursor: pointer; }
-.tabbar__link--store { color: var(--text-2); }
-.tabbar__fab {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  margin-top: -22px;
-  border-radius: 50%;
-  color: #fff;
-  background: linear-gradient(135deg, #8B5CF6, #4F46E5);
-  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
-  border: 3px solid var(--surface);
-}
 
 /* -- Business taxes (§5) — dashboard cards, manage dialog, top bar ----------------- */
 .tax-chip {
@@ -698,3 +658,91 @@ button.tabbar__link { border: 0; background: none; font-family: inherit; cursor:
   &--due .tax-card__text strong { color: var(--danger); }
 }
 .tax-close-hint { margin: 0; font-size: 13px; color: var(--text-2); }
+
+/* -- Floating menu (phones, < 900 px) — replaces the bottom tab bar ------------------ */
+.fab {
+  position: fixed;
+  inset-inline-end: 18px;
+  bottom: calc(18px + var(--safe-bottom));
+  z-index: 260;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #4F46E5);
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.45), 0 0 0 4px rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.2s;
+  @media (min-width: 900px) { display: none; }
+  &:active { transform: scale(0.92); }
+  &__icon { display: grid; transition: transform 0.3s ease; }
+  &--open { box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35), 0 0 0 4px rgba(255, 255, 255, 0.9); }
+  &--open .fab__icon { transform: rotate(90deg); }
+}
+
+.fab-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(4px);
+  animation: fabFade 0.2s ease both;
+}
+
+.fab-menu {
+  position: fixed;
+  inset-inline: 14px;
+  bottom: calc(92px + var(--safe-bottom));
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  transform-origin: bottom right;
+  animation: fabPop 0.28s cubic-bezier(.34, 1.4, .64, 1) both;
+  [dir='rtl'] & { transform-origin: bottom left; }
+
+  &__who { display: flex; align-items: center; gap: 12px; }
+  &__names { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  &__names strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__gems { align-self: flex-start; font-size: 13px; font-weight: 800; color: var(--violet); text-decoration: none; }
+
+  &__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  &__tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 4px;
+    border-radius: 16px;
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    animation: fabTile 0.3s ease both;
+    span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    &.active { color: var(--primary); background: var(--primary-soft); }
+    &.active .fab-menu__ic { background: var(--primary); color: #fff; }
+  }
+  &__ic {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  &__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+}
+
+@keyframes fabFade { from { opacity: 0; } }
+@keyframes fabPop { from { opacity: 0; transform: scale(0.6) translateY(20px); } }
+@keyframes fabTile { from { opacity: 0; transform: translateY(8px); } }

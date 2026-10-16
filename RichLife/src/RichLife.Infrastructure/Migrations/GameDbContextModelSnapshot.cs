@@ -897,11 +897,37 @@ namespace RichLife.Infrastructure.Migrations
                                 .HasForeignKey("CompanyId");
                         });
 
+                    b.OwnsMany("RichLife.Domain.Entities.CompanyStock", "Stocks", b1 =>
+                        {
+                            b1.Property<Guid>("CompanyId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Ticker")
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)");
+
+                            b1.Property<decimal>("CostBasis")
+                                .HasPrecision(24, 4)
+                                .HasColumnType("numeric(24,4)");
+
+                            b1.Property<long>("Shares")
+                                .HasColumnType("bigint");
+
+                            b1.HasKey("CompanyId", "Ticker");
+
+                            b1.ToTable("company_stocks", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("CompanyId");
+                        });
+
                     b.Navigation("Achievements");
 
                     b.Navigation("Avatars");
 
                     b.Navigation("Badges");
+
+                    b.Navigation("Stocks");
                 });
 
             modelBuilder.Entity("RichLife.Domain.Entities.DiamondTransaction", b =>

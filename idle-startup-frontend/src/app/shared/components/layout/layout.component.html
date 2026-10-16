@@ -66,60 +66,42 @@
     <router-outlet />
   </main>
 
-  <!-- Phones: Home · Businesses · [Store] · Bank · More -->
-  <nav class="tabbar" [attr.aria-label]="'layout.navMobile' | t">
-    @for (item of tabs; track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" class="tabbar__link">
-        <app-icon [name]="item.icon" [size]="22" />
-        <span>{{ item.label | t }}</span>
-      </a>
-    }
-    <a routerLink="/store" routerLinkActive="active" class="tabbar__link tabbar__link--store">
-      <span class="tabbar__fab"><app-icon name="store" [size]="22" /></span>
-      <span>{{ 'nav.store' | t }}</span>
-    </a>
-    @for (item of tabsAfterStore; track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" class="tabbar__link">
-        <app-icon [name]="item.icon" [size]="22" />
-        <span>{{ item.label | t }}</span>
-      </a>
-    }
-    <button type="button" class="tabbar__link" [class.active]="moreActive() || moreOpen()" [attr.aria-expanded]="moreOpen()" (click)="moreOpen.set(true)">
-      <app-icon name="more" [size]="22" />
-      <span>{{ 'nav.more' | t }}</span>
-    </button>
-  </nav>
+  <!-- Phones: one floating button opens every page -->
+  <button
+    type="button"
+    class="fab"
+    [class.fab--open]="menuOpen()"
+    [attr.aria-expanded]="menuOpen()"
+    [attr.aria-label]="(menuOpen() ? 'layout.dismiss' : 'nav.menu') | t"
+    (click)="menuOpen.set(!menuOpen())"
+  >
+    <span class="fab__icon"><app-icon [name]="menuOpen() ? 'close' : 'menu'" [size]="26" /></span>
+  </button>
 </div>
 
-<!-- "More" sheet (phones): the other pages, the language and logging out -->
-@if (moreOpen()) {
-  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="more-title" (click)="moreOpen.set(false)">
-    <div class="modal more-sheet" (click)="$event.stopPropagation()">
-      <div class="more-sheet__who">
-        <app-avatar [avatar]="game.avatar()" [name]="auth.currentUser()?.username" [size]="44" />
-        <div class="more-sheet__names">
-          <strong id="more-title">{{ auth.currentUser()?.username }}</strong>
-          <a routerLink="/store" class="more-sheet__gems num" (click)="moreOpen.set(false)">💎 {{ game.diamonds() }}</a>
-        </div>
-        <button type="button" class="icon-btn" [attr.aria-label]="'layout.dismiss' | t" (click)="moreOpen.set(false)">
-          <app-icon name="close" />
-        </button>
+@if (menuOpen()) {
+  <div class="fab-backdrop" (click)="menuOpen.set(false)"></div>
+  <div class="fab-menu" role="dialog" aria-modal="true" [attr.aria-label]="'layout.navMobile' | t">
+    <div class="fab-menu__who">
+      <app-avatar [avatar]="game.avatar()" [name]="auth.currentUser()?.username" [size]="42" />
+      <div class="fab-menu__names">
+        <strong>{{ auth.currentUser()?.username }}</strong>
+        <a routerLink="/store" class="fab-menu__gems num" (click)="menuOpen.set(false)">💎 {{ game.diamonds() }}</a>
       </div>
-      <nav class="more-sheet__links" [attr.aria-label]="'nav.more' | t">
-        @for (item of moreItems; track item.path) {
-          <a [routerLink]="item.path" routerLinkActive="active" class="more-sheet__link" (click)="moreOpen.set(false)">
-            <app-icon [name]="item.icon" [size]="20" />
-            <span>{{ item.label | t }}</span>
-            <span class="more-sheet__chev rtl-flip" aria-hidden="true">›</span>
-          </a>
-        }
-      </nav>
-      <div class="more-sheet__row">
-        <span>🌐 {{ 'lang.label' | t }}</span>
-        <app-lang-switcher />
-      </div>
-      <button type="button" class="btn btn--outline btn--full" (click)="logout()">
-        <app-icon name="logout" [size]="18" /> {{ 'layout.logout' | t }}
+      <app-lang-switcher />
+    </div>
+    <nav class="fab-menu__grid" [attr.aria-label]="'layout.navMobile' | t">
+      @for (item of nav; track item.path; let i = $index) {
+        <a [routerLink]="item.path" routerLinkActive="active" class="fab-menu__tile" [style.animation-delay.ms]="i * 30" (click)="menuOpen.set(false)">
+          <span class="fab-menu__ic"><app-icon [name]="item.icon" [size]="22" /></span>
+          <span>{{ item.label | t }}</span>
+        </a>
+      }
+    </nav>
+    <div class="fab-menu__foot">
+      <span class="num">{{ game.cash() | money }} · +{{ game.cashRate() | rate }}{{ 'layout.perSecond' | t }}</span>
+      <button type="button" class="btn btn--outline btn--sm" (click)="logout()">
+        <app-icon name="logout" [size]="16" /> {{ 'layout.logout' | t }}
       </button>
     </div>
   </div>

@@ -54,6 +54,7 @@ public class Company : AggregateRoot
         + _assets.Sum(a => a.CurrentValue)
         + _businesses.Sum(b => b.TotalValue)
         + _luxuryAssets.Sum(l => l.Cost)
+        + _stocks.Sum(s => s.CostBasis)   // at what was paid — prices move every minute (features/017)
         - (ActiveLoan?.Outstanding ?? 0m)
         - TaxesDue;
 
@@ -94,6 +95,10 @@ public class Company : AggregateRoot
     private readonly List<CompanyBadge> _badges = [];
     private readonly List<CompanyAvatar> _avatars = [];
     private readonly List<DiamondTransaction> _diamondLedger = [];
+    private readonly List<CompanyStock> _stocks = [];
+
+    /// <summary>Shares held on the Bourse (features/017-bourse.md).</summary>
+    public IReadOnlyList<CompanyStock> Stocks => _stocks.AsReadOnly();
 
     public IReadOnlyList<Business> Businesses => _businesses.AsReadOnly();
     public IReadOnlyList<Asset> Assets => _assets.AsReadOnly();
@@ -643,6 +648,68 @@ public class Company : AggregateRoot
         return Result.Ok(loan);
     }
 
+    // -- Bourse (features/017-bourse.md) ------------------------------------------
+
+    /// <summary>What the held shares cost, fees included.</summary>
+    public decimal InvestedInStocks => _stocks.Sum(s => s.CostBasis);
+
+    /// <summary>
+    /// The most that may be held on the Bourse, at cost: <see cref="GameConstants.StockInvestHours"/>
+    /// of full income (never below <see cref="GameConstants.StockMinInvestLimit"/>) — enough to
+    /// play, too little for trading to outgrow the businesses.
+    /// </summary>
+    public decimal StockInvestLimit =>
+        Math.Round(Math.Max(GameConstants.StockMinInvestLimit, FullIncomePerSecond * 3600m * GameConstants.StockInvestHours), 2);
+
+    /// <summary>Buys whole shares at the price of the minute, plus the broker fee. Paid from cash.</summary>
+    public Result BuyStock(Market.StockDefinition stock, long shares, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(stock);
+        if (shares < 1) return Result.Fail("Choose at least 1 share.");
+
+        var price = Market.StockMarket.PriceAt(stock, nowUtc);
+        var cost = Math.Round(price * shares * (1m + GameConstants.StockFeeRate), 2, MidpointRounding.AwayFromZero);
+        if (InvestedInStocks + cost > StockInvestLimit)
+            return Result.Fail("Investing limit reached: you can hold at most one day of income on the Bourse.");
+
+        var deduct = DeductCash(cost);
+        if (!deduct.IsSuccess) return deduct;
+
+        var holding = _stocks.FirstOrDefault(s => s.Ticker == stock.Ticker);
+        if (holding is null)
+        {
+            holding = CompanyStock.Create(stock.Ticker);
+            _stocks.Add(holding);
+        }
+        holding.Add(shares, cost);
+        MarkUpdated();
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Sells shares at the price of the minute, minus the broker fee. A profit counts as earnings
+    /// (the leaderboard); a loss does not take any back.
+    /// </summary>
+    public Result SellStock(Market.StockDefinition stock, long shares, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(stock);
+        if (shares < 1) return Result.Fail("Choose at least 1 share.");
+
+        var holding = _stocks.FirstOrDefault(s => s.Ticker == stock.Ticker);
+        if (holding is null || holding.Shares < shares) return Result.Fail("You do not own that many shares.");
+
+        var price = Market.StockMarket.PriceAt(stock, nowUtc);
+        var proceeds = Math.Round(price * shares * (1m - GameConstants.StockFeeRate), 2, MidpointRounding.AwayFromZero);
+        var basis = holding.Remove(shares);
+        if (holding.Shares == 0) _stocks.Remove(holding);
+
+        Cash += proceeds;
+        var profit = proceeds - basis;
+        if (profit > 0m) AllTimeEarnings += profit;
+        MarkUpdated();
+        return Result.Ok();
+    }
+
     // -- Diamonds and the store (contract §6e) ----------------------------------
 
     public bool IsBoostedAt(DateTime atUtc) => BoostUntil is { } until && atUtc < until;
@@ -865,6 +932,7 @@ public class Company : AggregateRoot
         _achievements.Clear();
         _luxuryAssets.Clear();
         _loans.Clear();
+        _stocks.Clear();
         Cash = GameConstants.StartingCash;   // like a new company
         AllTimeEarnings = 0m;
         TaxesPaid = 0m;   // the businesses, and their bills, are gone too

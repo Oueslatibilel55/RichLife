@@ -161,6 +161,7 @@ app.MapProfileEndpoints();
 app.MapLuxuryEndpoints();
 app.MapBankEndpoints();
 app.MapStoreEndpoints();
+app.MapMarketEndpoints();
 app.MapAdminCatalogueEndpoints();
 app.MapAdminEndpoints();
 app.MapAdminLuxuryEndpoints();

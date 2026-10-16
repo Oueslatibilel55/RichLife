@@ -89,6 +89,11 @@ export const SERVER: DictSet = {
     'Time between failures must be between 1 and 10000 hours.': 'Time between failures must be between 1 and 10000 hours.',
     'Unknown business kind.': 'Unknown business kind.',
     'Place income cannot be negative.': 'Place income cannot be negative.',
+    // Bourse (contract §6f)
+    'Stock not found.': 'Stock not found.',
+    'Choose at least 1 share.': 'Choose at least 1 share.',
+    'You do not own that many shares.': 'You do not own that many shares.',
+    'Investing limit reached: you can hold at most one day of income on the Bourse.': 'Investing limit reached: you can hold at most one day of income on the Bourse.',
   },
 
   fr: {
@@ -174,6 +179,11 @@ export const SERVER: DictSet = {
     'Time between failures must be between 1 and 10000 hours.': 'Le temps entre deux pannes doit être compris entre 1 et 10 000 heures.',
     'Unknown business kind.': 'Type d’entreprise inconnu.',
     'Place income cannot be negative.': 'Le revenu d’un emplacement ne peut pas être négatif.',
+    // Bourse (contract §6f)
+    'Stock not found.': 'Action introuvable.',
+    'Choose at least 1 share.': 'Choisissez au moins 1 action.',
+    'You do not own that many shares.': 'Vous ne détenez pas autant d’actions.',
+    'Investing limit reached: you can hold at most one day of income on the Bourse.': 'Limite atteinte : vous pouvez investir au plus une journée de revenus en Bourse.',
   },
 
   ar: {
@@ -259,5 +269,10 @@ export const SERVER: DictSet = {
     'Time between failures must be between 1 and 10000 hours.': 'يجب أن يكون الوقت بين عطلين بين 1 و10000 ساعة.',
     'Unknown business kind.': 'نوع نشاط غير معروف.',
     'Place income cannot be negative.': 'لا يمكن أن يكون دخل الموقع سالبًا.',
+    // Bourse (contract §6f)
+    'Stock not found.': 'السهم غير موجود.',
+    'Choose at least 1 share.': 'اختر سهمًا واحدًا على الأقل.',
+    'You do not own that many shares.': 'لا تملك هذا العدد من الأسهم.',
+    'Investing limit reached: you can hold at most one day of income on the Bourse.': 'بلغت الحد: يمكنك استثمار دخل يوم واحد كحد أقصى في البورصة.',
   },
 };

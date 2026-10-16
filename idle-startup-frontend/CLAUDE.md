@@ -254,12 +254,17 @@ list dialogs). Modals are a **bottom sheet below 640 px** and centred above. Tho
 because dialogs are raised from more than one component — component SCSS is scoped and would not reach them.
 Component SCSS should consume these tokens rather than redeclaring colours.
 
-**Game navigation** (`LayoutComponent`): the desktop top nav lists all 7 pages — labels from 1280 px,
-icons with a tooltip between 900 and 1279 px. The phone tab bar is Home · Businesses · **Store**
-(raised, centre) · Bank · **More**; "More" opens a bottom sheet (global `.modal`) with Luxury,
-Leaderboard, Profile, the language picker and log out, so on phones the top bar keeps only the
-money (cash, rate, 💎 chip). Language and account are `.desk-only` in the top bar. The layout's
-SCSS is at its 4 kB budget: new shell styles go in `styles.scss` (as the toasts do).
+**Game navigation** (`LayoutComponent`): the desktop top nav lists all 8 pages (`nav`, Bourse
+included) — labels from 1280 px, icons with a tooltip between 900 and 1279 px. On phones (< 900 px)
+there is **no tab bar**: a floating round button (`.fab`, bottom-end) opens `.fab-menu` — avatar,
+💎, language, every page of `nav` as a tile, cash/rate and log out; it closes on any navigation
+(`features/017-bourse.md`). `--tabbar-h` now only reserves room under the content and above toasts
+for that button. The top bar keeps only the money (cash, rate, 💎 chip) on phones. Language and
+account are `.desk-only` in the top bar. The layout's SCSS is at its 4 kB budget: shell styles go in
+`styles.scss` (as the toasts and the floating menu do).
+- **Bourse** (contract §6f, `features/market/`): `MarketService` (feature service) loads the market
+  and history; buy/sell go through `GameService.syncThenAdoptCash` (sync first, adopt the answer's
+  `cash`, refresh the company). Prices refresh every 30 s on the page; stock names are content.
 
 Main breakpoints: 480 / 640 / 768 / 900 / 1024 / 1280 px (plus a few local ones: 420, 600, 860, 960, 1100,
 and max-width 1199 / 1279 for the nav). A list with more than ~4 columns is **cards below 900 px** and a table

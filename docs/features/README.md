@@ -53,3 +53,4 @@ still in the contract, the next person cannot tell what is real.
 | 014 | [Business places, units and breakdowns](014-business-places-and-equipment.md) | Done (phases 1–2) |
 | 015 | [A catalogue like Road to Rich](015-catalogue-like-road-to-rich.md) | Phase 1 done (catalogue, reset); phase 2 pending (daily reward, contracts) |
 | 016 | [Pacing: P2 in ~4.5 days, P7 in ~60](016-pacing.md) | Done |
+| 017 | [Bourse and the floating menu](017-bourse.md) | Done |

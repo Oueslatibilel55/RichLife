@@ -1036,6 +1036,56 @@ money, so the client does not sync first and does not adopt the answer's `cash`.
 
 ---
 
+## 6f. Bourse — `/api/game/market`
+
+Added 2026-10-16 — see `features/017-bourse.md`. **Bearer required, from a player** (admin →
+`403`). Rate limit `game-actions`.
+
+12 fictional listed companies (rules in code, `Domain/Market/StockCatalog` — tickers are persisted:
+never rename or reuse one). A price is a **pure function of the stock and the minute** (seeded
+waves of 2 h, 9 h, 2.5 days and 11 days plus smooth noise, around a base price): the same for
+every player, never stored, no background job. Prices round to the cent.
+
+- **Buy**: whole shares at the price of the minute **+ 1 % fee**, from cash. Everything held may
+  not cost more than **24 hours of full income** (`$10,000` at least): `investLimit`.
+- **Sell**: at the price of the minute **− 1 % fee**, into cash. A **profit** (proceeds − the
+  shares' share of `costBasis`) counts toward `allTimeEarnings`; a loss takes nothing back.
+- Held shares count in `netWorth` **at cost** (`costBasis`), not at market value.
+- Like every spend, the client syncs first; trades answer a fresh `MarketDto` whose `cash` the
+  client adopts. A plain `GET`'s `cash` is the last recorded figure — display only.
+- An admin reset clears the holdings; deleting a player deletes them.
+
+### `GET /api/game/market` → `200` `MarketDto` · `400` `"Company not found."` · `401` · `403`
+
+```json
+{
+  "cash": 50000, "feeRate": 0.01, "invested": 1250.5, "investLimit": 86400, "portfolioValue": 1302.4,
+  "pricedAt": "2026-10-16T15:31:56Z",
+  "stocks": [
+    { "ticker": "NOVA", "name": "Nova AI", "sector": "Technology", "icon": "🤖", "price": 124.18,
+      "change24h": -0.0312, "spark": [128.4, 127.9, "… 24 hourly prices, oldest first"],
+      "shares": 10, "costBasis": 1250.5, "value": 1241.8 }
+  ]
+}
+```
+
+`change24h` is a fraction (−0.0312 = −3.12 %). `shares` / `costBasis` / `value` are 0 for a stock not held.
+
+### `GET /api/game/market/{ticker}/history?range=day|week|month`
+
+→ `200` `{ "ticker": "NOVA", "range": "day", "points": [ { "at": "…Z", "price": 124.18 } ] }` ·
+`400` `"Stock not found."`. `day` = 96 points every 15 min, `week` = 168 hourly, `month` = 180 every
+4 h; unknown or missing `range` = `day`. Does not read the company.
+
+### `POST /api/game/market/{ticker}/buy` · `POST /api/game/market/{ticker}/sell`
+
+Body `{ "shares": 10 }` → `200` `MarketDto` · `401` · `403` · `400` with one of:
+`"Company not found."`, `"Stock not found."`, `"Choose at least 1 share."`, `"Insufficient funds."`,
+`"Investing limit reached: you can hold at most one day of income on the Bourse."` (buy),
+`"You do not own that many shares."` (sell).
+
+---
+
 ## 7. Admin — catalogue editor — `/api/admin/catalogue`
 
 *Backend shipped 2026-10-02; frontend editor shipped 2026-10-08 in the admin panel

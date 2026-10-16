@@ -476,6 +476,21 @@ export class GameService {
   }
 
   /**
+   * A money move owned by a feature whose answer carries the server's fresh cash (the Bourse):
+   * sync first, run it, adopt that cash, then refresh the company (net worth moved).
+   */
+  syncThenAdoptCash<T extends { cash: number }>(op: () => Observable<T>): Observable<T> {
+    return this.afterSync(() =>
+      op().pipe(
+        tap((answer) => {
+          this._cash.set(answer.cash);
+          this.refreshCompany().subscribe({ error: () => void 0 });
+        }),
+      ),
+    );
+  }
+
+  /**
    * A spend owned by a feature outside the business flow (e.g. luxury): sync first, run the
    * purchase, deduct the price from the local purse, then refresh the company — its net worth
    * is server-computed.

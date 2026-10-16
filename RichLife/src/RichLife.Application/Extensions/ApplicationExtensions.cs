@@ -22,6 +22,7 @@ public static class ApplicationExtensions
         services.AddScoped<BankService>();
         services.AddScoped<LuxuryAdminService>();
         services.AddScoped<StoreService>();
+        services.AddScoped<MarketService>();
 
         return services;
     }

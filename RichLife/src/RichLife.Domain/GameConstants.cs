@@ -178,6 +178,17 @@ public static class GameConstants
     /// <summary>A fast repair costs this many times the standard price and is done at once.</summary>
     public const decimal FastRepairMultiplier = 2.5m;
 
+    // Bourse (features/017-bourse.md)
+
+    /// <summary>Broker fee on every buy and every sell, as a share of the trade.</summary>
+    public const decimal StockFeeRate = 0.01m;
+
+    /// <summary>What is held on the Bourse (at cost) may not exceed this many hours of full income…</summary>
+    public const int StockInvestHours = 24;
+
+    /// <summary>…nor this floor, so a new company can still try it.</summary>
+    public const decimal StockMinInvestLimit = 10_000m;
+
     // Marketplace closing fees
     public const decimal GracefulCloseFeeRate  = 0.10m;
     public const decimal EmergencyCloseFeeRate = 0.25m;

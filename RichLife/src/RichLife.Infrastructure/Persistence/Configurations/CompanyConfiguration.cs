@@ -28,6 +28,8 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         b.Ignore(x => x.DomainEvents);
         b.Ignore(x => x.ActiveLoan);
         b.Ignore(x => x.TaxesDue);
+        b.Ignore(x => x.InvestedInStocks);
+        b.Ignore(x => x.StockInvestLimit);
 
         b.HasMany(x => x.Businesses)
          .WithOne()
@@ -70,6 +72,18 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             a.Property(x => x.BadgeId).HasMaxLength(60);
         });
         b.Navigation(x => x.Badges).HasField("_badges")
+         .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Bourse holdings (features/017-bourse.md): owned, keyed (company, ticker).
+        b.OwnsMany(x => x.Stocks, s =>
+        {
+            s.ToTable("company_stocks");
+            s.WithOwner().HasForeignKey("CompanyId");
+            s.HasKey("CompanyId", nameof(CompanyStock.Ticker));
+            s.Property(x => x.Ticker).HasMaxLength(10);
+            s.Property(x => x.CostBasis).HasPrecision(24, 4);
+        });
+        b.Navigation(x => x.Stocks).HasField("_stocks")
          .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Bought avatars: owned the same way, keyed (CompanyId, AvatarId).
