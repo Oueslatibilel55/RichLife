@@ -34,8 +34,112 @@ public static class FaultCatalog
         new("engine",      "Engine failure",     1.20m, 900m, 24, 2),
     ];
 
+    // Shared lists for the catalogue of features/015 (several businesses each).
+    private static readonly FaultDefinition[] Office =
+    [
+        new("it-outage",      "IT outage",       0.20m, 500m, 2, 30),
+        new("key-staff-quit", "Key staff quit",  0.30m, 800m, 6, 15),
+        new("client-dispute", "Client dispute",  0.15m, 400m, 3, 20),
+    ];
+
+    private static readonly FaultDefinition[] Finance =
+    [
+        new("system-glitch",    "Trading system glitch", 0.20m,   600m, 2, 30),
+        new("compliance-audit", "Compliance audit",      0.15m, 1_000m, 3, 25),
+        new("market-crash",     "Market crash",          0.25m,   500m, 4, 15),
+    ];
+
+    private static readonly FaultDefinition[] Energy =
+    [
+        new("grid-fault",        "Grid fault",        0.10m,   500m, 3, 30),
+        new("generator-failure", "Generator failure", 0.25m, 1_000m, 6, 20),
+        new("safety-inspection", "Safety inspection", 0.08m,   800m, 4, 20),
+    ];
+
+    private static readonly FaultDefinition[] Aircraft =
+    [
+        new("bird-strike",       "Bird strike",       0.05m,  5_000m,  6, 20),
+        new("avionics-fault",    "Avionics fault",    0.08m,  8_000m,  8, 20),
+        new("engine-inspection", "Engine inspection", 0.10m, 10_000m, 12, 15),
+        new("landing-gear",      "Landing gear",      0.12m, 15_000m, 18, 10),
+    ];
+
+    private static readonly FaultDefinition[] Ship =
+    [
+        new("port-strike", "Port strike",        0.03m, 10_000m,  8, 25),
+        new("engine-room", "Engine room fault",  0.08m, 15_000m, 12, 20),
+        new("hull-damage", "Hull damage",        0.10m, 20_000m, 24, 10),
+    ];
+
+    private static readonly FaultDefinition[] Space =
+    [
+        new("launch-scrub", "Launch scrubbed",     0.03m,   500_000m,  6, 30),
+        new("life-support", "Life support fault", 0.10m, 1_000_000m, 24, 15),
+        new("heat-shield",  "Heat shield damage", 0.15m, 2_000_000m, 24, 10),
+    ];
+
+    private static readonly FaultDefinition[] Clinic =
+    [
+        new("scanner-down",   "Scanner down",   0.30m, 2_000m, 6, 25),
+        new("staff-shortage", "Staff shortage", 0.10m, 1_000m, 4, 25),
+    ];
+
+    private static readonly FaultDefinition[] Showroom =
+    [
+        new("car-damaged",   "Car damaged on the lot", 0.05m, 1_500m, 4, 25),
+        new("recall-notice", "Recall notice",          0.10m, 2_000m, 6, 15),
+    ];
+
+    private static readonly FaultDefinition[] Kiosk =
+    [
+        new("parts-shortage", "Parts shortage", 0.30m, 50m, 2, 30),
+        new("broken-tool",    "Broken tool",    0.20m, 30m, 1, 25),
+    ];
+
+    private static readonly FaultDefinition[] Hyperloop =
+    [
+        new("pod-fault",        "Pod fault",        0.10m, 1_000_000m,  6, 25),
+        new("track-inspection", "Track inspection", 0.05m, 2_000_000m, 12, 15),
+    ];
+
     private static readonly Dictionary<string, FaultDefinition[]> ByBusiness = new()
     {
+        // features/015 — the businesses that were added or had no list of their own.
+        ["delivery-company"] = Vehicle,
+        ["bus-line"] = Vehicle,
+        ["logistics-hub"] = Vehicle,
+        ["cargo-airline"] = Aircraft,
+        ["airline-group"] = Aircraft,
+        ["cruise-line"] = Ship,
+        ["container-shipping"] = Ship,
+        ["space-tourism"] = Space,
+        ["mars-colony"] = Space,
+        ["hyperloop"] = Hyperloop,
+        ["phone-repair"] = Kiosk,
+        ["car-dealership"] = Showroom,
+        ["private-clinic"] = Clinic,
+        ["rooftop-solar"] = Energy,
+        ["wind-farm"] = Energy,
+        ["solar-park"] = Energy,
+        ["nuclear-plant"] = Energy,
+        ["oil-major"] = Energy,
+        ["fusion-grid"] = Energy,
+        ["penny-stocks"] = Finance,
+        ["trading-desk"] = Finance,
+        ["investment-fund"] = Finance,
+        ["stock-brokerage"] = Finance,
+        ["investment-bank"] = Finance,
+        ["global-bank"] = Finance,
+        ["world-exchange"] = Finance,
+        ["web-agency"] = Office,
+        ["software-startup"] = Office,
+        ["tech-unicorn"] = Office,
+        ["streaming-platform"] = Office,
+        ["ai-superlab"] = Office,
+        ["metaverse"] = Office,
+        ["consulting-firm"] = Office,
+        ["global-consultancy"] = Office,
+
         ["food-cart"] =
         [
             new("burner-out",     "Gas burner out",    0.20m,  30m, 1, 30),
@@ -142,9 +246,20 @@ public static class FaultCatalog
 
     /// <summary>The faults a unit of this business type can suffer, in a fixed order.</summary>
     public static IReadOnlyList<FaultDefinition> For(string businessCatalogueId, BusinessSector sector) =>
-        ByBusiness.TryGetValue(businessCatalogueId, out var list) ? list
+        ByBusiness.TryGetValue(Aliases.GetValueOrDefault(businessCatalogueId, businessCatalogueId), out var list) ? list
         : sector == BusinessSector.Transport ? Vehicle
         : Generic;
+
+    /// <summary>Businesses that break like another one (a coffee shop like a restaurant).</summary>
+    private static readonly Dictionary<string, string> Aliases = new()
+    {
+        ["coffee-shop"] = "restaurant-chain",
+        ["luxury-resort"] = "small-hotel",
+        ["hotel-empire"] = "small-hotel",
+        ["global-resorts"] = "small-hotel",
+        ["skyscraper-district"] = "office-tower",
+        ["megacity"] = "office-tower",
+    };
 
     /// <summary>Every fault, once (a list shared by several businesses counts once).</summary>
     public static IEnumerable<FaultDefinition> All =>

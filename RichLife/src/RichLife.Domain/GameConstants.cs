@@ -139,10 +139,11 @@ public static class GameConstants
     public const int DefaultPlaceCapacityPerLevel = 2;
 
     /// <summary>Income bonus per place level above 1, on that place's income.</summary>
-    public const decimal PlaceLevelIncomeBonus = 0.05m;
+    public const decimal PlaceLevelIncomeBonus = 0.25m;
 
-    /// <summary>Place level 1 → 2 costs the place's price; each next level costs this much more.</summary>
-    public const decimal PlaceLevelCostGrowth = 1.6m;
+    /// <summary>Place level 1 → 2 costs this share of the place's price; each next level × <see cref="PlaceLevelCostGrowth"/> (Road to Rich).</summary>
+    public const decimal PlaceLevelCostShare = 0.25m;
+    public const decimal PlaceLevelCostGrowth = 1.35m;
 
     /// <summary>Income multiplier of a place by how busy it is.</summary>
     public static decimal PlaceTierMultiplier(Enums.PlaceTier tier) => tier switch

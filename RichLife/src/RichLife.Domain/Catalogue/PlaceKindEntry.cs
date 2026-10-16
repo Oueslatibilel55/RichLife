@@ -4,7 +4,8 @@ using RichLife.Domain.Enums;
 namespace RichLife.Domain.Catalogue;
 
 /// <summary>Editable fields of a catalogue place kind — everything except its id.</summary>
-public record PlaceKindDetails(string Name, PlaceTier Tier, decimal Price, int DisplayOrder);
+public record PlaceKindDetails(
+    string Name, PlaceTier Tier, decimal Price, int DisplayOrder, decimal? BaseIncomePerSecond = null);
 
 /// <summary>
 /// Somewhere a business can open a place — "Park", "Airport" (features/014-business-places-and-equipment.md).
@@ -18,6 +19,12 @@ public sealed class PlaceKindEntry
     public PlaceTier Tier { get; private set; }
     public decimal Price { get; private set; }
     public int DisplayOrder { get; private set; }
+
+    /// <summary>
+    /// What a place of this kind earns on its own (a Steakhouse more than a Burger Joint); null
+    /// uses the business's base income (features/015).
+    /// </summary>
+    public decimal? BaseIncomePerSecond { get; private set; }
 
     private PlaceKindEntry() { }
 
@@ -34,11 +41,12 @@ public sealed class PlaceKindEntry
         Tier         = d.Tier;
         Price        = d.Price;
         DisplayOrder = d.DisplayOrder;
+        BaseIncomePerSecond = d.BaseIncomePerSecond;
     }
 
     /// <summary>The numbers a new place of this kind copies, with the business's capacity rule.</summary>
     public PlaceSpec ToSpec(int baseCapacity, int capacityPerLevel) =>
-        new(Id, Name, Tier, Price, baseCapacity, capacityPerLevel);
+        new(Id, Name, Tier, Price, baseCapacity, capacityPerLevel, BaseIncomePerSecond);
 
     internal static string? Validate(PlaceKindDetails d)
     {
@@ -46,6 +54,7 @@ public sealed class PlaceKindEntry
             return $"Place name is required and must be at most {BusinessCatalogueEntry.MaxNameLength} characters.";
         if (!Enum.IsDefined(d.Tier)) return "Unknown place tier.";
         if (d.Price <= 0m) return "Place price must be positive.";
+        if (d.BaseIncomePerSecond < 0m) return "Place income cannot be negative.";
         return null;
     }
 }

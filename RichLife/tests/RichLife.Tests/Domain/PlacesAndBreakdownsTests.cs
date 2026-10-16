@@ -113,14 +113,32 @@ public class PlacesAndBreakdownsTests
 
         var cashBefore = company.Cash;
         Assert.True(company.LevelUpPlace(place.Id).IsSuccess);
-        Assert.Equal(cashBefore - 500m, company.Cash);       // level 1 → 2 costs the kind's price
+        Assert.Equal(cashBefore - 125m, company.Cash);       // level 1 → 2 costs 25 % of the kind's price
         Assert.Equal(3, place.Capacity);
-        Assert.Equal(800m, place.NextLevelCost);              // × 1.6
+        Assert.Equal(168.75m, place.NextLevelCost);           // × 1.35 (Road to Rich)
         Assert.True(company.BuyUnit(place.Id, entry, "washer", T0).IsSuccess);
     }
 
     [Fact]
-    public void PlaceLevel_AddsFivePercentToEverythingInThePlace()
+    public void ASiteFormat_EarnsItsOwnIncome_AndTheBusinessKeepsItsKind()
+    {
+        var company = NewCompany();
+        company.AdminSetCash(10_000m);
+        var entry = BusinessCatalogueEntry.Create("restaurant-chain",
+            CatalogueFixtures.Details(openingCost: 1_000m, baseIncomePerSecond: 5m) with { Kind = BusinessKind.Sites }).Value;
+        entry.AddPlaceKind("burger-joint", new PlaceKindDetails("Burger Joint", PlaceTier.Quiet, 1_000m, 10, BaseIncomePerSecond: 2m));
+        entry.AddPlaceKind("steakhouse", new PlaceKindDetails("Steakhouse", PlaceTier.Quiet, 3_000m, 20, BaseIncomePerSecond: 7m));
+
+        var business = company.OpenBusiness(entry).Value;
+        Assert.Equal(BusinessKind.Sites, business.Kind);
+        Assert.Equal(2m, business.NetIncomePerSecondAt(T0));   // the Burger Joint's own income, not the entry's 5
+
+        company.OpenPlace(business.Id, entry, "steakhouse");
+        Assert.Equal(9m, business.NetIncomePerSecondAt(T0));
+    }
+
+    [Fact]
+    public void PlaceLevel_AddsAQuarterToEverythingInThePlace()
     {
         var (company, business, entry) = Opened();
         var place = business.Places[0];
@@ -128,7 +146,7 @@ public class PlacesAndBreakdownsTests
 
         company.LevelUpPlace(place.Id);
 
-        Assert.Equal((5m + 1m) * 1.05m, business.NetIncomePerSecondAt(T0));
+        Assert.Equal((5m + 1m) * 1.25m, business.NetIncomePerSecondAt(T0));
     }
 
     [Fact]

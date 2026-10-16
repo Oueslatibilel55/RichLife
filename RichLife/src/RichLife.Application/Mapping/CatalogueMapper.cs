@@ -26,8 +26,10 @@ public static class CatalogueMapper
         e.PlaceKinds
             .Select(k => new PlaceKindDto(
                 k.Id, k.Name, k.Tier.ToString(), k.Price, GameConstants.PlaceTierMultiplier(k.Tier),
-                CanAfford: playerCash >= k.Price))
-            .ToList());
+                CanAfford: playerCash >= k.Price,
+                BaseIncomePerSecond: k.BaseIncomePerSecond ?? e.BaseIncomePerSecond))
+            .ToList(),
+        e.Kind.ToString());
 
     public static AdminCatalogueEntryDto ToAdminDto(BusinessCatalogueEntry e) => new(
         e.Id, e.Name, e.Sector, e.RequiredPrestige,
@@ -42,21 +44,24 @@ public static class CatalogueMapper
         e.PlaceBaseCapacity,
         e.PlaceCapacityPerLevel,
         e.PlaceKinds
-            .Select(k => new AdminPlaceKindDto(k.Id, k.Name, k.Tier, k.Price, k.DisplayOrder))
-            .ToList());
+            .Select(k => new AdminPlaceKindDto(k.Id, k.Name, k.Tier, k.Price, k.DisplayOrder, k.BaseIncomePerSecond))
+            .ToList(),
+        e.Kind);
 
     public static BusinessCatalogueDetails ToDetails(CreateCatalogueEntryRequest r) => new(
         r.Name, r.Sector, r.RequiredPrestige, r.OpeningCost, r.BaseIncomePerSecond,
         r.MonthlySalaryCost, r.BaseEmployeeCount, r.Description ?? string.Empty, r.DisplayOrder,
         r.PlaceBaseCapacity ?? GameConstants.DefaultPlaceCapacity,
-        r.PlaceCapacityPerLevel ?? GameConstants.DefaultPlaceCapacityPerLevel);
+        r.PlaceCapacityPerLevel ?? GameConstants.DefaultPlaceCapacityPerLevel,
+        r.Kind ?? Domain.Enums.BusinessKind.Equipment);
 
     /// <summary>Capacity fields left out keep the entry's current values.</summary>
     public static BusinessCatalogueDetails ToDetails(UpdateCatalogueEntryRequest r, BusinessCatalogueEntry current) => new(
         r.Name, r.Sector, r.RequiredPrestige, r.OpeningCost, r.BaseIncomePerSecond,
         r.MonthlySalaryCost, r.BaseEmployeeCount, r.Description ?? string.Empty, r.DisplayOrder,
         r.PlaceBaseCapacity ?? current.PlaceBaseCapacity,
-        r.PlaceCapacityPerLevel ?? current.PlaceCapacityPerLevel);
+        r.PlaceCapacityPerLevel ?? current.PlaceCapacityPerLevel,
+        r.Kind ?? current.Kind);
 
     public static AssetCatalogueDetails ToDetails(CreateCatalogueAssetRequest r) => new(
         r.Name, r.Price, r.UnlockAtAssetCount, r.FixedIncomePerSecond, r.DisplayOrder,
@@ -67,7 +72,7 @@ public static class CatalogueMapper
         r.Name, r.Price, r.UnlockAtAssetCount, r.FixedIncomePerSecond, r.DisplayOrder,
         r.MtbfHours ?? current?.MtbfHours ?? GameConstants.DefaultMtbfHours);
 
-    public static PlaceKindDetails ToDetails(CreatePlaceKindRequest r) => new(r.Name ?? string.Empty, r.Tier, r.Price, r.DisplayOrder);
+    public static PlaceKindDetails ToDetails(CreatePlaceKindRequest r) => new(r.Name ?? string.Empty, r.Tier, r.Price, r.DisplayOrder, r.BaseIncomePerSecond);
 
-    public static PlaceKindDetails ToDetails(UpdatePlaceKindRequest r) => new(r.Name ?? string.Empty, r.Tier, r.Price, r.DisplayOrder);
+    public static PlaceKindDetails ToDetails(UpdatePlaceKindRequest r) => new(r.Name ?? string.Empty, r.Tier, r.Price, r.DisplayOrder, r.BaseIncomePerSecond);
 }

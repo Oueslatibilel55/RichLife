@@ -1,6 +1,6 @@
 @if (business(); as biz) {
   <div class="head">
-    <h3 class="title">{{ 'places.title' | t }}</h3>
+    <h3 class="title">{{ 'places.title.' + biz.kind | t }}</h3>
     <span class="badge badge--primary num">{{ biz.places.length }} / {{ biz.maxPlaces }}</span>
   </div>
 
@@ -77,7 +77,7 @@
           }
         </ul>
       } @else {
-        <p class="empty">{{ 'places.noUnits' | t }}</p>
+        <p class="empty">{{ 'places.noUnits.' + biz.kind | t }}</p>
       }
 
       <div class="place__actions">
@@ -97,7 +97,7 @@
         }
         @if (place.unitCount < place.capacity) {
           <button type="button" class="btn btn--soft btn--sm" (click)="togglePicker(place.id)" [attr.aria-expanded]="pickerFor() === place.id">
-            ＋ {{ 'places.addUnit' | t }}
+            ＋ {{ 'places.addUnit.' + biz.kind | t }}
           </button>
         } @else {
           <span class="full">{{ 'places.full' | t }}</span>
@@ -131,13 +131,13 @@
 
   <!-- Another place: busier areas earn more and cost more -->
   @if (kinds().length > 0) {
-    <h4 class="sub">{{ 'places.open.title' | t }}</h4>
+    <h4 class="sub">{{ 'places.open.title.' + biz.kind | t }}</h4>
     <ul class="pick">
       @for (k of kinds(); track k.id) {
         <li class="pick__row">
           <div class="pick__info">
             <span class="pick__name">{{ tierIcons[k.tier] }} {{ k.name }}</span>
-            <span class="num">{{ 'places.tier.' + k.tier | t }} · ×{{ k.incomeMultiplier }} · {{ k.price | money }}</span>
+            <span class="num">{{ 'places.tier.' + k.tier | t }} · {{ k.price | money }} · +{{ kindPerDay(k) | money }}{{ 'places.perDay' | t }}</span>
           </div>
           @if (cash() < k.price) {
             <span class="short num">{{ 'manage.need' | t: { amount: (k.price - cash() | money) } }}</span>

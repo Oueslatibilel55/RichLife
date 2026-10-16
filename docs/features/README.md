@@ -51,3 +51,4 @@ still in the contract, the next person cannot tell what is real.
 | 012 | [Avatars (profile pictures)](012-avatars.md) | Done |
 | 013 | [Business taxes](013-business-taxes.md) | Done |
 | 014 | [Business places, units and breakdowns](014-business-places-and-equipment.md) | Done (phases 1–2) |
+| 015 | [A catalogue like Road to Rich](015-catalogue-like-road-to-rich.md) | Phase 1 done (catalogue, pace, reset); phase 2 pending (daily reward, contracts) |

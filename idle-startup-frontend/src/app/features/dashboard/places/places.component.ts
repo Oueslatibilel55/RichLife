@@ -90,6 +90,13 @@ export class PlacesComponent {
     return Math.max(0, placeIncomeNow(p, this.now())) * multiplier * 86_400;
   }
 
+  /** What a new place of this kind would earn per day on its own, after its area and prestige. */
+  kindPerDay(k: PlaceKindDto): number {
+    const multiplier = this.game.company()?.prestigeMultiplier ?? 1;
+    const level = this.business()?.levelMultiplier ?? 1;
+    return k.baseIncomePerSecond * k.incomeMultiplier * level * multiplier * 86_400;
+  }
+
   working(p: PlaceDto): number {
     return p.units.filter((u) => this.status(u) === 'Working').length;
   }

@@ -49,6 +49,9 @@ namespace RichLife.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("MonthlySalaryCost")
                         .HasPrecision(20, 4)
                         .HasColumnType("numeric(20,4)");
@@ -214,6 +217,9 @@ namespace RichLife.Infrastructure.Migrations
 
                     b.Property<bool>("IsForSale")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Level")
                         .HasColumnType("integer");
@@ -737,6 +743,10 @@ namespace RichLife.Infrastructure.Migrations
                             b1.Property<string>("Id")
                                 .HasMaxLength(60)
                                 .HasColumnType("character varying(60)");
+
+                            b1.Property<decimal?>("BaseIncomePerSecond")
+                                .HasPrecision(20, 6)
+                                .HasColumnType("numeric(20,6)");
 
                             b1.Property<int>("DisplayOrder")
                                 .HasColumnType("integer");

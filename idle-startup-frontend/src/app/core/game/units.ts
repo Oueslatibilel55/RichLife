@@ -1,4 +1,4 @@
-import { BusinessDto, CompanyDto, PlaceDto, UnitDto, UnitStatus } from '../models/game.models';
+import { BusinessDto, BusinessKind, CompanyDto, PlaceDto, UnitDto, UnitStatus } from '../models/game.models';
 import { t } from '../i18n/i18n';
 
 /**
@@ -60,6 +60,13 @@ export function faultLabel(u: UnitDto): string {
   const text = t(key);
   return text === key ? u.faultName : text;
 }
+
+/** Fleet, site chain or equipment (features/015) — shown on catalogue cards. */
+export const KIND_ICONS: Readonly<Record<BusinessKind, string>> = {
+  Fleet: '🚚',
+  Sites: '🏪',
+  Equipment: '🧰',
+};
 
 export const TIER_ICONS: Readonly<Record<PlaceDto['tier'], string>> = {
   Quiet: '🌳',

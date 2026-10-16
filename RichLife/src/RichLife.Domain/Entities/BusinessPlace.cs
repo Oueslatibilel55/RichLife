@@ -5,7 +5,8 @@ namespace RichLife.Domain.Entities;
 
 /// <summary>A place kind's numbers, as copied into a new <see cref="BusinessPlace"/>.</summary>
 public sealed record PlaceSpec(
-    string KindId, string Name, PlaceTier Tier, decimal Price, int BaseCapacity, int CapacityPerLevel)
+    string KindId, string Name, PlaceTier Tier, decimal Price, int BaseCapacity, int CapacityPerLevel,
+    decimal? BaseIncomePerSecond = null)
 {
     /// <summary>For a business whose catalogue entry lists no place kind.</summary>
     public static PlaceSpec Default(decimal price) =>
@@ -39,7 +40,7 @@ public class BusinessPlace : BaseEntity
     public int BaseCapacity { get; private set; }
     public int CapacityPerLevel { get; private set; }
 
-    /// <summary>The kind's price: what level 1 → 2 costs.</summary>
+    /// <summary>The kind's price: level 1 → 2 costs <see cref="GameConstants.PlaceLevelCostShare"/> of it.</summary>
     public decimal Price { get; private set; }
 
     /// <summary>What was paid to open it — 0 for the first place, which comes with the business.</summary>
@@ -85,7 +86,7 @@ public class BusinessPlace : BaseEntity
         get
         {
             if (IsMaxLevel) return null;
-            var cost = Price;
+            var cost = Price * GameConstants.PlaceLevelCostShare;
             for (var i = 1; i < Level; i++) cost *= GameConstants.PlaceLevelCostGrowth;
             return Math.Round(cost, 2, MidpointRounding.AwayFromZero);
         }

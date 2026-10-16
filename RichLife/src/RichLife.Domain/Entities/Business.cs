@@ -15,6 +15,8 @@ public class Business : BaseEntity
 
     public string Name { get; private set; } = string.Empty;
     public BusinessSector Sector { get; private set; }
+    /// <summary>Fleet, site chain or equipment — copied from the catalogue (features/015).</summary>
+    public BusinessKind Kind { get; private set; } = BusinessKind.Equipment;
     public PrestigeLevel RequiredPrestige { get; private set; }
     public decimal OpeningCost { get; private set; }
     public decimal MonthlySalaryCost { get; private set; }
@@ -201,7 +203,7 @@ public class Business : BaseEntity
         Guid companyId, string catalogueId, string name, BusinessSector sector,
         PrestigeLevel requiredPrestige, decimal openingCost,
         decimal baseIncomePerSecond, decimal monthlySalaryCost,
-        int employeeCount, PlaceSpec? firstPlace = null)
+        int employeeCount, PlaceSpec? firstPlace = null, BusinessKind kind = BusinessKind.Equipment)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(catalogueId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -215,12 +217,13 @@ public class Business : BaseEntity
             RequiredPrestige  = requiredPrestige,
             OpeningCost       = openingCost,
             MonthlySalaryCost = monthlySalaryCost,
-            EmployeeCount     = employeeCount
+            EmployeeCount     = employeeCount,
+            Kind              = kind
         };
         var spec = firstPlace ?? PlaceSpec.Default(openingCost);
         business._places.Add(BusinessPlace.Create(
             business.Id, spec.KindId, spec.Name, spec.Tier, spec.Price, purchasePrice: 0m,
-            baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel));
+            spec.BaseIncomePerSecond ?? baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel));
         return business;
     }
 
@@ -229,7 +232,7 @@ public class Business : BaseEntity
     {
         var place = BusinessPlace.Create(
             Id, spec.KindId, spec.Name, spec.Tier, spec.Price, purchasePrice: spec.Price,
-            baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel);
+            spec.BaseIncomePerSecond ?? baseIncomePerSecond, spec.BaseCapacity, spec.CapacityPerLevel);
         _places.Add(place);
         MarkUpdated();
         return place;

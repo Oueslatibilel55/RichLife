@@ -1,4 +1,4 @@
-import { PlaceTier, PrestigeLevel, Sector } from '../../core/models/game.models';
+import { BusinessKind, PlaceTier, PrestigeLevel, Sector } from '../../core/models/game.models';
 import { LuxuryCategory } from '../luxury/luxury.models';
 
 // Wire contracts for the admin panel — mirror api-contract.md §7, §7b, §7c and §7d.
@@ -107,6 +107,8 @@ export interface AdminPlaceKind {
   tier: PlaceTier;
   price: number;
   displayOrder: number;
+  /** What a place of this kind earns on its own, per second; null uses the business's base income. */
+  baseIncomePerSecond: number | null;
 }
 
 export interface AdminCatalogueEntry {
@@ -128,6 +130,8 @@ export interface AdminCatalogueEntry {
   placeBaseCapacity: number;
   placeCapacityPerLevel: number;
   placeKinds: AdminPlaceKind[];
+  /** Fleet, site chain or equipment (features/015). */
+  kind: BusinessKind;
 }
 
 /** PUT body: the entry's own fields (no id, no assets) plus isActive. */

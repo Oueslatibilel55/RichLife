@@ -45,6 +45,7 @@
               >
                 {{ prestigeLabel(biz.requiredPrestige) }}
               </span>
+              <span class="badge badge--neutral">{{ kindIcons[biz.kind] }} {{ 'kind.' + biz.kind | t }}</span>
             </div>
             @if (biz.isOwned) {
               <span class="badge badge--success">✓ {{ 'businesses.owned' | t }}</span>

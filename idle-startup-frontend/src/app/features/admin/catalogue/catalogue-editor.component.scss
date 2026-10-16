@@ -68,5 +68,5 @@ textarea.form-input { resize: vertical; min-height: 64px; }
 .field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .field__cap { font-size: 11px; font-weight: 600; color: var(--text-3); @media (min-width: 860px) { display: none; } }
 
-// Place kinds: id, name, tier, price, order, actions.
-.kind { @media (min-width: 860px) { grid-template-columns: 7rem 1.6fr 1fr 1fr 0.7fr auto; } }
+// Place kinds: id, name, tier, price, income, order, actions.
+.kind { @media (min-width: 860px) { grid-template-columns: 7rem 1.5fr 1fr 1fr 0.9fr 0.7fr auto; } }

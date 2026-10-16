@@ -34,6 +34,12 @@
           </select>
         </div>
         <div class="form-group">
+          <label for="e-kind">{{ 'admin.editor.kind' | t }}</label>
+          <select id="e-kind" class="form-input form-select" name="kind" [(ngModel)]="form.kind">
+            @for (k of kindsOfBusiness; track k) { <option [value]="k">{{ 'kind.' + k | t }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
           <label for="e-cost">{{ 'admin.editor.openingCost' | t }}</label>
           <input id="e-cost" class="form-input num" type="number" min="0" name="cost" [(ngModel)]="form.openingCost" />
         </div>
@@ -135,6 +141,7 @@
                 @for (tier of tiers; track tier) { <option [value]="tier">{{ 'places.tier.' + tier | t }}</option> }
               </select>
               <label class="field"><span class="field__cap">{{ 'admin.editor.colPrice' | t }}</span><input class="form-input num" type="number" [attr.aria-label]="'admin.editor.price' | t" [(ngModel)]="k.price" [ngModelOptions]="{ standalone: true }" /></label>
+              <label class="field"><span class="field__cap">{{ 'admin.editor.colPlaceIncome' | t }}</span><input class="form-input num" type="number" min="0" step="0.0001" [attr.aria-label]="'admin.editor.placeIncomeAria' | t" [placeholder]="'admin.editor.auto' | t" [(ngModel)]="k.baseIncomePerSecond" [ngModelOptions]="{ standalone: true }" /></label>
               <label class="field"><span class="field__cap">{{ 'admin.editor.colOrder' | t }}</span><input class="form-input num" type="number" [attr.aria-label]="'admin.editor.displayOrder' | t" [(ngModel)]="k.displayOrder" [ngModelOptions]="{ standalone: true }" /></label>
               <div class="asset__actions">
                 <button type="button" class="btn btn--soft btn--sm" (click)="saveKind(k)">{{ 'admin.save' | t }}</button>
@@ -152,6 +159,7 @@
               @for (tier of tiers; track tier) { <option [value]="tier">{{ 'places.tier.' + tier | t }}</option> }
             </select>
             <input class="form-input num" type="number" [attr.aria-label]="'admin.editor.newPrice' | t" [placeholder]="'admin.editor.price' | t" [(ngModel)]="newKind.price" [ngModelOptions]="{ standalone: true }" />
+            <input class="form-input num" type="number" min="0" step="0.0001" [attr.aria-label]="'admin.editor.placeIncomeAria' | t" [placeholder]="'admin.editor.auto' | t" [(ngModel)]="newKind.baseIncomePerSecond" [ngModelOptions]="{ standalone: true }" />
             <input class="form-input num" type="number" [attr.aria-label]="'admin.editor.newOrder' | t" [(ngModel)]="newKind.displayOrder" [ngModelOptions]="{ standalone: true }" />
             <div class="asset__actions">
               <button type="button" class="btn btn--primary btn--sm" [disabled]="!newKind.id.trim() || !newKind.name.trim()" (click)="addKind()">+ {{ 'admin.editor.addPlace' | t }}</button>

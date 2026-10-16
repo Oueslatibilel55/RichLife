@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Catalogue Plan</title>
+<style>
+  :root {
+    --canvas: #F7F5F0; --surface: #FFFFFF; --sunken: #F3F0EA; --line: #E7E2D8;
+    --fg: #1C1917; --fg2: #57534E; --fg3: #78716C; --brand: #0F766E; --brand-soft: #F0FDFA;
+    --fleet: #0369A1; --fleet-bg: #F0F9FF; --site: #C2410C; --site-bg: #FFF7ED; --eq: #6D28D9; --eq-bg: #F5F3FF;
+    --new: #047857; --new-bg: #ECFDF5; --warn: #B45309; --warn-bg: #FFFBEB;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #12100E; --surface: #1C1917; --sunken: #26221F; --line: #34302C;
+      --fg: #F5F5F4; --fg2: #D6D3D1; --fg3: #A8A29E; --brand: #2DD4BF; --brand-soft: #13302C;
+      --fleet: #7DD3FC; --fleet-bg: #0C2A3A; --site: #FDBA74; --site-bg: #3A1F0C; --eq: #C4B5FD; --eq-bg: #241A3D;
+      --new: #6EE7B7; --new-bg: #0F2A21; --warn: #FCD34D; --warn-bg: #2E2410;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { font-size: clamp(26px, 5vw, 38px); margin: 0 0 8px; line-height: 1.15; }
+  h2 { font-size: 21px; margin: 44px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 22px 0 6px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  h3 small { font-weight: 500; color: var(--fg3); font-size: 13px; }
+  p, li { color: var(--fg2); } b, strong { color: var(--fg); }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
+  .lead { font-size: 16px; max-width: 780px; }
+  code { background: var(--sunken); padding: 1px 5px; border-radius: 6px; font-size: 13px; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--sunken); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg3); }
+  tr:last-child td { border-bottom: 0; }
+  td { color: var(--fg2); }
+  td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .k { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .k-fleet { background: var(--fleet-bg); color: var(--fleet); }
+  .k-site { background: var(--site-bg); color: var(--site); }
+  .k-eq { background: var(--eq-bg); color: var(--eq); }
+  .k-new { background: var(--new-bg); color: var(--new); }
+  .k-move { background: var(--warn-bg); color: var(--warn); }
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+  .card b { display: block; margin-bottom: 4px; }
+  .card p { margin: 0; font-size: 14px; }
+  .q { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+  .q p { margin: 4px 0 0; font-size: 14px; }
+  .q .rec { color: var(--brand); font-weight: 600; }
+  .note { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; color: var(--fg); }
+  footer { margin-top: 56px; color: var(--fg3); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">RichLife · plan · 2026-10-16 · phase 1 built — see docs/features/015-catalogue-like-road-to-rich.md</p>
+  <h1>A catalogue that plays like Road to Rich</h1>
+  <p class="lead">
+    Every prestige level gets <b>8–9 businesses</b>, each of one of three kinds: <b>fleets</b> (buy vehicles: delivery,
+    car rental, taxis, trucks, planes), <b>site chains</b> (open restaurants, stations, hotels and level each one up) and
+    <b>equipment businesses</b> (one place you fill with machines). Money keeps counting <b>every second</b>, like
+    RichLife today. Growth is <b>slower</b>, and the game gives reasons to come back several times a day.
+    <b>No code yet</b> — this page is for you to check first.
+  </p>
+
+  <h2>1. Three kinds of business</h2>
+  <div class="cards">
+    <div class="card"><span class="k k-fleet">🚚 Fleet</span><b>Buy vehicles</b>
+      <p>Delivery, car rental, taxis, buses, trucks, ships, planes. A <b>depot</b> per city holds the vehicles (upgrade it
+      for more spaces). Each vehicle earns per second, breaks down on its own, and is repaired from the business page.
+      Like Road to Rich: real models and prices, from a Honda PCX to a Boeing 777F.</p></div>
+    <div class="card"><span class="k k-site">🏪 Site chain</span><b>Open sites, level them up</b>
+      <p>Restaurants, gas stations, hotels, clinics, malls. You open <b>sites</b> of different formats (Burger Joint,
+      Pizzeria, Sushi Bar, Steakhouse), each on its own street, and level each one <b>1 → 10</b>: every level adds
+      <b>+25 %</b> of the site's income and costs more than the last (Road to Rich's rule).</p></div>
+    <div class="card"><span class="k k-eq">🧰 Equipment</span><b>One place, fill it with machines</b>
+      <p>Laundromat, gym, vending, solar, data centres. One place (or a few) you fill with machines that each earn and
+      can break — the model already shipped in spec 014.</p></div>
+  </div>
+  <p>All three keep what exists: business level (×2 at 10/25/50), a <b>manager</b> for offline income (4-hour shifts —
+    and managers repair), taxes, the store boost.</p>
+
+  <h2>2. Slower growth — the numbers</h2>
+  <p>Today a $3,000 car-wash bay pays for itself in <b>about 17 minutes</b>, so players race through prestige in a
+    day. The new catalogue is built from one rule: <b>how long a purchase takes to pay for itself</b>, longer at each
+    prestige.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Prestige</th><th>Opening costs</th><th>A vehicle / site / machine pays back in</th><th>Prestige price (unchanged)</th><th>Rough time to reach the next level</th></tr>
+    <tr><td>P1 The Hustle</td><td class="num">$0 – 20K</td><td>20 – 40 min</td><td class="num">$25K</td><td>2 – 3 h</td></tr>
+    <tr><td>P2 Small Business</td><td class="num">$15K – 150K</td><td>45 min – 1.5 h</td><td class="num">$200K</td><td>~ 1 day</td></tr>
+    <tr><td>P3 Entrepreneur</td><td class="num">$100K – 1.5M</td><td>1.5 – 3 h</td><td class="num">$2M</td><td>2 – 3 days</td></tr>
+    <tr><td>P4 Business Mogul</td><td class="num">$1M – 15M</td><td>3 – 5 h</td><td class="num">$20M</td><td>~ 1 week</td></tr>
+    <tr><td>P5 Tycoon</td><td class="num">$10M – 200M</td><td>5 – 8 h</td><td class="num">$250M</td><td>~ 2 weeks</td></tr>
+    <tr><td>P6 Billionaire</td><td class="num">$100M – 2B</td><td>8 – 12 h</td><td class="num">$3B</td><td>~ 3 weeks</td></tr>
+    <tr><td>P7 Global Empire</td><td class="num">$1B – 20B</td><td>12 – 18 h</td><td class="num">—</td><td>end game</td></tr>
+  </table></div>
+  <p>Offline stays capped at <b>4 hours</b> and only managed businesses earn while away — so a player who logs in
+    every few hours, rehires managers and fixes breakdowns grows clearly faster than one who comes back once a day.</p>
+
+  <h2>3. Reasons to come back (engagement)</h2>
+  <div class="cards">
+    <div class="card"><b>⏱ Manager shifts</b><p>Already there: 4-hour shifts. Rehire to keep earning offline.</p></div>
+    <div class="card"><b>🔧 Breakdowns</b><p>Already there: broken vehicles and machines earn nothing until fixed.</p></div>
+    <div class="card"><b>🎁 Daily reward <span class="k k-new">new</span></b><p>Log in each day for diamonds: 5, 5, 10, 10, 15, 15, 30 on day 7, then again. Missing a day restarts the week.</p></div>
+    <div class="card"><b>📦 Daily contracts <span class="k k-new">new</span></b><p>Three small goals a day ("own 3 delivery vehicles", "upgrade a restaurant", "earn $50K"): each pays cash + diamonds. New ones every day at midnight UTC.</p></div>
+  </div>
+  <p>Contracts and daily reward are <b>phase 2</b>; the catalogue and rules are phase 1.</p>
+
+  <h2>4. The catalogue — 8–9 businesses per prestige</h2>
+  <p><span class="k k-new">new</span> new business · <span class="k k-move">moved</span> existing business that changes
+    prestige · everything else exists today (same id, so players who own it keep it) and gets real units, places and
+    new numbers.</p>
+
+  <h3>P1 · The Hustle <small>start: $0, 3/s passive</small></h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>Delivery Company <span class="k k-new">new</span></td><td><span class="k k-fleet">Fleet</span></td><td class="num">$500</td><td>Honda PCX 125, Toyota Corolla, Ford Transit — Road to Rich's delivery fleet</td></tr>
+    <tr><td>Food Cart</td><td><span class="k k-site">Sites</span></td><td class="num">$500</td><td>Hot-dog cart, coffee bike, food truck at park / beach / stadium</td></tr>
+    <tr><td>Bike Courier Service</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$1,200</td><td>City bike, e-bike, cargo bike</td></tr>
+    <tr><td>Phone Repair Kiosk</td><td><span class="k k-site">Sites</span></td><td class="num">$2,000</td><td>Mall kiosk, station kiosk, street shop</td></tr>
+    <tr><td>Car Wash</td><td><span class="k k-eq">Equipment</span></td><td class="num">$3,000</td><td>Hand bay, self-service bay, WashTec automatic</td></tr>
+    <tr><td>Penny Stock Portfolio</td><td><span class="k k-eq">Equipment</span></td><td class="num">$4,000</td><td>Positions: small caps, ETFs, dividend stocks</td></tr>
+    <tr><td>Parking Lot</td><td><span class="k k-site">Sites</span></td><td class="num">$5,000</td><td>Lots at hospital / station / stadium / airport</td></tr>
+    <tr><td>Rooftop Solar Kit</td><td><span class="k k-eq">Equipment</span></td><td class="num">$8,000</td><td>Panels, inverter, battery</td></tr>
+    <tr><td>Vending Machines</td><td><span class="k k-eq">Equipment</span></td><td class="num">$12,000</td><td>Snack, drinks, coffee machines</td></tr>
+  </table></div>
+
+  <h3>P2 · Small Business</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>Mini-Market</td><td><span class="k k-site">Sites</span></td><td class="num">$15,000</td><td>Corner shop, supermarket, 24/7 store</td></tr>
+    <tr><td>Car Rental <span class="k k-move">moved from P3</span></td><td><span class="k k-fleet">Fleet</span></td><td class="num">$20,000</td><td>Dacia Sandero → Porsche 911 (Road to Rich's 8 cars) at city / station / airport agencies</td></tr>
+    <tr><td>Laundromat</td><td><span class="k k-eq">Equipment</span></td><td class="num">$20,000</td><td>Speed Queen washers and dryers, industrial washer</td></tr>
+    <tr><td>Coffee Shop</td><td><span class="k k-site">Sites</span></td><td class="num">$25,000</td><td>Kiosk, café, roastery café</td></tr>
+    <tr><td>Web Agency</td><td><span class="k k-eq">Equipment</span></td><td class="num">$30,000</td><td>Developers' desks, design studio, server</td></tr>
+    <tr><td>Day-Trading Desk</td><td><span class="k k-eq">Equipment</span></td><td class="num">$40,000</td><td>Trading screens, algorithms</td></tr>
+    <tr><td>Taxi Fleet</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$50,000</td><td>Prius, Camry Hybrid, Model Y, E-Class</td></tr>
+    <tr><td>Gym</td><td><span class="k k-site">Sites</span></td><td class="num">$60,000</td><td>Suburb club, city club, premium club (level each)</td></tr>
+    <tr><td>Fuel Station</td><td><span class="k k-site">Sites</span></td><td class="num">$70,000</td><td>Neighbourhood, town &amp; shop, highway service area</td></tr>
+  </table></div>
+
+  <h3>P3 · Entrepreneur</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>Transport Company</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$100,000</td><td>Transit, Isuzu box truck, Actros, Volvo VNL 860</td></tr>
+    <tr><td>Restaurant Chain</td><td><span class="k k-site">Sites</span></td><td class="num">$150,000</td><td>Burger Joint, Pizzeria, Sushi Bar, Steakhouse — level each 1→10</td></tr>
+    <tr><td>Bus Line <span class="k k-new">new</span></td><td><span class="k k-fleet">Fleet</span></td><td class="num">$180,000</td><td>Minibus, city bus, articulated bus, coach</td></tr>
+    <tr><td>Small Hotel</td><td><span class="k k-site">Sites</span></td><td class="num">$200,000</td><td>City / mountain / beach hotels; rooms and suites inside</td></tr>
+    <tr><td>Software Startup</td><td><span class="k k-eq">Equipment</span></td><td class="num">$250,000</td><td>Dev teams, cloud servers, sales team</td></tr>
+    <tr><td>Investment Fund</td><td><span class="k k-eq">Equipment</span></td><td class="num">$300,000</td><td>Bond, equity and real-estate funds</td></tr>
+    <tr><td>Private Clinic</td><td><span class="k k-site">Sites</span></td><td class="num">$350,000</td><td>Dental clinic, day clinic, imaging centre</td></tr>
+    <tr><td>Wind Farm</td><td><span class="k k-eq">Equipment</span></td><td class="num">$400,000</td><td>Turbines (Vestas, Siemens Gamesa)</td></tr>
+  </table></div>
+
+  <h3>P4 · Business Mogul</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>Real Estate Development</td><td><span class="k k-site">Sites</span></td><td class="num">$1M</td><td>Apartment buildings in cheap / central / prime districts</td></tr>
+    <tr><td>Car Dealership <span class="k k-new">new</span></td><td><span class="k k-site">Sites</span></td><td class="num">$2M</td><td>Used-car lot, brand dealership, luxury showroom</td></tr>
+    <tr><td>Shopping Mall</td><td><span class="k k-site">Sites</span></td><td class="num">$3M</td><td>Suburban, city, flagship malls; shop units inside</td></tr>
+    <tr><td>Stock Brokerage</td><td><span class="k k-eq">Equipment</span></td><td class="num">$4M</td><td>Trading floors, retail app, research desk</td></tr>
+    <tr><td>Tech Unicorn</td><td><span class="k k-eq">Equipment</span></td><td class="num">$5M</td><td>Product teams, data centre, marketing</td></tr>
+    <tr><td>Solar Park</td><td><span class="k k-eq">Equipment</span></td><td class="num">$6M</td><td>Panel fields, storage batteries</td></tr>
+    <tr><td>Logistics Hub</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$7M</td><td>Semi trucks, warehouse robots, cargo vans</td></tr>
+    <tr><td>Luxury Resort</td><td><span class="k k-site">Sites</span></td><td class="num">$8M</td><td>Island, ski and desert resorts</td></tr>
+  </table></div>
+
+  <h3>P5 · Tycoon</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>Office Tower</td><td><span class="k k-site">Sites</span></td><td class="num">$15M</td><td>Towers; floors inside</td></tr>
+    <tr><td>Cargo Airline <span class="k k-new">new</span></td><td><span class="k k-fleet">Fleet</span></td><td class="num">$30M</td><td>ATR 72F, Boeing 737-800BCF, 767-300F, 777F</td></tr>
+    <tr><td>Streaming Platform</td><td><span class="k k-eq">Equipment</span></td><td class="num">$40M</td><td>Original series, data centres, regions</td></tr>
+    <tr><td>Global Consulting Firm</td><td><span class="k k-site">Sites</span></td><td class="num">$50M</td><td>Offices in world cities</td></tr>
+    <tr><td>Investment Bank</td><td><span class="k k-eq">Equipment</span></td><td class="num">$60M</td><td>M&amp;A desk, trading floor, private banking</td></tr>
+    <tr><td>Cruise Line</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$90M</td><td>River cruiser, mid-size ship, mega cruise ship</td></tr>
+    <tr><td>Nuclear Power Plant</td><td><span class="k k-eq">Equipment</span></td><td class="num">$120M</td><td>Reactors, turbines</td></tr>
+    <tr><td>International Airport</td><td><span class="k k-site">Sites</span></td><td class="num">$200M</td><td>Gates, terminals, lounges, duty-free</td></tr>
+  </table></div>
+
+  <h3>P6 · Billionaire</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>Skyscraper District</td><td><span class="k k-site">Sites</span></td><td class="num">$400M</td><td>Skyscrapers in world capitals</td></tr>
+    <tr><td>Space Tourism</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$500M</td><td>Suborbital craft, orbital capsules, space hotel module</td></tr>
+    <tr><td>Global Bank</td><td><span class="k k-site">Sites</span></td><td class="num">$800M</td><td>Branches in financial centres</td></tr>
+    <tr><td>Hotel Empire</td><td><span class="k k-site">Sites</span></td><td class="num">$900M</td><td>Business, resort and palace hotels</td></tr>
+    <tr><td>AI Superlab</td><td><span class="k k-eq">Equipment</span></td><td class="num">$1B</td><td>GPU clusters, research teams</td></tr>
+    <tr><td>Airline Group</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$1.2B</td><td>A320neo, 787 Dreamliner, A350, A380</td></tr>
+    <tr><td>Oil Major</td><td><span class="k k-eq">Equipment</span></td><td class="num">$1.5B</td><td>Oil rigs, refineries, tankers</td></tr>
+    <tr><td>Container Shipping <span class="k k-new">new</span></td><td><span class="k k-fleet">Fleet</span></td><td class="num">$2B</td><td>Feeder ship, Panamax, ultra-large container ship</td></tr>
+  </table></div>
+
+  <h3>P7 · Global Empire</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Business</th><th>Kind</th><th>Opens at</th><th>What you buy / open</th></tr>
+    <tr><td>World Advisory Group</td><td><span class="k k-site">Sites</span></td><td class="num">$6B</td><td>Regional headquarters</td></tr>
+    <tr><td>World Stock Exchange</td><td><span class="k k-eq">Equipment</span></td><td class="num">$8B</td><td>Listing venues, clearing house</td></tr>
+    <tr><td>Planet Resorts</td><td><span class="k k-site">Sites</span></td><td class="num">$9B</td><td>Resort islands on every continent</td></tr>
+    <tr><td>Mars Colony</td><td><span class="k k-fleet">Fleet</span></td><td class="num">$10B</td><td>Starships, habitats, rovers</td></tr>
+    <tr><td>Metaverse Platform</td><td><span class="k k-eq">Equipment</span></td><td class="num">$12B</td><td>Worlds, server farms</td></tr>
+    <tr><td>Hyperloop Network <span class="k k-new">new</span></td><td><span class="k k-fleet">Fleet</span></td><td class="num">$14B</td><td>Pods on intercity lines</td></tr>
+    <tr><td>Global Fusion Grid</td><td><span class="k k-eq">Equipment</span></td><td class="num">$15B</td><td>Fusion reactors, grid lines</td></tr>
+    <tr><td>Megacity</td><td><span class="k k-site">Sites</span></td><td class="num">$20B</td><td>Districts you build and level up</td></tr>
+  </table></div>
+  <p>58 businesses in all (the 52 that exist today + 6 new; 1 moved). Opening costs of existing businesses stay roughly where they are; what
+    changes is <b>what each unit and site earns</b> (lower, per the table in §2) and what you can buy.</p>
+
+  <h2>5. Rule changes behind it</h2>
+  <ul>
+    <li><b>Site formats</b>: a place kind gets its <b>own price and income</b> (a Steakhouse earns more than a Burger
+      Joint). Today every place earns the business's base income × its area.</li>
+    <li><b>Site levels</b> become Road to Rich's: <b>+25 % of the site's income per level</b> (was +5 %), level n → n+1
+      costs <b>25 % of the site's price × 1.35^(n−1)</b>. Capacity still grows per level.</li>
+    <li><b>Kind</b> on each business (<code>Fleet</code>, <code>Sites</code>, <code>Equipment</code>) so the dialog speaks
+      the right words ("Vehicles · Depots", "Restaurants", "Machines") and shows the right card.</li>
+    <li>Everything else — breakdowns, repairs, managers repairing, taxes, business levels — stays as shipped in 014.</li>
+    <li>All of it is <b>content in the database</b>, editable in the admin catalogue editor (kind and site incomes added there).</li>
+  </ul>
+
+  <h2>6. Decisions I need from you</h2>
+  <div class="q"><b>1. Existing players.</b>
+    <p>Businesses already bought keep the (higher) numbers they were bought with. On Netlify that means early
+      testers stay far ahead. Keep them, or reset every player's game (diamonds, badges and avatars kept, like the admin reset)?</p>
+    <p class="rec">My pick: reset all players once when this ships — the economy changes too much to mix.</p></div>
+  <div class="q"><b>2. Pace.</b>
+    <p>Is the §2 table the right difficulty (≈ 2–3 h to P2, a day to P3, about two months to P7 for an active player)?</p>
+    <p class="rec">My pick: yes; every number is in the database, so we can tune it later from the admin panel.</p></div>
+  <div class="q"><b>3. Vehicle wear like Road to Rich.</b>
+    <p>Road to Rich also has mileage, services every N km, a 1,000,000 km limit and a used-vehicle lot. Add them now,
+      or keep vehicles to "break and repair" for this release?</p>
+    <p class="rec">My pick: later — breakdowns already give vehicles a life; mileage is a second release.</p></div>
+  <div class="q"><b>4. Engagement phase.</b>
+    <p>Daily reward and daily contracts (§3): ship them with this, or right after?</p>
+    <p class="rec">My pick: right after, as phase 2, once the new economy is in.</p></div>
+  <div class="q"><b>5. The 6 new businesses.</b>
+    <p>Delivery Company, Bus Line, Car Dealership, Cargo Airline, Container Shipping, Hyperloop — happy with these, or swap any?</p></div>
+
+  <footer>Plan only — <code>docs/business-catalogue-plan.html</code>. Once you answer §6 I will write
+    <code>docs/features/015-catalogue-like-road-to-rich.md</code>, update the contract, and build phase 1.</footer>
+</div>
+</body>
+</html>

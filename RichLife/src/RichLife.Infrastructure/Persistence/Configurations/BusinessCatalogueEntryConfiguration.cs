@@ -40,6 +40,7 @@ public class BusinessCatalogueEntryConfiguration : IEntityTypeConfiguration<Busi
             k.Property(x => x.Id).HasMaxLength(BusinessCatalogueEntry.MaxIdLength);
             k.Property(x => x.Name).HasMaxLength(BusinessCatalogueEntry.MaxNameLength).IsRequired();
             k.Property(x => x.Price).HasPrecision(20, 4);
+            k.Property(x => x.BaseIncomePerSecond).HasPrecision(20, 6);
         });
         b.Navigation(x => x.PlaceKinds).HasField("_placeKinds")
             .UsePropertyAccessMode(PropertyAccessMode.Field);

@@ -37,7 +37,8 @@ public static class CompanyMapper
         b.TaxPeriodEndsAt,
         b.BrokenUnitsAt(nowUtc),
         GameConstants.MaxPlacesPerBusiness,
-        b.Places.Select(p => ToDto(b, p, nowUtc)).ToList());
+        b.Places.Select(p => ToDto(b, p, nowUtc)).ToList(),
+        b.Kind.ToString());
 
     private static PlaceDto ToDto(Business b, BusinessPlace p, DateTime nowUtc) => new(
         p.Id,

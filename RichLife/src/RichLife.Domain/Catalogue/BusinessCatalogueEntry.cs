@@ -17,7 +17,8 @@ public record BusinessCatalogueDetails(
     string Description,
     int DisplayOrder,
     int PlaceBaseCapacity = GameConstants.DefaultPlaceCapacity,
-    int PlaceCapacityPerLevel = GameConstants.DefaultPlaceCapacityPerLevel);
+    int PlaceCapacityPerLevel = GameConstants.DefaultPlaceCapacityPerLevel,
+    BusinessKind Kind = BusinessKind.Equipment);
 
 /// <summary>
 /// A business players can open: game content, edited by admins and stored in the database.
@@ -48,6 +49,9 @@ public sealed partial class BusinessCatalogueEntry
     /// <summary>Units a new place holds at level 1, and how many more each place level adds.</summary>
     public int PlaceBaseCapacity { get; private set; } = GameConstants.DefaultPlaceCapacity;
     public int PlaceCapacityPerLevel { get; private set; } = GameConstants.DefaultPlaceCapacityPerLevel;
+
+    /// <summary>How the business is played: fleet, site chain or equipment (features/015).</summary>
+    public BusinessKind Kind { get; private set; } = BusinessKind.Equipment;
 
     /// <summary>
     /// Retired entries cannot be opened any more, but stay in the database because owned
@@ -206,7 +210,7 @@ public sealed partial class BusinessCatalogueEntry
             : SpecFor(first);
         return Business.Create(
             companyId, Id, Name, Sector, RequiredPrestige,
-            OpeningCost, BaseIncomePerSecond, MonthlySalaryCost, BaseEmployeeCount, spec);
+            OpeningCost, BaseIncomePerSecond, MonthlySalaryCost, BaseEmployeeCount, spec, Kind);
     }
 
     // -- Internals ----------------------------------------------------------
@@ -224,6 +228,7 @@ public sealed partial class BusinessCatalogueEntry
         DisplayOrder        = d.DisplayOrder;
         PlaceBaseCapacity   = d.PlaceBaseCapacity;
         PlaceCapacityPerLevel = d.PlaceCapacityPerLevel;
+        Kind                = d.Kind;
     }
 
     private void MarkUpdated() => UpdatedAt = DateTime.UtcNow;
@@ -233,6 +238,7 @@ public sealed partial class BusinessCatalogueEntry
         if (string.IsNullOrWhiteSpace(d.Name) || d.Name.Trim().Length > MaxNameLength)
             return $"Name is required and must be at most {MaxNameLength} characters.";
         if (!Enum.IsDefined(d.Sector)) return "Unknown sector.";
+        if (!Enum.IsDefined(d.Kind)) return "Unknown business kind.";
         if (!Enum.IsDefined(d.RequiredPrestige)) return "Unknown prestige level.";
         if (d.OpeningCost <= 0m) return "Opening cost must be positive.";
         if (d.BaseIncomePerSecond < 0m) return "Base income cannot be negative.";

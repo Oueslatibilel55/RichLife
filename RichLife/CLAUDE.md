@@ -197,6 +197,12 @@ runtime failure that no domain test can catch.
   by the client). Offline accrual integrates per unit and lets managers repair from cash
   (`Business.EarnOffline`, `TryPayRepair` never goes below 0); `RunManagerRepairs(now)` runs on
   `/sync` and `/state`. Unit mutators are internal — go through the aggregate.
+- **Catalogue like Road to Rich** (2026-10-16, `features/015-catalogue-like-road-to-rich.md`):
+  58 entries, each with a `BusinessKind` (Fleet / Sites / Equipment — words only, same engine).
+  A place kind may carry its own `BaseIncomePerSecond`. Place levels: +25 % per level, cost
+  25 % of the kind's price × 1.35^(n−1). The catalogue's incomes were generated from a payback
+  table per prestige level (in migration `CatalogueLikeRoadToRich`) — keep new content on the
+  same curve (P1 30 min … P7 15 h). That migration also **wiped every player's progress** once.
 - **Business taxes** (2026-10-09, `features/013-business-taxes.md`): every 24 h from its opening
   (`Business.TaxPeriodStart`), a business is billed `GameConstants.TaxRate` (7 %) of what it earned
   in that period (`TaxableEarnings`, recorded by `Company.Sync` — the online total split by

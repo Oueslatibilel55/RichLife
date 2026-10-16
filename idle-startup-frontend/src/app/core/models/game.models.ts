@@ -100,8 +100,11 @@ export interface BusinessDto {
   maxPlaces: number;
   /** In opening order; the first came with the business. */
   places: PlaceDto[];
+  /** Fleet, site chain or equipment (features/015) — sets the words the UI uses. */
+  kind: BusinessKind;
 }
 
+export type BusinessKind = 'Fleet' | 'Sites' | 'Equipment';
 export type PlaceTier = 'Quiet' | 'Busy' | 'Prime';
 export type UnitStatus = 'Working' | 'Broken' | 'Repairing';
 
@@ -177,6 +180,8 @@ export interface PlaceKindDto {
   incomeMultiplier: number;
   /** Against the server's last recorded cash — a hint, like the catalogue's `canAfford`. */
   canAfford: boolean;
+  /** What a place of this kind earns on its own, before `incomeMultiplier` and prestige. */
+  baseIncomePerSecond: number;
 }
 
 export interface BusinessCatalogueDto {
@@ -198,6 +203,7 @@ export interface BusinessCatalogueDto {
   placeBaseCapacity: number;
   placeCapacityPerLevel: number;
   placeKinds: PlaceKindDto[];
+  kind: BusinessKind;
 }
 
 /** GET /api/game/state — the bootstrap call. Credits time spent away. */

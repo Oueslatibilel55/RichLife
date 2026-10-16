@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { GameService } from '../../core/services/game.service';
 import { prestigeColor, prestigeLabel } from '../../core/game/prestige';
 import { sectorIcon } from '../../core/game/sectors';
+import { KIND_ICONS } from '../../core/game/units';
 import { toErrorMessage } from '../../core/http/api-error';
 import { MoneyPipe, RatePipe } from '../../shared/pipes/money.pipe';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -29,6 +30,7 @@ export class BusinessesComponent implements OnInit {
 
   readonly all = ALL;
   readonly sectorIcon = sectorIcon;
+  readonly kindIcons = KIND_ICONS;
   readonly prestigeColor = prestigeColor;
   readonly prestigeLabel = prestigeLabel;
 

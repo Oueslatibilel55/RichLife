@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { AdminService } from '../admin.service';
 import { AdminCatalogueEntry, AdminPlaceKind, CatalogueAssetFields, CatalogueEntryFields } from '../admin.models';
-import { PlaceTier, PrestigeLevel, Sector } from '../../../core/models/game.models';
+import { BusinessKind, PlaceTier, PrestigeLevel, Sector } from '../../../core/models/game.models';
 import { PRESTIGE_ORDER, prestigeLabel } from '../../../core/game/prestige';
 import { SECTOR_ICONS } from '../../../core/game/sectors';
 import { toErrorMessage } from '../../../core/http/api-error';
@@ -26,7 +26,7 @@ const blankAsset = (): AssetForm => ({
   id: '', name: '', price: 0, unlockAtAssetCount: 0, fixed: '', displayOrder: 10, incomePerSecond: null, mtbfHours: 48,
 });
 
-const blankKind = (): AdminPlaceKind => ({ id: '', name: '', tier: 'Quiet', price: 0, displayOrder: 10 });
+const blankKind = (): AdminPlaceKind => ({ id: '', name: '', tier: 'Quiet', price: 0, displayOrder: 10, baseIncomePerSecond: null });
 
 /**
  * Create or edit one catalogue entry and its assets (contract §7). Create first, then the
@@ -54,6 +54,7 @@ export class CatalogueEditorComponent implements OnChanges {
   readonly kinds = signal<AdminPlaceKind[]>([]);
   newKind: AdminPlaceKind = blankKind();
   readonly tiers: PlaceTier[] = ['Quiet', 'Busy', 'Prime'];
+  readonly kindsOfBusiness: BusinessKind[] = ['Fleet', 'Sites', 'Equipment'];
 
   readonly saving = signal(false);
   readonly busyAsset = signal<string | null>(null);
@@ -77,7 +78,7 @@ export class CatalogueEditorComponent implements OnChanges {
           openingCost: e.openingCost, baseIncomePerSecond: e.baseIncomePerSecond,
           monthlySalaryCost: e.monthlySalaryCost, baseEmployeeCount: e.baseEmployeeCount,
           description: e.description, displayOrder: e.displayOrder, isActive: e.isActive,
-          placeBaseCapacity: e.placeBaseCapacity, placeCapacityPerLevel: e.placeCapacityPerLevel,
+          placeBaseCapacity: e.placeBaseCapacity, placeCapacityPerLevel: e.placeCapacityPerLevel, kind: e.kind,
         }
       : this.blankEntry();
     this.loadAssets(e);
@@ -124,7 +125,11 @@ export class CatalogueEditorComponent implements OnChanges {
   }
 
   private kindToWire(row: AdminPlaceKind): AdminPlaceKind {
-    return { id: row.id, name: row.name, tier: row.tier, price: Number(row.price), displayOrder: Number(row.displayOrder) };
+    const income = String(row.baseIncomePerSecond ?? '').trim();
+    return {
+      id: row.id, name: row.name, tier: row.tier, price: Number(row.price), displayOrder: Number(row.displayOrder),
+      baseIncomePerSecond: income === '' ? null : Number(income),
+    };
   }
 
   private submit(call: Observable<AdminCatalogueEntry>, message: string): void {
@@ -190,7 +195,7 @@ export class CatalogueEditorComponent implements OnChanges {
     return {
       id: '', name: '', sector: 'Services', requiredPrestige: 'TheHustle' as PrestigeLevel,
       openingCost: 1000, baseIncomePerSecond: 1, monthlySalaryCost: 0, baseEmployeeCount: 0,
-      description: '', displayOrder: 100, isActive: true, placeBaseCapacity: 4, placeCapacityPerLevel: 2,
+      description: '', displayOrder: 100, isActive: true, placeBaseCapacity: 4, placeCapacityPerLevel: 2, kind: 'Equipment',
     };
   }
 }

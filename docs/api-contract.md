@@ -157,10 +157,11 @@ still count.
   "taxPeriodEndsAt": "2026-10-10T08:00:00Z",
   "brokenUnits": 1,
   "maxPlaces": 10,
+  "kind": "Fleet",
   "places": [
     {
       "id": "8d0c…", "kindId": "depot", "name": "Depot", "street": "24 Oak Street", "tier": "Quiet",
-      "level": 2, "maxLevel": 10, "multiplier": 1.05, "capacity": 4, "unitCount": 1,
+      "level": 2, "maxLevel": 10, "multiplier": 1.25, "capacity": 4, "unitCount": 1,
       "baseIncomePerSecond": 30, "incomePerSecond": 40.32, "nextLevelCost": 80000, "nextLevelCapacity": 6,
       "units": [
         {
@@ -203,8 +204,12 @@ hire. A company's running shifts never share a name while unused names remain.
 bill the current 24-hour period would produce if it ended now; `taxPeriodEndsAt` when that period
 is billed. See *Taxes* in §5.
 
+`kind` (added 2026-10-16, `features/015-catalogue-like-road-to-rich.md`) is `Fleet` (buy vehicles
+into depots), `Sites` (open sites of different formats and level each) or `Equipment` (fill a place
+with machines) — the rules are the same; it only tells the client which words to use.
+
 `PlaceDto`: `tier` is `Quiet` | `Busy` | `Prime`; `multiplier` = tier (× 1 / 1.5 / 2.2) ×
-`(1 + 0.05 × (level − 1))`; `capacity` is how many units it holds (`unitCount` of them are
+`(1 + 0.25 × (level − 1))`; `capacity` is how many units it holds (`unitCount` of them are
 there); `incomePerSecond` is what the place adds to `netIncomePerSecond` now (its own income and
 its working units, × its multiplier × the business's `levelMultiplier`, before salaries);
 `nextLevelCost` / `nextLevelCapacity` are `null` at `maxLevel`. Places come in opening order.
@@ -239,11 +244,15 @@ client translates (`fault.<id>`); `faultName` is the English fallback.
   "placeBaseCapacity": 1,
   "placeCapacityPerLevel": 1,
   "placeKinds": [
-    { "id": "park",    "name": "Park",    "tier": "Quiet", "price": 500,  "incomeMultiplier": 1,   "canAfford": true },
-    { "id": "stadium", "name": "Stadium", "tier": "Prime", "price": 2000, "incomeMultiplier": 2.2, "canAfford": false }
-  ]
+    { "id": "park",    "name": "Park cart",    "tier": "Quiet", "price": 500,  "incomeMultiplier": 1,   "canAfford": true,  "baseIncomePerSecond": 0.2778 },
+    { "id": "stadium", "name": "Stadium cart", "tier": "Prime", "price": 3000, "incomeMultiplier": 2.2, "canAfford": false, "baseIncomePerSecond": 0.7576 }
+  ],
+  "kind": "Sites"
 }
 ```
+
+`placeKinds[].baseIncomePerSecond` is what a place of that kind earns on its own, before its
+`incomeMultiplier` (a Steakhouse more than a Burger Joint); `kind` as on `BusinessDto`.
 
 `availableAssets` are the **units** a place can hold; `mtbfHours` is the unit's mean time
 between failures. `placeKinds` are where the business can open places — the first one is the
@@ -532,10 +541,11 @@ Added 2026-10-16 — see `features/014-business-places-and-equipment.md`.
 
 - **Places.** Every business has at least one place: opening it opens the first `placeKinds`
   entry at no extra price. More places (up to `maxPlaces`, 10) cost the kind's `price`; each earns
-  the catalogue's `baseIncomePerSecond` on its own, × its tier: **Quiet × 1, Busy × 1.5, Prime × 2.2**.
-- **Place levels** 1–10: level 1 → 2 costs the kind's price, each next level × 1.6. A level adds
-  `placeCapacityPerLevel` room and **+5 %** to everything in that place. Business levels (above)
-  still apply to the whole business.
+  its kind's `baseIncomePerSecond` on its own (the catalogue's when the kind has none), × its tier:
+  **Quiet × 1, Busy × 1.5, Prime × 2.2**.
+- **Place levels** 1–10 (Road to Rich's rule since 2026-10-16): level n → n+1 costs **25 % of the
+  kind's price × 1.35^(n−1)**. A level adds `placeCapacityPerLevel` room and **+25 %** to everything
+  in that place. Business levels (above) still apply to the whole business.
 - **Units** stand in a place, which holds at most `capacity` of them. A unit earns its
   `incomePerSecond` × its place's multiplier (× business level, × prestige) **only while it works**.
 - **Breakdowns.** When a unit is bought or repaired the server draws its next failure,
@@ -1058,8 +1068,9 @@ Every edit applies to businesses opened **after** it (see §5).
   "placeBaseCapacity": 1,
   "placeCapacityPerLevel": 1,
   "placeKinds": [
-    { "id": "park", "name": "Park", "tier": "Quiet", "price": 500, "displayOrder": 10 }
-  ]
+    { "id": "park", "name": "Park cart", "tier": "Quiet", "price": 500, "displayOrder": 10, "baseIncomePerSecond": 0.2778 }
+  ],
+  "kind": "Sites"
 }
 ```
 
@@ -1072,7 +1083,8 @@ Every edit applies to businesses opened **after** it (see §5).
 | `incomePerSecond` | Read-only, computed: what a player buying this asset now would get. |
 | `mtbfHours` | An asset's mean time between failures (§5 *Places and breakdowns*), 1–10,000. Optional in requests: a new asset defaults to 48, an update keeps the current value. |
 | `placeBaseCapacity` / `placeCapacityPerLevel` | Units a new place holds, and how many more each place level adds (1–500 / 0–500). Optional in requests: a new entry defaults to 4 / 2, an update keeps the current values. |
-| `placeKinds` | Where the business can open places, by `displayOrder`; the first is where it opens. `tier` is `Quiet` \| `Busy` \| `Prime` (× 1 / 1.5 / 2.2). Places players already opened keep their own copy. Faults are rules in code, not editable here. |
+| `placeKinds` | Where the business can open places, by `displayOrder`; the first is where it opens. `tier` is `Quiet` \| `Busy` \| `Prime` (× 1 / 1.5 / 2.2). `baseIncomePerSecond` (optional, ≥ 0, `null` = the entry's base income) is what such a place earns on its own. Places players already opened keep their own copy. Faults are rules in code, not editable here. |
+| `kind` | `Fleet` \| `Sites` \| `Equipment` (features/015). Optional in requests: a new entry defaults to `Equipment`, an update keeps the current value. Validation: `"Unknown business kind."`; a negative place income: `"Place income cannot be negative."` |
 
 **Validation** (each a `400` JSON string): `id` a slug (else `"Catalogue id must be lowercase
 letters, digits and single dashes, at most 60 characters."`, `"Asset id …"` for an asset,
@@ -1140,7 +1152,7 @@ does not reference the catalogue. → `200` `AdminCatalogueEntryDto` · `400`
 
 Added 2026-10-16. Each answers the whole `AdminCatalogueEntryDto`.
 
-- `POST` body `{ "id": "stadium", "name": "Stadium", "tier": "Prime", "price": 2000, "displayOrder": 40 }`
+- `POST` body `{ "id": "stadium", "name": "Stadium", "tier": "Prime", "price": 2000, "displayOrder": 40, "baseIncomePerSecond": 0.75 }` (`baseIncomePerSecond` optional)
   → `200` · `400` `"Catalogue entry not found."` | `"Place already exists."` | a validation message.
 - `PUT /{placeId}` body: the same without `id` → `200` · `400` `"Catalogue entry not found."` |
   `"Place not found."` | a validation message.

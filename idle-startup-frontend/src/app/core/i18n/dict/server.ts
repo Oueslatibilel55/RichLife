@@ -87,6 +87,8 @@ export const SERVER: DictSet = {
     'Place capacity must be between 1 and 500.': 'Place capacity must be between 1 and 500.',
     'Capacity per place level must be between 0 and 500.': 'Capacity per place level must be between 0 and 500.',
     'Time between failures must be between 1 and 10000 hours.': 'Time between failures must be between 1 and 10000 hours.',
+    'Unknown business kind.': 'Unknown business kind.',
+    'Place income cannot be negative.': 'Place income cannot be negative.',
   },
 
   fr: {
@@ -170,6 +172,8 @@ export const SERVER: DictSet = {
     'Place capacity must be between 1 and 500.': 'La capacité d’un établissement doit être comprise entre 1 et 500.',
     'Capacity per place level must be between 0 and 500.': 'La capacité ajoutée par niveau doit être comprise entre 0 et 500.',
     'Time between failures must be between 1 and 10000 hours.': 'Le temps entre deux pannes doit être compris entre 1 et 10 000 heures.',
+    'Unknown business kind.': 'Type d’entreprise inconnu.',
+    'Place income cannot be negative.': 'Le revenu d’un emplacement ne peut pas être négatif.',
   },
 
   ar: {
@@ -253,5 +257,7 @@ export const SERVER: DictSet = {
     'Place capacity must be between 1 and 500.': 'يجب أن تكون سعة الموقع بين 1 و500.',
     'Capacity per place level must be between 0 and 500.': 'يجب أن تكون السعة المضافة لكل مستوى بين 0 و500.',
     'Time between failures must be between 1 and 10000 hours.': 'يجب أن يكون الوقت بين عطلين بين 1 و10000 ساعة.',
+    'Unknown business kind.': 'نوع نشاط غير معروف.',
+    'Place income cannot be negative.': 'لا يمكن أن يكون دخل الموقع سالبًا.',
   },
 };

@@ -19,7 +19,8 @@ public record BusinessCatalogueDto(
     IReadOnlyList<AssetCatalogueDto> AvailableAssets,
     int PlaceBaseCapacity,
     int PlaceCapacityPerLevel,
-    IReadOnlyList<PlaceKindDto> PlaceKinds
+    IReadOnlyList<PlaceKindDto> PlaceKinds,
+    string Kind
 );
 
 public record AssetCatalogueDto(
@@ -39,7 +40,8 @@ public record PlaceKindDto(
     string Tier,
     decimal Price,
     decimal IncomeMultiplier,
-    bool CanAfford
+    bool CanAfford,
+    decimal BaseIncomePerSecond
 );
 
 // -- Admin view: every entry, with the raw fields an editor needs ---------------------
@@ -61,7 +63,8 @@ public record AdminCatalogueEntryDto(
     IReadOnlyList<AdminCatalogueAssetDto> AvailableAssets,
     int PlaceBaseCapacity,
     int PlaceCapacityPerLevel,
-    IReadOnlyList<AdminPlaceKindDto> PlaceKinds
+    IReadOnlyList<AdminPlaceKindDto> PlaceKinds,
+    BusinessKind Kind
 );
 
 public record AdminCatalogueAssetDto(
@@ -80,7 +83,8 @@ public record AdminPlaceKindDto(
     string Name,
     PlaceTier Tier,
     decimal Price,
-    int DisplayOrder
+    int DisplayOrder,
+    decimal? BaseIncomePerSecond
 );
 
 public record CreateCatalogueEntryRequest(
@@ -97,7 +101,8 @@ public record CreateCatalogueEntryRequest(
     IReadOnlyList<CreateCatalogueAssetRequest>? AvailableAssets,
     int? PlaceBaseCapacity = null,
     int? PlaceCapacityPerLevel = null,
-    IReadOnlyList<CreatePlaceKindRequest>? PlaceKinds = null
+    IReadOnlyList<CreatePlaceKindRequest>? PlaceKinds = null,
+    BusinessKind? Kind = null
 );
 
 public record UpdateCatalogueEntryRequest(
@@ -112,7 +117,8 @@ public record UpdateCatalogueEntryRequest(
     int DisplayOrder,
     bool IsActive,
     int? PlaceBaseCapacity = null,
-    int? PlaceCapacityPerLevel = null
+    int? PlaceCapacityPerLevel = null,
+    BusinessKind? Kind = null
 );
 
 public record CreateCatalogueAssetRequest(
@@ -139,12 +145,14 @@ public record CreatePlaceKindRequest(
     string Name,
     PlaceTier Tier,
     decimal Price,
-    int DisplayOrder
+    int DisplayOrder,
+    decimal? BaseIncomePerSecond = null
 );
 
 public record UpdatePlaceKindRequest(
     string Name,
     PlaceTier Tier,
     decimal Price,
-    int DisplayOrder
+    int DisplayOrder,
+    decimal? BaseIncomePerSecond = null
 );

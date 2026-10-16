@@ -50,7 +50,8 @@ public record BusinessDto(
     DateTime TaxPeriodEndsAt,
     int BrokenUnits,
     int MaxPlaces,
-    IReadOnlyList<PlaceDto> Places
+    IReadOnlyList<PlaceDto> Places,
+    string Kind
 );
 
 /// <summary>One place of a business (features/014-business-places-and-equipment.md).</summary>
