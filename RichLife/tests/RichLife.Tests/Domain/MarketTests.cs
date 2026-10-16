@@ -42,6 +42,19 @@ public class MarketTests
     }
 
     [Fact]
+    public void Prices_StepEveryThirtySeconds_OnTheSameTickForEveryone()
+    {
+        var start = StockMarket.TickStart(T0.AddSeconds(7));
+        Assert.Equal(T0, start);                                       // T0 is on a tick boundary
+        Assert.Equal(T0.AddSeconds(30), StockMarket.NextTickAt(T0.AddSeconds(7)));
+
+        // Same price anywhere inside a tick, a new one on the next.
+        Assert.Equal(StockMarket.PriceAt(Nova, T0), StockMarket.PriceAt(Nova, T0.AddSeconds(29)));
+        Assert.Equal(StockMarket.PriceAt(Nova, T0.AddSeconds(30)), StockMarket.PriceAt(Nova, T0.AddSeconds(59)));
+        Assert.True(StockMarket.Volume24h(Nova, T0) > 0);
+    }
+
+    [Fact]
     public void Tickers_AreUnique_AndFoundWhateverTheCase()
     {
         Assert.Equal(StockCatalog.All.Count, StockCatalog.All.Select(s => s.Ticker).Distinct().Count());

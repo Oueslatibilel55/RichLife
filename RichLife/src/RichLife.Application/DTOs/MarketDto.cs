@@ -8,7 +8,11 @@ public record MarketDto(
     decimal InvestLimit,
     decimal PortfolioValue,
     DateTime PricedAt,
-    IReadOnlyList<StockDto> Stocks
+    IReadOnlyList<StockDto> Stocks,
+    DateTime NextUpdateAt,
+    int TickSeconds,
+    decimal IndexValue,
+    decimal IndexChange24h
 );
 
 /// <summary>
@@ -25,7 +29,12 @@ public record StockDto(
     IReadOnlyList<decimal> Spark,
     long Shares,
     decimal CostBasis,
-    decimal Value
+    decimal Value,
+    decimal Change,
+    decimal PreviousClose,
+    decimal DayHigh,
+    decimal DayLow,
+    long Volume
 );
 
 public record StockHistoryDto(string Ticker, string Range, IReadOnlyList<PricePointDto> Points);

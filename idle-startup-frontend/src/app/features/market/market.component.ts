@@ -8,12 +8,11 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { MarketService } from './market.service';
 import { HistoryRange, MarketDto, StockDto, linePath } from './market.models';
 
-/** How often the page re-reads prices — they move every minute on the server. */
-const REFRESH_MS = 30_000;
-
 /**
- * The Bourse (contract §6f): every stock with its sparkline, the portfolio, and a trade sheet
- * with a chart. Prices come from the server; the page never invents one.
+ * The Bourse (contract §6f), laid out like a trading screen: a live header with the RLX index
+ * and a countdown to the next price tick (every 30 s, server-side), a scrolling ticker tape, a
+ * quote table whose prices flash when they move, the portfolio, and a trade sheet with a chart.
+ * Prices come from the server; the page never invents one.
  */
 @Component({
   selector: 'app-market',
@@ -30,6 +29,12 @@ export class MarketComponent implements OnInit {
   readonly data = signal<MarketDto | null>(null);
   readonly error = signal('');
   readonly cash = this.game.cash;
+
+  /** Wall clock for the countdown, every second. */
+  readonly now = signal(Date.now());
+  /** Ticker → 'up' | 'down' for a moment after its price moved. */
+  readonly flash = signal<Record<string, 'up' | 'down'>>({});
+  private loading = false;
 
   /** The stock whose trade sheet is open. */
   readonly selectedTicker = signal<string | null>(null);
@@ -51,22 +56,36 @@ export class MarketComponent implements OnInit {
     return d ? d.portfolioValue - d.invested : 0;
   });
 
-  /** The chart is green when the range ends at or above where it started. */
-  readonly chartUp = computed(() => {
-    const c = this.chart();
-    return c.length < 2 || c[c.length - 1]! >= c[0]!;
-  });
-
-  readonly held = computed(() => this.data()?.stocks.filter((s) => s.shares > 0) ?? []);
-
-  /** Share of the investing limit already used, 0..100. */
   readonly limitUsed = computed(() => {
     const d = this.data();
     return d && d.investLimit > 0 ? Math.min(100, (d.invested / d.investLimit) * 100) : 0;
   });
 
+  /** Seconds to the next price tick, and how much of the tick has gone (0..1) for the ring. */
+  readonly secondsLeft = computed(() => {
+    const d = this.data();
+    return d ? Math.max(0, Math.ceil((Date.parse(d.nextUpdateAt) - this.now()) / 1000)) : 0;
+  });
+  readonly tickProgress = computed(() => {
+    const d = this.data();
+    return d ? 1 - Math.min(1, this.secondsLeft() / d.tickSeconds) : 0;
+  });
+
+  readonly chartUp = computed(() => {
+    const c = this.chart();
+    return c.length < 2 || c[c.length - 1]! >= c[0]!;
+  });
+
+  /** Biggest movers of the day, for the header. */
+  readonly gainers = computed(() => [...(this.data()?.stocks ?? [])].sort((a, b) => b.change24h - a.change24h).slice(0, 3));
+
   constructor() {
-    const timer = setInterval(() => this.refresh(), REFRESH_MS);
+    const timer = setInterval(() => {
+      this.now.set(Date.now());
+      // A new tick has started on the server: fetch it (one request per tick at most).
+      const d = this.data();
+      if (d && Date.now() >= Date.parse(d.nextUpdateAt) + 300) this.refresh();
+    }, 1000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 
@@ -75,13 +94,35 @@ export class MarketComponent implements OnInit {
   }
 
   refresh(): void {
+    if (this.loading) return;
+    this.loading = true;
     this.market.load().subscribe({
       next: (d) => {
-        this.data.set(d);
+        this.loading = false;
+        this.apply(d);
         this.error.set('');
       },
-      error: (err: unknown) => this.error.set(toErrorMessage(err, 'market.error.load')),
+      error: (err: unknown) => {
+        this.loading = false;
+        this.error.set(toErrorMessage(err, 'market.error.load'));
+      },
     });
+  }
+
+  /** Adopts a fresh market and flashes every price that moved since the last one. */
+  private apply(d: MarketDto): void {
+    const before = this.data();
+    if (before) {
+      const moved: Record<string, 'up' | 'down'> = {};
+      for (const s of d.stocks) {
+        const old = before.stocks.find((o) => o.ticker === s.ticker);
+        if (old && old.price !== s.price) moved[s.ticker] = s.price > old.price ? 'up' : 'down';
+      }
+      this.flash.set(moved);
+      setTimeout(() => this.flash.set({}), 1200);
+    }
+    this.data.set(d);
+    if (this.selectedTicker() && this.range() === 'day') this.loadChart();
   }
 
   open(stock: StockDto): void {
@@ -104,14 +145,12 @@ export class MarketComponent implements OnInit {
   private loadChart(): void {
     const ticker = this.selectedTicker();
     if (!ticker) return;
-    this.chart.set([]);
     this.market.history(ticker, this.range()).subscribe({
       next: (h) => this.chart.set(h.points.map((p) => p.price)),
       error: () => this.chart.set(this.selected()?.spark ?? []),
     });
   }
 
-  /** Most shares the player could buy now: cash and the investing limit, fee included. */
   maxBuy(s: StockDto): number {
     const d = this.data();
     if (!d) return 0;
@@ -119,7 +158,6 @@ export class MarketComponent implements OnInit {
     return Math.max(0, Math.floor(room / (s.price * (1 + d.feeRate))));
   }
 
-  /** What the trade costs (buy) or pays (sell), fee included. */
   estimate(s: StockDto): number {
     const fee = this.data()?.feeRate ?? 0;
     const n = Math.max(0, Math.floor(this.shares || 0));
@@ -139,7 +177,7 @@ export class MarketComponent implements OnInit {
     const call = this.side() === 'buy' ? this.market.buy(s.ticker, n) : this.market.sell(s.ticker, n);
     call.subscribe({
       next: (d) => {
-        this.data.set(d);
+        this.apply(d);
         this.trading.set(false);
         this.shares = 1;
       },
@@ -153,5 +191,17 @@ export class MarketComponent implements OnInit {
   percent(fraction: number): string {
     const p = fraction * 100;
     return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
+  }
+
+  signed(n: number): string {
+    return `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(2)}`;
+  }
+
+  /** 1 234 567 → "1.23M". */
+  compact(n: number): string {
+    if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+    if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+    if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+    return String(n);
   }
 }

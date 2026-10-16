@@ -66,19 +66,32 @@ public class MarketService(
 
     private static MarketDto ToDto(Company c, DateTime now)
     {
+        var tick = StockMarket.TickStart(now);
         var stocks = StockCatalog.All.Select(s =>
         {
-            var price = StockMarket.PriceAt(s, now);
+            var price = StockMarket.PriceAt(s, tick);
+            var previous = StockMarket.PriceAt(s, tick.AddHours(-24));
+            var day = StockMarket.History(s, tick, TimeSpan.FromMinutes(15), 97).Select(p => p.Price).ToList();
             var held = c.Stocks.FirstOrDefault(h => h.Ticker == s.Ticker);
-            var spark = StockMarket.History(s, now, TimeSpan.FromHours(1), 24).Select(p => p.Price).ToList();
+            var spark = StockMarket.History(s, tick, TimeSpan.FromHours(1), 24).Select(p => p.Price).ToList();
             var shares = held?.Shares ?? 0;
             return new StockDto(
-                s.Ticker, s.Name, s.Sector, s.Icon, price, StockMarket.Change24h(s, now), spark,
-                shares, held?.CostBasis ?? 0m, price * shares);
+                s.Ticker, s.Name, s.Sector, s.Icon, price, StockMarket.Change24h(s, tick), spark,
+                shares, held?.CostBasis ?? 0m, price * shares,
+                Change: price - previous, PreviousClose: previous,
+                DayHigh: day.Max(), DayLow: day.Min(), Volume: StockMarket.Volume24h(s, tick));
         }).ToList();
+
+        // RLX: the average of every stock against its base price, × 1,000.
+        var index = StockCatalog.All.Average(s => StockMarket.PriceAt(s, tick) / s.BasePrice) * 1_000m;
+        var indexBefore = StockCatalog.All.Average(s => StockMarket.PriceAt(s, tick.AddHours(-24)) / s.BasePrice) * 1_000m;
 
         return new MarketDto(
             c.Cash, GameConstants.StockFeeRate, c.InvestedInStocks, c.StockInvestLimit,
-            stocks.Sum(s => s.Value), now, stocks);
+            stocks.Sum(s => s.Value), tick, stocks,
+            NextUpdateAt: StockMarket.NextTickAt(now),
+            TickSeconds: GameConstants.StockTickSeconds,
+            IndexValue: Math.Round(index, 2),
+            IndexChange24h: indexBefore == 0m ? 0m : Math.Round((index - indexBefore) / indexBefore, 4));
     }
 }

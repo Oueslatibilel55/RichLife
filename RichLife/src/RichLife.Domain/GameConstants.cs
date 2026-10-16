@@ -180,6 +180,9 @@ public static class GameConstants
 
     // Bourse (features/017-bourse.md)
 
+    /// <summary>Prices step this often (every player sees the same tick).</summary>
+    public const int StockTickSeconds = 30;
+
     /// <summary>Broker fee on every buy and every sell, as a share of the trade.</summary>
     public const decimal StockFeeRate = 0.01m;
 

@@ -1044,11 +1044,11 @@ Added 2026-10-16 — see `features/017-bourse.md`. **Bearer required, from a pla
 12 fictional listed companies (rules in code, `Domain/Market/StockCatalog` — tickers are persisted:
 never rename or reuse one). A price is a **pure function of the stock and the minute** (seeded
 waves of 2 h, 9 h, 2.5 days and 11 days plus smooth noise, around a base price): the same for
-every player, never stored, no background job. Prices round to the cent.
+every player, never stored, no background job. Prices round to the cent and **step every 30 seconds** (ticks aligned on a fixed epoch, the same for everyone): a trade pays the price of the tick it lands in — the price on screen.
 
-- **Buy**: whole shares at the price of the minute **+ 1 % fee**, from cash. Everything held may
+- **Buy**: whole shares at the price of the tick **+ 1 % fee**, from cash. Everything held may
   not cost more than **24 hours of full income** (`$10,000` at least): `investLimit`.
-- **Sell**: at the price of the minute **− 1 % fee**, into cash. A **profit** (proceeds − the
+- **Sell**: at the price of the tick **− 1 % fee**, into cash. A **profit** (proceeds − the
   shares' share of `costBasis`) counts toward `allTimeEarnings`; a loss takes nothing back.
 - Held shares count in `netWorth` **at cost** (`costBasis`), not at market value.
 - Like every spend, the client syncs first; trades answer a fresh `MarketDto` whose `cash` the
@@ -1060,16 +1060,18 @@ every player, never stored, no background job. Prices round to the cent.
 ```json
 {
   "cash": 50000, "feeRate": 0.01, "invested": 1250.5, "investLimit": 86400, "portfolioValue": 1302.4,
-  "pricedAt": "2026-10-16T15:31:56Z",
+  "pricedAt": "2026-10-16T15:31:30Z", "nextUpdateAt": "2026-10-16T15:32:00Z", "tickSeconds": 30,
+  "indexValue": 1012.34, "indexChange24h": 0.0042,
   "stocks": [
     { "ticker": "NOVA", "name": "Nova AI", "sector": "Technology", "icon": "🤖", "price": 124.18,
       "change24h": -0.0312, "spark": [128.4, 127.9, "… 24 hourly prices, oldest first"],
-      "shares": 10, "costBasis": 1250.5, "value": 1241.8 }
+      "shares": 10, "costBasis": 1250.5, "value": 1241.8,
+      "change": -4.0, "previousClose": 128.18, "dayHigh": 131.2, "dayLow": 122.9, "volume": 1840000 }
   ]
 }
 ```
 
-`change24h` is a fraction (−0.0312 = −3.12 %). `shares` / `costBasis` / `value` are 0 for a stock not held.
+`pricedAt` is the start of the current tick, `nextUpdateAt` when the next one starts (the client counts down and re-reads then). `indexValue` (RLX) is the average of every stock's price ÷ its base price × 1,000; `indexChange24h` its 24 h change. Per stock: `change24h` is a fraction (−0.0312 = −3.12 %), `change` the same in dollars against `previousClose` (the price 24 h earlier), `dayHigh` / `dayLow` over the last 24 h, `volume` a seeded flavour figure (no rule uses it). `shares` / `costBasis` / `value` are 0 for a stock not held.
 
 ### `GET /api/game/market/{ticker}/history?range=day|week|month`
 

@@ -11,8 +11,15 @@ export interface MarketDto {
   investLimit: number;
   /** What the held shares are worth now. */
   portfolioValue: number;
+  /** Start of the price tick the figures are for. */
   pricedAt: string;
   stocks: StockDto[];
+  /** When prices change next (UTC ISO) — every `tickSeconds` (30). */
+  nextUpdateAt: string;
+  tickSeconds: number;
+  /** RLX: every stock against its base price, × 1,000. */
+  indexValue: number;
+  indexChange24h: number;
 }
 
 export interface StockDto {
@@ -29,6 +36,13 @@ export interface StockDto {
   shares: number;
   costBasis: number;
   value: number;
+  /** Price − previousClose (the price 24 h ago). */
+  change: number;
+  previousClose: number;
+  dayHigh: number;
+  dayLow: number;
+  /** Shares traded over 24 h — flavour, not a rule. */
+  volume: number;
 }
 
 export type HistoryRange = 'day' | 'week' | 'month';
